@@ -3,7 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
-const stationRoutes = require('./routes/stationRoutes'); // Added station routes
+const stationRoutes = require('./routes/stationRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -18,9 +18,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/users', userRoutes);
-app.use('/api/stations', stationRoutes); // Enabled station endpoints
+app.use('/api/stations', stationRoutes);
 
-// Basic Health Check
+// Basic Health Check Route
 app.get('/', (req, res) => {
   res.status(200).json({ 
     status: 'success',
