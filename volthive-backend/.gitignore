@@ -1,0 +1,11 @@
+# Dependencies
+/node_modules
+
+# Environment Variables
+.env
+
+# Firebase Private Keys (IMPORTANT)
+firebase-service-account.json
+
+# OS Files
+.DS_Store
