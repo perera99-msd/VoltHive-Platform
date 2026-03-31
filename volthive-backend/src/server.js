@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const connectDB = require('./config/db'); // Import the DB connection
-const userRoutes = require('./routes/userRoutes'); // Import the new user routes
-const stationRoutes = require('./routes/stationRoutes');
+const connectDB = require('./config/db');
+const userRoutes = require('./routes/userRoutes');
+const stationRoutes = require('./routes/stationRoutes'); // Added station routes
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -15,12 +15,12 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/api/stations', stationRoutes); // Add near app.use('/api/users')
 
 // Routes
 app.use('/api/users', userRoutes);
+app.use('/api/stations', stationRoutes); // Enabled station endpoints
 
-// Basic Health Check Route
+// Basic Health Check
 app.get('/', (req, res) => {
   res.status(200).json({ 
     status: 'success',
@@ -28,7 +28,6 @@ app.get('/', (req, res) => {
   });
 });
 
-// Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
