@@ -27,6 +27,26 @@ router.post('/', verifyToken, async (req, res) => {
   }
 });
 
+// GET /api/stations/my-stations - Fetch stations owned by the logged-in user
+router.get('/my-stations', verifyToken, async (req, res) => {
+  try {
+    // 1. Find the owner in MongoDB using their Firebase token UID
+    const user = await User.findOne({ firebaseUid: req.user.uid });
+    
+    if (!user || user.role !== 'owner') {
+      return res.status(403).json({ message: 'Access denied. Owners only.' });
+    }
+
+    // 2. Query the Stations collection for documents matching this owner's _id
+    const myStations = await Station.find({ owner: user._id }).sort({ createdAt: -1 });
+    
+    res.status(200).json(myStations);
+  } catch (error) {
+    console.error('Error fetching owner stations:', error);
+    res.status(500).json({ message: 'Server error while fetching your stations.' });
+  }
+});
+
 // GET /api/stations - Fetch all stations for the map
 router.get('/', async (req, res) => {
   try {
