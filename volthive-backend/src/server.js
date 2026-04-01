@@ -4,6 +4,7 @@ require('dotenv').config();
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const stationRoutes = require('./routes/stationRoutes');
+const bookingRoutes = require('./routes/bookingRoutes'); // 1. Import booking routes
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,6 +20,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/stations', stationRoutes);
+app.use('/api/bookings', bookingRoutes); // 2. Enable booking endpoints
 
 // Basic Health Check Route
 app.get('/', (req, res) => {
