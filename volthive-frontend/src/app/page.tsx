@@ -15,7 +15,7 @@ interface Station {
   address: string;
   location: { coordinates: [number, number] };
   pricePerKWh: number;
-  chargers: { plugType: string; powerKW: number; status: string }[];
+  chargers: { plugType: string; powerKW: number; status: 'Available' | 'Occupied' | 'Offline' }[];
 }
 
 // ============================================================================
@@ -309,7 +309,20 @@ export default function Home() {
         {/* MAP VIEW */}
         <div className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
             <div className="w-full h-full pt-22 sm:pt-26 overflow-x-hidden">
-             <StationMap stations={stations} onBookClick={setSelectedStation} userLocation={userLocation} />
+             <StationMap
+               stations={stations}
+               onBookClick={(station) =>
+                 setSelectedStation({
+                   _id: station._id,
+                   name: station.name || station.stationName || 'VoltHive Station',
+                   address: station.address || 'Location on map',
+                   location: station.location,
+                   pricePerKWh: station.pricePerKWh ?? 0,
+                   chargers: station.chargers ?? [],
+                 })
+               }
+               userLocation={userLocation}
+             />
           </div>
           {selectedStation && <PublicStationDrawer station={selectedStation} onClose={() => setSelectedStation(null)} />}
         </div>
