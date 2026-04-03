@@ -1,61 +1,48 @@
 const express = require('express');
 const router = express.Router();
-const Station = require('../models/Station');
-const User = require('../models/User');
-const verifyToken = require('../middleware/authMiddleware');
 
-// POST /api/stations - Register a new station (Owners only)
-router.post('/', verifyToken, async (req, res) => {
-  const { name, address, latitude, longitude, plugType, powerKW, pricePerKWh } = req.body;
-  try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
-    if (!user || user.role !== 'owner') {
-      return res.status(403).json({ message: 'Access denied. Owners only.' });
-    }
-    const newStation = new Station({
-      owner: user._id,
-      name, address,
-      location: { type: 'Point', coordinates: [longitude, latitude] },
-      chargers: [{ plugType, powerKW, status: 'Available' }],
-      pricePerKWh
-    });
-    await newStation.save();
-    res.status(201).json(newStation);
-  } catch (error) {
-    console.error('Error saving station:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+// Import controllers
+const { 
+  getSmartMatchStations,
+  getAllStations,     // From your completed Sprint 2 task
+  createStation       // From your completed Sprint 2 task
+} = require('../controllers/stationController');
 
-// GET /api/stations/my-stations - Fetch stations owned by the logged-in user
-router.get('/my-stations', verifyToken, async (req, res) => {
-  try {
-    // 1. Find the owner in MongoDB using their Firebase token UID
-    const user = await User.findOne({ firebaseUid: req.user.uid });
-    
-    if (!user || user.role !== 'owner') {
-      return res.status(403).json({ message: 'Access denied. Owners only.' });
-    }
+// Import authentication middleware to protect owner routes
+const { protect } = require('../middleware/authMiddleware');
 
-    // 2. Query the Stations collection for documents matching this owner's _id
-    const myStations = await Station.find({ owner: user._id }).sort({ createdAt: -1 });
-    
-    res.status(200).json(myStations);
-  } catch (error) {
-    console.error('Error fetching owner stations:', error);
-    res.status(500).json({ message: 'Server error while fetching your stations.' });
-  }
-});
+// ==========================================
+// PUBLIC ROUTES (For EV Drivers / Public Map)
+// ==========================================
 
-// GET /api/stations - Fetch all stations for the map
-router.get('/', async (req, res) => {
-  try {
-    const stations = await Station.find();
-    res.status(200).json(stations);
-  } catch (error) {
-    console.error('Error fetching stations:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
+/**
+ * @route   GET /api/stations
+ * @desc    Get all public charging stations (Public aggregation)
+ * @access  Public
+ */
+router.get('/', getAllStations);
+
+/**
+ * @route   POST /api/stations/smart-match
+ * @desc    Run Rule-Based Algorithm + AI Pricing to find top 3 Best Value stations
+ * @access  Public
+ */
+router.post('/smart-match', getSmartMatchStations);
+
+
+// ==========================================
+// PROTECTED ROUTES (For Station Owners)
+// ==========================================
+
+/**
+ * @route   POST /api/stations
+ * @desc    Register a new charging station
+ * @access  Private (Requires Owner JWT Token)
+ */
+router.post('/', protect, createStation);
+
+// Note: Future routes for editing/deleting stations by the owner can be added here
+// router.put('/:id', protect, updateStation);
+// router.delete('/:id', protect, deleteStation);
 
 module.exports = router;

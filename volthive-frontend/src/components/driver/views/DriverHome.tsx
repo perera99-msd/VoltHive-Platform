@@ -1,144 +1,117 @@
+// volthive-frontend/src/components/driver/views/DriverHome.tsx
 'use client';
-import { useAuth } from '../../../context/AuthContext';
 
-export default function DriverHome({ onBookNow }: { onBookNow: () => void }) {
-  const { user } = useAuth();
-  
-  // Extract first name
-  const firstName = user?.displayName?.split(' ')[0] || 'Driver';
+import React from 'react';
+import { motion } from 'framer-motion';
 
+export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-500">
-      
-      {/* --- HEADER --- */}
-      <header className="flex items-end justify-between">
-        <div>
-          <p className="text-(--brand-muted) font-bold tracking-widest text-[11px] mb-1.5 uppercase">Overview</p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight">
-            Good morning, {firstName}.
-          </h1>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/60 border border-(--brand-border) rounded-lg shadow-sm">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-bold text-(--brand-ink) uppercase tracking-wide">Network Online</span>
-        </div>
-      </header>
+    <section className="space-y-6 relative overflow-hidden">
+      <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-(--accent-blue)/18 blur-[120px] pointer-events-none" />
+      <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
 
-      {/* --- PRIORITY 1: UPCOMING RESERVATION (Smart Context) --- */}
-      {/* In a real app, this only renders if they have a pending booking today */}
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-(--brand-green)/30 shadow-[0_8px_30px_rgba(108,181,103,0.12)] relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group cursor-pointer transition-all hover:shadow-[0_8px_30px_rgba(108,181,103,0.2)]">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-(--brand-green)/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 rounded-2xl bg-(--brand-green)/10 flex items-center justify-center text-(--brand-green) border border-(--brand-green)/20 shrink-0">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          </div>
+      <motion.header
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 md:p-8 shadow-[0_26px_70px_-42px_rgba(9,32,52,0.58)]"
+      >
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest bg-(--brand-green) text-white">Upcoming</span>
-              <span className="text-sm font-semibold text-(--brand-ink)">Today, 2:30 PM</span>
-            </div>
-            <h3 className="text-[15px] font-semibold text-(--brand-ink)">Colombo Fast Charge 19</h3>
-            <p className="text-xs font-medium text-(--brand-muted)">Random Street 19, Colombo</p>
-          </div>
-        </div>
-
-        <button className="w-full sm:w-auto px-5 py-2.5 bg-white border border-(--brand-border) text-(--brand-ink) text-sm font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors relative z-10">
-          View Details
-        </button>
-      </div>
-
-      {/* --- PRIORITY 2: HERO ACTION --- */}
-      <div className="bg-gradient-to-br from-(--brand-blue-deep) to-(--brand-green) rounded-[2rem] p-8 sm:p-10 text-white shadow-xl shadow-[color:var(--accent-blue)]/15 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-black/10 rounded-full blur-2xl" />
-        
-        <div className="relative z-10">
-          <h2 className="text-3xl sm:text-4xl font-light mb-3">Need a charge?</h2>
-          <p className="text-white/80 mb-8 max-w-sm text-[15px] leading-relaxed">
-            There are currently 12 fast chargers available within a 5km radius of your location.
-          </p>
-          <button onClick={onBookNow} className="bg-white text-(--brand-ink) px-6 py-3.5 rounded-xl font-bold text-sm hover:scale-105 active:scale-95 transition-all flex items-center justify-center sm:justify-start gap-2 shadow-lg w-full sm:w-auto">
-            Open Live Map
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-          </button>
-        </div>
-      </div>
-
-      {/* --- PRIORITY 3: EXPANDED STATS GRID (Gamification) --- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        
-        {/* Total Energy */}
-        <div className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-(--brand-border) shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-(--brand-blue) mb-3"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
-          <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-1">Energy Drawn</p>
-          <p className="text-2xl font-light text-(--brand-ink)">142 <span className="text-xs font-semibold text-(--brand-muted)">kWh</span></p>
-        </div>
-
-        {/* Charging Sessions */}
-        <div className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-(--brand-border) shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-(--brand-muted) mb-3"><path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59" /></svg>
-          <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-1">Sessions</p>
-          <p className="text-2xl font-light text-(--brand-ink)">12</p>
-        </div>
-
-        {/* Money Saved (vs Gas) */}
-        <div className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-(--brand-border) shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 w-16 h-16 bg-(--brand-green)/10 rounded-full blur-xl" />
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-(--brand-green) mb-3"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V4.22c0-.756-.728-1.294-1.453-1.096a59.769 59.769 0 01-15.797 2.101c-.727.198-1.453-.342-1.453-1.096v14.522c0 .756.728 1.294 1.453 1.096z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 11.25v.75" /></svg>
-          <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-1">Est. Savings</p>
-          <p className="text-2xl font-light text-(--brand-ink)"><span className="text-[13px] font-semibold text-(--brand-muted)">Rs.</span> 14.5<span className="text-[13px] font-semibold text-(--brand-muted)">k</span></p>
-        </div>
-
-        {/* CO2 Offset */}
-        <div className="bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-(--brand-border) shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-emerald-500 mb-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12.75 3.03v.568c0 .334.148.65.405.864l1.068.89c.442.369.535 1.01.216 1.49l-.51.766a2.25 2.25 0 01-1.161.886l-.143.048a1.107 1.107 0 00-.57 1.664c.369.555.169 1.307-.427 1.605L9 13.125l.423 1.059a.956.956 0 01-1.652.928l-.679-.906a1.125 1.125 0 00-1.906.172L4.5 15.75l-.612.153M12.75 3.031a9 9 0 00-8.862 12.872M12.75 3.031a9 9 0 016.69 14.036m0 0l-.177-.529A2.25 2.25 0 0017.128 15H16.5l-.324-.324a1.453 1.453 0 00-2.328.377l-.036.073a1.586 1.586 0 01-.982.816l-.99.282c-.55.157-.894.702-.8 1.267l.073.438c.08.474.49.821.97.821.846 0 1.598.542 1.865 1.345l.215.643m5.276-3.67a9.012 9.012 0 01-5.276 3.67m0 0a9 9 0 01-10.275-4.831M7.5 14.25v-2.5m6 5.75v-1.5" /></svg>
-          <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-1">CO₂ Reduced</p>
-          <p className="text-2xl font-light text-(--brand-ink)">86 <span className="text-xs font-semibold text-(--brand-muted)">kg</span></p>
-        </div>
-
-      </div>
-
-      {/* --- PRIORITY 4: RECENT STATIONS --- */}
-      <div>
-        <h3 className="text-xs font-bold text-(--brand-muted) uppercase tracking-[0.15em] mb-4 ml-2">Jump Back In</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          
-          {/* Recent Card 1 */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-4 border border-(--brand-border) shadow-sm flex items-center justify-between group hover:bg-white transition-colors cursor-pointer">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-(--brand-muted) border border-slate-200">
-                <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
-              </div>
-              <div>
-                <p className="font-semibold text-[14px] text-(--brand-ink)">Bambalapitiya Charge Hub</p>
-                <p className="text-[12px] text-(--brand-muted)">Used 3 days ago</p>
-              </div>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-(--brand-ink) group-hover:bg-(--brand-ink) group-hover:text-white transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-            </div>
+            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Driver Dashboard</p>
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-(--brand-ink) mt-2">
+              Welcome back,
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-(--brand-blue) to-(--brand-green)"> Dimalsha.</span>
+            </h1>
+            <p className="text-(--brand-muted) mt-2 max-w-2xl font-medium">Your charging workflow is ready. Continue from map mode, review reservations, and manage trips from one clean surface.</p>
           </div>
 
-          {/* Recent Card 2 */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-2xl p-4 border border-(--brand-border) shadow-sm flex items-center justify-between group hover:bg-white transition-colors cursor-pointer">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-(--brand-muted) border border-slate-200">
-                <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
-              </div>
-              <div>
-                <p className="font-semibold text-[14px] text-(--brand-ink)">Galle Road Fast Port</p>
-                <p className="text-[12px] text-(--brand-muted)">Used last week</p>
-              </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={onBookNow}
+              className="px-5 py-3 rounded-xl bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) text-sm font-semibold shadow-[0_18px_34px_-22px_rgba(74,144,164,0.85)] hover:brightness-105"
+            >
+              Open Live Map
+            </button>
+            <button className="px-5 py-3 rounded-xl bg-(--brand-card)/90 border border-(--brand-border) text-(--brand-ink) text-sm font-semibold hover:bg-(--background)">
+              Monthly Summary
+            </button>
+          </div>
+        </div>
+      </motion.header>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Upcoming Sessions</p>
+          <p className="text-3xl font-semibold tracking-tight text-(--brand-ink) mt-2">03</p>
+          <p className="text-sm text-(--brand-muted) mt-1">Next at 2:00 PM · Colombo Fast Charge 19</p>
+        </article>
+        <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Average Cost</p>
+          <p className="text-3xl font-semibold tracking-tight text-(--brand-ink) mt-2">LKR 86</p>
+          <p className="text-sm text-(--brand-muted) mt-1">Per kWh over the last 14 days</p>
+        </article>
+        <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Completion Rate</p>
+          <p className="text-3xl font-semibold tracking-tight text-(--brand-ink) mt-2">98%</p>
+          <p className="text-sm text-(--brand-muted) mt-1">Stable performance this month</p>
+        </article>
+      </motion.div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <motion.article
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.82, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+          className="xl:col-span-2 rounded-4xl border border-(--brand-card)/65 bg-(--brand-card)/78 backdrop-blur-2xl p-6"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-xl font-semibold text-(--brand-ink)">Today Timeline</h2>
+            <span className="px-3 py-1 rounded-full bg-(--accent-blue)/14 text-(--brand-blue) text-xs font-semibold">3 activities</span>
+          </div>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-(--brand-border) bg-(--background)/72 p-4">
+              <p className="font-semibold text-(--brand-ink)">09:30 AM · Session Completed</p>
+              <p className="text-sm text-(--brand-muted) mt-1">Negombo Port Station · 18.2 kWh delivered</p>
             </div>
-            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-(--brand-ink) group-hover:bg-(--brand-ink) group-hover:text-white transition-colors">
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            <div className="rounded-2xl border border-(--brand-border) bg-(--background)/72 p-4">
+              <p className="font-semibold text-(--brand-ink)">02:00 PM · Upcoming Reservation</p>
+              <p className="text-sm text-(--brand-muted) mt-1">Colombo Fast Charge 19 · Slot reserved for 30 minutes</p>
+            </div>
+            <div className="rounded-2xl border border-(--brand-border) bg-(--background)/72 p-4">
+              <p className="font-semibold text-(--brand-ink)">08:00 PM · Suggested Off-Peak Window</p>
+              <p className="text-sm text-(--brand-muted) mt-1">Forecast shows 12% lower rates in nearby stations</p>
+            </div>
+          </div>
+        </motion.article>
+
+        <motion.aside
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.82, delay: 0.16, ease: [0.22, 1, 0.36, 1] }}
+          className="space-y-4"
+        >
+          <div className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/82 backdrop-blur-2xl p-5">
+            <h3 className="font-semibold text-(--brand-ink)">Quick Actions</h3>
+            <div className="mt-4 space-y-2.5">
+              <button onClick={onBookNow} className="w-full py-2.5 rounded-lg bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) text-sm font-semibold hover:brightness-105">Find Nearby Station</button>
+              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-(--background) text-(--brand-ink) text-sm font-semibold hover:border-(--brand-blue)">Manage Vehicles</button>
+              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-(--background) text-(--brand-ink) text-sm font-semibold hover:border-(--brand-green)">View Payments</button>
             </div>
           </div>
 
-        </div>
+          <div className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/82 backdrop-blur-2xl p-5">
+            <h3 className="font-semibold text-(--brand-ink)">Charging Insight</h3>
+            <p className="text-sm text-(--brand-muted) mt-2">Use Smart Match from map mode for top-value station ranking using route time and live dynamic pricing.</p>
+          </div>
+        </motion.aside>
       </div>
-
-    </div>
+    </section>
   );
 }

@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { apiUrl } from '../../lib/api';
 
 interface AddChargerFormProps {
   onSuccess: () => void;
@@ -88,7 +89,7 @@ export default function AddChargerForm({ onSuccess, onCancel }: AddChargerFormPr
         submitData.append('images', img);
       });
 
-      const res = await fetch('http://localhost:5000/api/stations', {
+      const res = await fetch(apiUrl('/api/stations'), {
         method: 'POST',
         body: submitData,
       });

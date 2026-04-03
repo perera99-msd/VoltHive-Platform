@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import AddChargerForm from '../AddChargerForm';
+import { apiUrl } from '../../../lib/api';
 
 interface Charger {
   plugType: string;
@@ -31,7 +32,7 @@ export default function StationsView() {
   const fetchStations = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch('http://localhost:5000/api/stations');
+      const res = await fetch(apiUrl('/api/stations'));
       if (res.ok) {
         const data = await res.json();
         setStations(data);
@@ -46,7 +47,7 @@ export default function StationsView() {
   const deleteStation = async (stationId: string) => {
     if (confirm('Are you sure you want to delete this station? This action cannot be undone.')) {
       try {
-        const res = await fetch(`http://localhost:5000/api/stations/${stationId}`, {
+        const res = await fetch(apiUrl(`/api/stations/${stationId}`), {
           method: 'DELETE',
         });
         if (res.ok) {

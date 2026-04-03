@@ -7,6 +7,7 @@ import Hero from '../components/home/Hero';
 import Features from '../components/home/Features';
 import Footer from '../components/home/Footer';
 import StationMap from '../components/StationMap';
+import { apiUrl } from '../lib/api';
 
 interface Station {
   _id: string;
@@ -30,8 +31,8 @@ const PublicStationDrawer = ({ station, onClose }: { station: Station | null, on
 
   return (
     <>
-      <div className="fixed inset-0 bg-(--brand-ink)/10 backdrop-blur-[2px] z-70 transition-opacity duration-300" onClick={onClose} />
-      <div className="fixed z-80 flex flex-col bg-(--brand-card)/95 backdrop-blur-3xl shadow-[0_-10px_80px_rgba(0,0,0,0.15)] transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] animate-in bottom-0 left-0 right-0 h-[85dvh] sm:h-[75dvh] md:w-110 md:h-dvh md:top-0 md:bottom-auto md:left-auto md:rounded-l-[2.5rem] md:border-l border-(--brand-border) rounded-t-[2.5rem] slide-in-from-bottom-full md:slide-in-from-right-full pb-8 md:pb-0 overflow-x-hidden">
+      <div className="fixed inset-0 bg-(--brand-ink)/10 backdrop-blur-[2px] z-[70] transition-opacity duration-300" onClick={onClose} />
+      <div className="fixed z-[80] flex flex-col bg-(--brand-card)/95 backdrop-blur-3xl shadow-[0_-10px_80px_rgba(0,0,0,0.15)] transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] animate-in bottom-0 left-0 right-0 h-[85dvh] sm:h-[75dvh] md:w-110 md:h-dvh md:top-0 md:bottom-auto md:left-auto md:rounded-l-[2.5rem] md:border-l border-(--brand-border) rounded-t-[2.5rem] slide-in-from-bottom-full md:slide-in-from-right-full pb-8 md:pb-0 overflow-x-hidden">
         
         {/* Handle for Mobile, Close Button for Desktop */}
         <div className="flex justify-center md:justify-end items-center p-6 pb-2 shrink-0">
@@ -279,10 +280,12 @@ export default function Home() {
   useEffect(() => {
     const fetchStations = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/stations');
+        const res = await fetch(apiUrl('/api/stations'));
         if (res.ok) {
-          const data = await res.json();
-          setStations(data);
+          const payload = await res.json();
+          // Backend returns { success, count, data } — prefer the array if present
+          const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
+          setStations(stationsArray);
         }
       } catch (error) {
         console.error('Failed to fetch stations:', error);
@@ -306,7 +309,7 @@ export default function Home() {
         {/* MAP VIEW */}
         <div className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
             <div className="w-full h-full pt-22 sm:pt-26 overflow-x-hidden">
-             <StationMap stations={stations} onMarkerClick={setSelectedStation} userLocation={userLocation} />
+             <StationMap stations={stations} onBookClick={setSelectedStation} userLocation={userLocation} />
           </div>
           {selectedStation && <PublicStationDrawer station={selectedStation} onClose={() => setSelectedStation(null)} />}
         </div>
@@ -321,7 +324,7 @@ export default function Home() {
       </div>
 
       {/* 3. COMPACT CIRCULAR FLOATING ACTION BUTTON */}
-      <div className={`fixed bottom-6 right-6 md:bottom-8 md:right-auto md:left-1/2 md:-translate-x-1/2 z-60 transition-transform duration-500 ${selectedStation ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
+      <div className={`fixed bottom-6 right-6 md:bottom-8 md:right-auto md:left-1/2 md:-translate-x-1/2 z-[60] transition-transform duration-500 ${selectedStation ? 'translate-y-32 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}>
         <button
           onClick={() => {
             if (isMapView) {

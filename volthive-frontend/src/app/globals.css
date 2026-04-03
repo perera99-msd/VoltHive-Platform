@@ -21,6 +21,16 @@
   --ui-info: #4a90a4;
   --ui-warning: #f4b740;
   --ui-error: #e05a5a;
+
+  --surface-soft: #e8f3ef;
+  --surface-tint: #dcefe8;
+  --brand-gradient: linear-gradient(135deg, #4a90a4, #6cb567);
+  --section-gradient: linear-gradient(180deg, #f5f7f6 0%, #e8f3ef 40%, #dcefe8 100%);
+
+  --motion-fast: 260ms;
+  --motion-base: 420ms;
+  --motion-slow: 760ms;
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @theme inline {
@@ -42,7 +52,12 @@ body {
   background-image:
     radial-gradient(circle at 12% -10%, rgba(74, 144, 164, 0.18), transparent 38%),
     radial-gradient(circle at 90% 6%, rgba(108, 181, 103, 0.14), transparent 36%),
-    linear-gradient(180deg, #f5f7f6 0%, #e8f3ef 40%, #dcefe8 100%);
+    var(--section-gradient);
+}
+
+::selection {
+  background: rgba(95, 175, 192, 0.28);
+  color: var(--brand-ink);
 }
 
 @keyframes float-soft {
@@ -66,12 +81,73 @@ body {
   }
 }
 
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
 .vh-float-soft {
   animation: float-soft 6.5s ease-in-out infinite;
 }
 
 .vh-rise-in {
-  animation: rise-in 0.7s ease-out both;
+  animation: rise-in var(--motion-slow) var(--ease-premium) both;
+}
+
+.vh-loader-soft {
+  animation: pulse-soft 1.8s var(--ease-premium) infinite;
+}
+
+button,
+a,
+[role="button"] {
+  transition: transform var(--motion-base) var(--ease-premium),
+    background-color var(--motion-base) var(--ease-premium),
+    border-color var(--motion-base) var(--ease-premium),
+    box-shadow var(--motion-base) var(--ease-premium),
+    color var(--motion-base) var(--ease-premium),
+    opacity var(--motion-base) var(--ease-premium);
+}
+
+button:hover,
+a:hover,
+[role="button"]:hover {
+  transform: translateY(-1px);
+}
+
+input,
+textarea,
+select {
+  transition: border-color var(--motion-base) var(--ease-premium),
+    box-shadow var(--motion-base) var(--ease-premium),
+    background-color var(--motion-base) var(--ease-premium);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(74, 144, 164, 0.45) rgba(224, 229, 227, 0.8);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(224, 229, 227, 0.72);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(74, 144, 164, 0.7), rgba(108, 181, 103, 0.72));
+  border-radius: 999px;
+  border: 2px solid rgba(245, 247, 246, 0.8);
 }
 @keyframes shimmer {
   100% {
