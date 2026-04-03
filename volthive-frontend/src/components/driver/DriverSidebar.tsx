@@ -27,7 +27,7 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
   };
 
   return (
-    <nav className="absolute z-40 
+    <nav className="fixed z-30 
                     /* Mobile: Bottom Floating Pill */
                     bottom-8 left-1/2 -translate-x-1/2 h-[72px] w-[92%] max-w-[380px] 
                     bg-(--brand-card)/60 backdrop-blur-[40px] saturate-[1.2] border border-(--brand-card)/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] ring-1 ring-black/5 rounded-[2.5rem] 

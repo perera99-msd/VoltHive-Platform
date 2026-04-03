@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { motion } from 'framer-motion';
 
 export default function Hero() {
   return (
@@ -8,7 +9,13 @@ export default function Hero() {
       <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-full max-w-md h-64 bg-linear-to-r from-(--accent-blue)/20 via-(--brand-card) to-(--accent-green)/20 blur-3xl -z-10 rounded-full" />
 
       <div className="grid lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-16 items-center">
-        <div className="text-center lg:text-left vh-rise-in max-w-2xl mx-auto lg:mx-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="text-center lg:text-left vh-rise-in max-w-2xl mx-auto lg:mx-0"
+        >
           <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-(--brand-card) border border-(--brand-border) shadow-sm text-(--brand-muted) text-[10px] sm:text-xs font-semibold uppercase tracking-widest mb-6 sm:mb-8">
             <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-(--accent-green) opacity-75"></span>
@@ -36,10 +43,16 @@ export default function Hero() {
               Partner with VoltHive
             </Link>
           </div>
-        </div>
+        </motion.div>
 
         {/* Hero Image Container */}
-        <div className="relative mt-6 lg:mt-0 w-full max-w-[88%] sm:max-w-md mx-auto lg:max-w-none vh-float-soft">
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.35 }}
+          transition={{ duration: 0.9, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mt-6 lg:mt-0 w-full max-w-[88%] sm:max-w-md mx-auto lg:max-w-none vh-float-soft"
+        >
           <div className="absolute -inset-4 bg-linear-to-br from-(--accent-blue)/20 to-(--accent-green)/20 blur-2xl rounded-3xl" />
           <div className="relative rounded-3xl sm:rounded-4xl overflow-hidden border border-(--brand-border) shadow-xl bg-(--brand-card)">
             <Image
@@ -61,7 +74,7 @@ export default function Hero() {
               className="h-6 sm:h-9 w-auto mx-auto sm:mx-0"
             />
           </div>
-        </div>
+        </motion.div>
       </div>
     </section>
   );

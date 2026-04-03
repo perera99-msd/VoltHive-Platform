@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import StationMap from '../../../components/StationMap';
 import OwnerSidebar from '../../../components/owner/OwnerSidebar';
@@ -7,6 +7,7 @@ import OwnerHome from '../../../components/owner/views/OwnerHome';
 import StationsView from '../../../components/owner/views/StationsView';
 import AccountView from '../../../components/driver/views/AccountView';
 import RateCalendar from '../../../components/owner/RateCalendar';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function OwnerDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'map' | 'rates' | 'account'>('overview');
@@ -14,23 +15,42 @@ export default function OwnerDashboard() {
 
   return (
     <ProtectedRoute>
-      <main className="fixed inset-0 w-full h-full bg-(--background) font-sans overflow-hidden flex">
+      <main className="fixed inset-0 w-full h-full bg-background font-sans overflow-hidden flex">
         
         {/* MAP LAYER (Always in background) */}
-        <div className="absolute inset-0 w-full h-full z-0 lg:pl-[260px]">
-          <StationMap stations={[]} onMarkerClick={() => {}} userLocation={null} />
+        <div className="absolute inset-0 w-full h-full z-0 lg:pl-65">
+          <StationMap stations={[]} onBookClick={() => {}} userLocation={null} />
         </div>
 
         {/* SIDEBAR NAVIGATION */}
         <OwnerSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* MAIN CONTENT AREA */}
+        <AnimatePresence mode="sync" initial={false}>
+        <motion.div
+          key={`owner-tab-pulse-${activeTab}`}
+          initial={{ opacity: 0.55, scaleX: 0, transformOrigin: 'left center' }}
+          animate={{ opacity: 0, scaleX: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute top-0 left-0 right-0 h-[2px] z-30 bg-linear-to-r from-(--brand-blue) to-(--brand-green) pointer-events-none"
+        />
+        </AnimatePresence>
+
+        <AnimatePresence mode="sync" initial={false}>
         {!isMapView && (
-          <div className="absolute inset-0 z-20 lg:left-[260px] bg-(--background)/95 backdrop-blur-3xl overflow-y-auto custom-scrollbar transition-all duration-300 animate-in fade-in flex flex-col">
+          <motion.div
+            key={`owner-tab-${activeTab}`}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute inset-0 z-20 lg:left-65 bg-(--background)/95 backdrop-blur-2xl overflow-y-auto custom-scrollbar flex flex-col"
+          >
             
             {/* Desktop Top Header (Search & Notifications) */}
             <header className="hidden lg:flex items-center justify-between h-20 px-10 sticky top-0 z-30 bg-(--background)/80 backdrop-blur-xl border-b border-(--brand-border)/60">
-              <div className="flex items-center bg-white border border-(--brand-border) rounded-xl px-4 py-2.5 w-[400px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:shadow-md focus-within:border-(--accent-blue)">
+              <div className="flex items-center bg-white border border-(--brand-border) rounded-xl px-4 py-2.5 w-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition-shadow focus-within:shadow-md focus-within:border-(--accent-blue)">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-(--brand-muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" placeholder="Search stations, hardware IDs, or bookings..." className="bg-transparent outline-none ml-3 text-sm w-full text-(--brand-ink) placeholder:text-(--brand-muted)" />
               </div>
@@ -49,8 +69,9 @@ export default function OwnerDashboard() {
               {activeTab === 'rates' && <RateCalendar />}
               {activeTab === 'account' && <AccountView />}
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
       </main>
     </ProtectedRoute>

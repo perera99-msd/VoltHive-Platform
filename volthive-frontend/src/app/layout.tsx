@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext"; // <-- Import the provider
+import MotionShell from "../components/MotionShell";
 
 const sora = Sora({
   variable: "--font-geist-sans",
@@ -31,7 +32,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Wrap the children inside the AuthProvider */}
         <AuthProvider>
-          {children}
+          <MotionShell>{children}</MotionShell>
         </AuthProvider>
       </body>
     </html>

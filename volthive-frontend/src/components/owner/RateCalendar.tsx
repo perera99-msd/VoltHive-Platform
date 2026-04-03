@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { apiUrl } from '../../lib/api';
 
 interface RateEntry {
   dayOfWeek: number; // 0 = Sunday
@@ -73,7 +74,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         customRates: weeklyRates,
       };
 
-      const res = await fetch(`http://localhost:5000/api/stations/${selectedStation}/rates`, {
+      const res = await fetch(apiUrl(`/api/stations/${selectedStation}/rates`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

@@ -6,13 +6,15 @@ import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { auth } from '../../lib/firebase';
+import { motion } from 'framer-motion';
+import { apiUrl } from '../../lib/api';
 
 export default function AuthPage() {
   const router = useRouter();
-  
-  // Assuming signInWithGoogle might be added to your AuthContext soon.
-  // If not, you can swap it for the raw Firebase signInWithPopup method.
-  const { login, signup, signInWithGoogle } = useAuth() as any; 
+
+  const authContext = useAuth();
+  const { login, signup } = authContext;
+  const signInWithGoogle = (authContext as { signInWithGoogle?: () => Promise<void> }).signInWithGoogle;
 
   const [isLogin, setIsLogin] = useState(true);
   
@@ -39,8 +41,9 @@ export default function AuthPage() {
       } else {
         setError('Google Sign-In is not fully configured in AuthContext yet.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Google authentication failed.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Google authentication failed.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -71,7 +74,7 @@ export default function AuthPage() {
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error('Could not verify your identity. Please sign in again.');
 
-        const res = await fetch('http://localhost:5000/api/users/profile', {
+        const res = await fetch(apiUrl('/api/users/profile'), {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -84,7 +87,7 @@ export default function AuthPage() {
         const userCredential = await signup(email, password);
         const token = await userCredential.user.getIdToken();
 
-        const res = await fetch('http://localhost:5000/api/users', {
+        const res = await fetch(apiUrl('/api/users'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -113,14 +116,14 @@ export default function AuthPage() {
   };
 
   return (
-    <main className="min-h-screen w-full flex text-(--brand-ink) font-sans selection:bg-[#5FAFC0]/30 overflow-hidden relative">
+    <main className="min-h-screen w-full flex text-(--brand-ink) font-sans selection:bg-(--accent-blue)/30 overflow-hidden relative">
       
       {/* =========================================================
           MOBILE BACKGROUND (Hidden on Desktop lg: screens)
       ========================================================= */}
       <div className="absolute inset-0 lg:hidden z-0 bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)] overflow-hidden">
-        <div className="absolute -top-[10%] -right-[10%] w-[80%] h-[60%] rounded-full bg-[#5FAFC0]/30 blur-[100px] z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-[10%] -left-[10%] w-[80%] h-[60%] rounded-full bg-[#7BC96F]/25 blur-[100px] z-0 pointer-events-none"></div>
+        <div className="absolute -top-[10%] -right-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-blue)/30 blur-[100px] z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-[10%] -left-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-green)/25 blur-[100px] z-0 pointer-events-none"></div>
         <div className="absolute inset-0 z-0 opacity-25 bg-[linear-gradient(rgba(74,144,164,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(108,181,103,0.08)_1px,transparent_1px)] bg-size-[3rem_3rem] mask-[radial-gradient(ellipse_100%_100%_at_50%_50%,#000_30%,transparent_100%)]"></div>
       </div>
 
@@ -129,7 +132,7 @@ export default function AuthPage() {
       ========================================================= */}
       <Link
         href="/"
-        className="absolute top-8 left-1/2 -translate-x-1/2 lg:translate-x-0 lg:top-10 lg:left-10 z-50 bg-white/70 lg:bg-white/90 backdrop-blur-2xl lg:backdrop-blur-md border border-white/50 lg:border-(--brand-border) rounded-[1.25rem] lg:rounded-2xl px-4 py-3 lg:px-3 lg:py-2 shadow-[0_16px_40px_-16px_rgba(9,32,52,0.3)] hover:shadow-[0_20px_40px_-24px_rgba(74,144,164,0.4)] transition-all"
+        className="absolute top-8 left-1/2 -translate-x-1/2 lg:translate-x-0 lg:top-10 lg:left-10 z-50 bg-(--brand-card)/70 lg:bg-(--brand-card)/90 backdrop-blur-2xl lg:backdrop-blur-md border border-(--brand-card)/50 lg:border-(--brand-border) rounded-[1.25rem] lg:rounded-2xl px-4 py-3 lg:px-3 lg:py-2 shadow-[0_16px_40px_-16px_rgba(9,32,52,0.3)] hover:shadow-[0_20px_40px_-24px_rgba(74,144,164,0.4)] transition-all"
       >
         <Image
           src="/brand/logo-without-slogan.png"
@@ -145,8 +148,8 @@ export default function AuthPage() {
           LEFT PANE (Desktop Only - UNTOUCHED)
       ========================================================= */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-end p-16 xl:p-20 overflow-hidden border-r border-(--brand-border) bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)]">
-        <div className="absolute -top-[16%] -right-[10%] w-[58%] h-[54%] rounded-full bg-[#5FAFC0]/30 blur-[110px] z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-[14%] left-[4%] w-[58%] h-[52%] rounded-full bg-[#7BC96F]/28 blur-[120px] z-0 pointer-events-none"></div>
+        <div className="absolute -top-[16%] -right-[10%] w-[58%] h-[54%] rounded-full bg-(--accent-blue)/30 blur-[110px] z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-[14%] left-[4%] w-[58%] h-[52%] rounded-full bg-(--accent-green)/28 blur-[120px] z-0 pointer-events-none"></div>
         <div className="absolute inset-0 z-0 opacity-25 bg-[linear-gradient(rgba(74,144,164,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(108,181,103,0.08)_1px,transparent_1px)] bg-size-[3rem_3rem] mask-[radial-gradient(ellipse_78%_78%_at_50%_50%,#000_35%,transparent_100%)]"></div>
 
         <div className="relative z-10 vh-rise-in">
@@ -180,10 +183,15 @@ export default function AuthPage() {
       {/* =========================================================
           RIGHT PANE (Form Area)
       ========================================================= */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-12 relative z-10 bg-transparent min-h-[100dvh] lg:min-h-0 pt-28 lg:pt-0 overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-12 relative z-10 bg-transparent min-h-dvh lg:min-h-0 pt-28 lg:pt-0 overflow-y-auto"
+      >
         
         {/* The Form Card */}
-        <div className="w-full max-w-[500px] bg-white/75 lg:bg-white/92 backdrop-blur-2xl lg:backdrop-blur-md rounded-[2rem] lg:rounded-4xl border border-white/60 lg:border-(--brand-border) shadow-[0_24px_80px_-24px_rgba(9,32,52,0.2)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-6 sm:p-10 vh-rise-in my-auto">
+        <div className="w-full max-w-125 bg-(--brand-card)/75 lg:bg-(--brand-card)/92 backdrop-blur-2xl lg:backdrop-blur-md rounded-4xl lg:rounded-4xl border border-(--brand-card)/60 lg:border-(--brand-border) shadow-[0_24px_80px_-24px_rgba(9,32,52,0.2)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-6 sm:p-10 vh-rise-in my-auto">
           
           <div className="mb-8 text-left">
             <h2 className="text-3xl font-semibold tracking-tight text-(--brand-ink) mb-2">
@@ -197,8 +205,8 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* 1. ROLE SELECTOR (Only on Sign Up) */}
-            {!isLogin && (
-              <div className="p-1 rounded-xl bg-[#5FAFC0]/10 border border-(--brand-border) lg:border-transparent flex relative overflow-hidden mb-6">
+              {!isLogin && (
+              <div className="p-1 rounded-xl bg-(--accent-blue)/10 border border-(--brand-border) lg:border-transparent flex relative overflow-hidden mb-6">
                 <button
                   type="button"
                   onClick={() => setRole('driver')}
@@ -219,7 +227,7 @@ export default function AuthPage() {
                 </button>
 
                 <div
-                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out z-0"
+                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-(--brand-card) rounded-lg shadow-sm border border-(--brand-border)/50 transition-transform duration-300 ease-out z-0"
                   style={{ transform: role === 'driver' ? 'translateX(0)' : 'translateX(calc(100% + 4px))' }}
                 />
               </div>
@@ -259,7 +267,7 @@ export default function AuthPage() {
                     type="text"
                     required
                     placeholder="Your Name"
-                    className="w-full px-4 py-3.5 rounded-xl bg-white/80 lg:bg-white border border-white/60 lg:border-(--brand-border) focus:bg-white focus:border-(--accent-blue) focus:ring-2 focus:ring-[color:var(--accent-blue)]/20 transition-all outline-none text-(--brand-ink) placeholder:text-slate-400 sm:text-sm"
+                    className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-blue) focus:ring-2 focus:ring-(--accent-blue)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
@@ -272,7 +280,7 @@ export default function AuthPage() {
                   type="email"
                   required
                   placeholder="name@example.com"
-                  className="w-full px-4 py-3.5 rounded-xl bg-white/80 lg:bg-white border border-white/60 lg:border-(--brand-border) focus:bg-white focus:border-(--accent-blue) focus:ring-2 focus:ring-[color:var(--accent-blue)]/20 transition-all outline-none text-(--brand-ink) placeholder:text-slate-400 sm:text-sm"
+                  className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-blue) focus:ring-2 focus:ring-(--accent-blue)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
@@ -287,7 +295,7 @@ export default function AuthPage() {
                     type="tel"
                     required={role === 'owner'}
                     placeholder="+94 7X XXX XXXX"
-                    className="w-full px-4 py-3.5 rounded-xl bg-white/80 lg:bg-white border border-white/60 lg:border-(--brand-border) focus:bg-white focus:border-(--accent-blue) focus:ring-2 focus:ring-[color:var(--accent-blue)]/20 transition-all outline-none text-(--brand-ink) placeholder:text-slate-400 sm:text-sm"
+                    className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-blue) focus:ring-2 focus:ring-(--accent-blue)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm"
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value)}
                   />
@@ -303,7 +311,7 @@ export default function AuthPage() {
                   type="password"
                   required 
                   placeholder="••••••••"
-                  className="w-full px-4 py-3.5 rounded-xl bg-white/80 lg:bg-white border border-white/60 lg:border-(--brand-border) focus:bg-white focus:border-(--accent-green) focus:ring-2 focus:ring-[color:var(--accent-green)]/20 transition-all outline-none text-(--brand-ink) placeholder:text-slate-400 sm:text-sm tracking-widest"
+                  className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-green) focus:ring-2 focus:ring-(--accent-green)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm tracking-widest"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
@@ -316,7 +324,7 @@ export default function AuthPage() {
                     type="password"
                     required 
                     placeholder="••••••••"
-                    className="w-full px-4 py-3.5 rounded-xl bg-white/80 lg:bg-white border border-white/60 lg:border-(--brand-border) focus:bg-white focus:border-(--accent-green) focus:ring-2 focus:ring-[color:var(--accent-green)]/20 transition-all outline-none text-(--brand-ink) placeholder:text-slate-400 sm:text-sm tracking-widest"
+                    className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-green) focus:ring-2 focus:ring-(--accent-green)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm tracking-widest"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
@@ -363,7 +371,7 @@ export default function AuthPage() {
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </main>
   );
 }
