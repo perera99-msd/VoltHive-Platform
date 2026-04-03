@@ -1,8 +1,6 @@
 'use client';
-
-import { useEffect, useState } from 'react';
-import { APIProvider, Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
-import { useAuth } from '../context/AuthContext';
+import { useEffect } from 'react';
+import { APIProvider, Map, AdvancedMarker, useMap } from '@vis.gl/react-google-maps';
 
 interface Station {
   _id: string;
@@ -13,180 +11,97 @@ interface Station {
   chargers: { plugType: string; powerKW: number; status: string }[];
 }
 
-export default function StationMap() {
-  const { user } = useAuth();
-  const [stations, setStations] = useState<Station[]>([]);
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  
-  // Booking Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [bookingStatus, setBookingStatus] = useState('');
-  const [bookingForm, setBookingForm] = useState({
-    date: '',
-    startTime: '',
-    endTime: ''
-  });
+interface StationMapProps {
+  stations: Station[];
+  onMarkerClick: (station: Station) => void;
+  bestValueId?: string | null;
+  userLocation: { lat: number, lng: number } | null;
+}
 
-  const defaultCenter = { lat: 7.8731, lng: 80.7718 }; // Sri Lanka Center
+// --- NEW: INVISIBLE CAMERA CONTROLLER ---
+// This listens for the GPS to load, then smoothly flies the camera to the user
+function CameraHandler({ location }: { location: { lat: number, lng: number } | null }) {
+  const map = useMap(); // Hooks into the Google Map instance
 
   useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/stations');
-        if (response.ok) {
-          const data = await response.json();
-          setStations(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch stations:', error);
-      }
-    };
-    fetchStations();
-  }, []);
-
-  const handleBookSlot = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !selectedStation) return;
-
-    try {
-      const token = await user.getIdToken();
-      const response = await fetch('http://localhost:5000/api/bookings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          stationId: selectedStation._id,
-          ...bookingForm
-        })
-      });
-
-      if (response.ok) {
-        setBookingStatus('Booking confirmed! ✅');
-        setTimeout(() => {
-          setIsModalOpen(false);
-          setBookingStatus('');
-          setSelectedStation(null); // Close info window too
-        }, 2000);
-      } else {
-        const err = await response.json();
-        setBookingStatus(`Error: ${err.message}`);
-      }
-    } catch (error) {
-      setBookingStatus('Failed to connect to server.');
+    if (map && location) {
+      // Smoothly pans to the user and zooms in to a comfortable city/street level
+      map.panTo(location);
+      map.setZoom(14); 
     }
-  };
+  }, [map, location]);
+
+  return null; // Renders nothing on the screen
+}
+
+export default function StationMap({ stations, onMarkerClick, bestValueId, userLocation }: StationMapProps) {
+  // Fallback center: Sri Lanka, used for the split-second before GPS loads
+  const defaultCenter = { lat: 7.8731, lng: 80.7718 }; 
 
   return (
-    <div className="w-full h-[600px] rounded-xl overflow-hidden shadow-md border border-gray-200 relative">
+    <div className="w-full h-full relative bg-[#F5F7F6]">
       <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY as string}>
-        <Map defaultZoom={8} defaultCenter={defaultCenter} mapId="VOLTHIVE_MAP_ID" disableDefaultUI={true} zoomControl={true}>
+        <Map 
+          defaultZoom={7.3} 
+          defaultCenter={defaultCenter} 
+          mapId="VOLTHIVE_MAP_ID" 
+          disableDefaultUI={true} 
+          gestureHandling="greedy"
+          // Completely removed minZoom, maxZoom, and restrictions!
+        >
           
-          {/* Render all station markers */}
-          {stations.map((station) => (
-            <AdvancedMarker 
-              key={station._id} 
-              position={{ lat: station.location.coordinates[1], lng: station.location.coordinates[0] }}
-              onClick={() => setSelectedStation(station)}
-            >
-              <Pin background={'#2563eb'} borderColor={'#ffffff'} glyphColor={'#ffffff'}>
-                <span className="text-[10px] font-bold text-white">⚡</span>
-              </Pin>
-              <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded shadow text-[10px] font-bold border border-blue-100">
-                {station.pricePerKWh} LKR
-              </div>
-            </AdvancedMarker>
-          ))}
-
-          {/* Render InfoWindow if a station is clicked */}
-          {selectedStation && (
-            <InfoWindow
-              position={{ lat: selectedStation.location.coordinates[1], lng: selectedStation.location.coordinates[0] }}
-              onCloseClick={() => setSelectedStation(null)}
-            >
-              <div className="p-2 min-w-[200px]">
-                <h3 className="font-bold text-lg mb-1">{selectedStation.name}</h3>
-                <p className="text-gray-500 text-xs mb-3">{selectedStation.address}</p>
-                <div className="flex justify-between items-center mb-4 text-sm">
-                  <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
-                    {selectedStation.chargers[0].powerKW}kW {selectedStation.chargers[0].plugType}
-                  </span>
-                  <span className="font-bold text-green-700">{selectedStation.pricePerKWh} LKR/kWh</span>
-                </div>
-                <button 
-                  onClick={() => setIsModalOpen(true)}
-                  className="w-full bg-black text-white py-2 rounded text-sm font-medium hover:bg-gray-800 transition"
-                >
-                  Book a Slot
-                </button>
-              </div>
-            </InfoWindow>
-          )}
-        </Map>
-      </APIProvider>
-
-      {/* The Booking Modal Overlay */}
-      {isModalOpen && selectedStation && (
-        <div className="absolute inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold">Reserve Charger</h2>
-                <p className="text-sm text-gray-500">{selectedStation.name}</p>
-              </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-black">
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleBookSlot} className="p-6 space-y-4 bg-gray-50">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input 
-                  type="date" 
-                  required 
-                  className="w-full p-2 border rounded bg-white"
-                  value={bookingForm.date}
-                  onChange={e => setBookingForm({...bookingForm, date: e.target.value})}
+          {/* This triggers the fly-to-user animation */}
+          <CameraHandler location={userLocation} />
+          
+          {/* 1. USER LOCATION MARKER (Custom Car Image) */}
+          {userLocation && (
+            <AdvancedMarker position={userLocation} zIndex={100}>
+              <div className="relative flex items-center justify-center">
+                {/* Pulsing GPS Radar Effect */}
+                <div className="absolute w-24 h-24 bg-[#5FAFC0]/24 rounded-full animate-ping pointer-events-none" />
+                <div className="absolute w-12 h-12 bg-[#5FAFC0]/32 rounded-full pointer-events-none" />
+                
+                {/* Custom Car Image */}
+                <img 
+                  src="/icons/car.png" 
+                  alt="My Car" 
+                  className="w-14 h-14 object-contain drop-shadow-2xl relative z-10" 
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                  <input 
-                    type="time" 
-                    required 
-                    className="w-full p-2 border rounded bg-white"
-                    value={bookingForm.startTime}
-                    onChange={e => setBookingForm({...bookingForm, startTime: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                  <input 
-                    type="time" 
-                    required 
-                    className="w-full p-2 border rounded bg-white"
-                    value={bookingForm.endTime}
-                    onChange={e => setBookingForm({...bookingForm, endTime: e.target.value})}
-                  />
-                </div>
-              </div>
+            </AdvancedMarker>
+          )}
 
-              {bookingStatus && (
-                <div className={`p-3 rounded text-sm font-medium text-center ${bookingStatus.includes('Error') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-                  {bookingStatus}
-                </div>
-              )}
+          {/* 2. STATION MARKERS (Custom Charging Station Image) */}
+          {stations.map((station) => {
+            const isBestValue = station._id === bestValueId;
 
-              <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-medium transition mt-4 shadow-sm">
-                Confirm Reservation
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+            return (
+              <AdvancedMarker 
+                key={station._id} 
+                position={{ lat: station.location.coordinates[1], lng: station.location.coordinates[0] }}
+                onClick={() => onMarkerClick(station)}
+                zIndex={isBestValue ? 50 : 10}
+              >
+                <div className={`relative flex flex-col items-center group cursor-pointer transition-transform ${isBestValue ? 'scale-125' : 'hover:scale-110'}`}>
+                  
+                  {/* Floating Price Tag */}
+                  <div className={`absolute -top-8 px-3 py-1 rounded-full shadow-lg text-[11px] font-bold border transition-colors whitespace-nowrap ${isBestValue ? 'bg-(--ui-success) border-(--brand-green-deep) text-white shadow-[0_8px_20px_rgba(108,181,103,0.45)]' : 'bg-white border-(--brand-border) text-(--brand-ink) shadow-black/10 group-hover:border-(--accent-blue) group-hover:text-(--brand-blue)'}`}>
+                    {station.pricePerKWh} LKR
+                  </div>
+
+                  {/* Custom Station Image */}
+                  <img 
+                    src="/icons/station.png" 
+                    alt="Charging Station" 
+                    className={`w-12 h-12 object-contain transition-all ${isBestValue ? 'drop-shadow-[0_10px_20px_rgba(108,181,103,0.5)]' : 'drop-shadow-md group-hover:drop-shadow-xl'}`} 
+                  />
+                  
+                </div>
+              </AdvancedMarker>
+            );
+          })}
+        </Map>
+      </APIProvider>
     </div>
   );
 }

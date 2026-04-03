@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7f6;
+  --foreground: #1a1a1a;
+
+  --brand-blue: #4a90a4;
+  --brand-blue-deep: #3f7f90;
+  --brand-green: #6cb567;
+  --brand-green-deep: #5ba857;
+
+  --accent-blue: #5fafc0;
+  --accent-green: #7bc96f;
+
+  --brand-ink: #1a1a1a;
+  --brand-muted: #6b6f72;
+  --brand-card: #ffffff;
+  --brand-border: #e0e5e3;
+
+  --ui-success: #6cb567;
+  --ui-info: #4a90a4;
+  --ui-warning: #f4b740;
+  --ui-error: #e05a5a;
 }
 
 @theme inline {
@@ -12,15 +30,51 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  overflow-x: hidden;
+  background-image:
+    radial-gradient(circle at 12% -10%, rgba(74, 144, 164, 0.18), transparent 38%),
+    radial-gradient(circle at 90% 6%, rgba(108, 181, 103, 0.14), transparent 36%),
+    linear-gradient(180deg, #f5f7f6 0%, #e8f3ef 40%, #dcefe8 100%);
+}
+
+@keyframes float-soft {
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.vh-float-soft {
+  animation: float-soft 6.5s ease-in-out infinite;
+}
+
+.vh-rise-in {
+  animation: rise-in 0.7s ease-out both;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
