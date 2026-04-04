@@ -5,7 +5,9 @@ import joblib
 import os
 
 app = Flask(__name__)
-CORS(app)
+
+allowed_origins = os.getenv('AI_CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+CORS(app, resources={r"/api/*": {"origins": [origin.strip() for origin in allowed_origins.split(',') if origin.strip()]}})
 
 MODEL_PATH = 'models/surge_model.pkl'
 COLUMNS_PATH = 'models/model_columns.pkl'
@@ -75,4 +77,6 @@ def suggest_price():
         return jsonify({"error": str(e)}), 400
 
 if __name__ == '__main__':
-    app.run(port=5001, debug=True)
+    port = int(os.getenv('AI_PORT', '5001'))
+    debug_mode = os.getenv('AI_DEBUG', 'false').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)

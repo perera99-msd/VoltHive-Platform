@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Booking = require('../models/Booking');
 const Station = require('../models/Station');
 const User = require('../models/User');
@@ -9,9 +10,18 @@ const verifyToken = require('../middleware/authMiddleware');
 router.post('/', verifyToken, async (req, res) => {
   const { stationId, date, startTime, endTime } = req.body;
   try {
+    if (!mongoose.Types.ObjectId.isValid(stationId)) {
+      return res.status(400).json({ message: 'Invalid stationId.' });
+    }
+
     const user = await User.findOne({ firebaseUid: req.user.uid });
     if (!user || user.role !== 'driver') {
       return res.status(403).json({ message: 'Only drivers can make bookings.' });
+    }
+
+    const station = await Station.findById(stationId);
+    if (!station) {
+      return res.status(404).json({ message: 'Station not found.' });
     }
 
     const newBooking = new Booking({
@@ -38,7 +48,7 @@ router.get('/driver', verifyToken, async (req, res) => {
 
     // Populate the station details so the frontend can show the station name/address
     const bookings = await Booking.find({ driver: user._id })
-                                  .populate('station', 'name address')
+                                  .populate('station', 'stationName address')
                                   .sort({ date: 1, startTime: 1 });
     res.status(200).json(bookings);
   } catch (error) {
@@ -54,12 +64,12 @@ router.get('/owner', verifyToken, async (req, res) => {
     if (!user || user.role !== 'owner') return res.status(403).json({ message: 'Access denied.' });
 
     // 1. Find all stations owned by this user
-    const myStations = await Station.find({ owner: user._id }).select('_id');
+    const myStations = await Station.find({ ownerId: user._id }).select('_id');
     const stationIds = myStations.map(station => station._id);
 
     // 2. Find all bookings that match those station IDs
     const incomingBookings = await Booking.find({ station: { $in: stationIds } })
-                                          .populate('station', 'name')
+                                          .populate('station', 'stationName address')
                                           .populate('driver', 'name email')
                                           .sort({ date: 1, startTime: 1 });
     
@@ -74,6 +84,11 @@ router.get('/owner', verifyToken, async (req, res) => {
 router.patch('/:id/status', verifyToken, async (req, res) => {
   const { status } = req.body;
   try {
+    const allowedStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid booking status.' });
+    }
+
     const booking = await Booking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking not found.' });
 

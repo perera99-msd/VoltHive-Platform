@@ -1,6 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
+import { auth } from '../../lib/firebase';
 
 interface RateEntry {
   dayOfWeek: number; // 0 = Sunday
@@ -23,18 +24,37 @@ interface RateCalendarProps {
 }
 
 export default function RateCalendar({ onBack }: RateCalendarProps) {
-  const [selectedStation, setSelectedStation] = useState('station-1');
+  const [selectedStation, setSelectedStation] = useState('');
   const [baseRate, setBaseRate] = useState<number>(150);
   const [weeklyRates, setWeeklyRates] = useState<RateEntry[]>([]);
   const [editingRate, setEditingRate] = useState<RateEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [stations, setStations] = useState<Array<{ id: string; name: string }>>([]);
 
-  // Temporary mock stations - replace with API call
-  const mockStations = [
-    { id: 'station-1', name: 'Colombo Hub' },
-    { id: 'station-2', name: 'Galle Port' },
-  ];
+  useEffect(() => {
+    const loadStations = async () => {
+      try {
+        const res = await fetch(apiUrl('/api/stations'));
+        if (!res.ok) return;
+
+        const payload = await res.json();
+        const list = (Array.isArray(payload) ? payload : (payload?.data ?? [])).map((station: { _id: string; name?: string; stationName?: string }) => ({
+          id: station._id,
+          name: station.name || station.stationName || 'Unnamed Station',
+        }));
+
+        setStations(list);
+        if (list.length > 0) {
+          setSelectedStation((current) => current || list[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to load stations for rate calendar:', error);
+      }
+    };
+
+    loadStations();
+  }, []);
 
   const addOrUpdateRate = (rate: RateEntry) => {
     if (editingRate) {
@@ -66,8 +86,18 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
   };
 
   const saveRates = async () => {
+    if (!selectedStation) {
+      alert('Select a station before saving rates.');
+      return;
+    }
+
     setIsSaving(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Please sign in again. Authentication token is missing.');
+      }
+
       const config: BaseRateConfig = {
         stationId: selectedStation,
         baseRate,
@@ -76,7 +106,10 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
 
       const res = await fetch(apiUrl(`/api/stations/${selectedStation}/rates`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(config),
       });
 
@@ -131,7 +164,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
               }}
               className="w-full px-4 py-3 border border-(--brand-border) rounded-lg focus:border-(--accent-blue) focus:ring-1 focus:ring-(--accent-blue) outline-none transition-all text-sm bg-white"
             >
-              {mockStations.map(station => (
+              {stations.map(station => (
                 <option key={station.id} value={station.id}>{station.name}</option>
               ))}
             </select>
@@ -144,7 +177,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
               <h3 className="text-3xl font-light text-(--brand-ink)">{baseRate} <span className="text-sm font-semibold text-(--brand-muted)">LKR/kWh</span></h3>
             </div>
 
-            <div className="bg-(--background) rounded-lg p-3 mb-4">
+            <div className="bg-background rounded-lg p-3 mb-4">
               <input 
                 type="number"
                 value={baseRate}
@@ -187,7 +220,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-(--background) text-(--brand-muted) text-[11px] uppercase tracking-wider font-bold">
+                <tr className="bg-background text-(--brand-muted) text-[11px] uppercase tracking-wider font-bold">
                   <th className="px-4 py-3 text-left">Day</th>
                   {TIME_SLOTS.map(time => (
                     <th key={time} className="px-3 py-3 text-center text-xs">{time}</th>
@@ -244,7 +277,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
               <h4 className="text-sm font-bold text-(--brand-ink) mb-3">Custom Rates Applied</h4>
               <div className="space-y-2 max-h-40 overflow-y-auto">
                 {weeklyRates.map((rate, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-(--background) rounded-lg">
+                  <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg">
                     <div className="text-sm">
                       <p className="font-medium text-(--brand-ink)">
                         {DAYS[rate.dayOfWeek]} • {rate.startTime}
