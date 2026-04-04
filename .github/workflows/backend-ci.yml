@@ -1,0 +1,40 @@
+name: VoltHive Backend CI
+
+on:
+  push:
+    branches: [ "develop" ]
+    paths:
+      - 'volthive-backend/**' # Only run when backend code changes
+  pull_request:
+    branches: [ "develop" ]
+    paths:
+      - 'volthive-backend/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: 'volthive-backend/package-lock.json'
+
+    - name: Install Dependencies
+      working-directory: ./volthive-backend
+      run: npm ci
+
+    # If you write tests later (e.g., Jest), this will run them. 
+    # For now, we just ensure the app can compile without syntax errors.
+    - name: Check Syntax (Dry Run)
+      working-directory: ./volthive-backend
+      run: node --check src/server.js
