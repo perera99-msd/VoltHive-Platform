@@ -304,8 +304,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
         zoom={viewportZoom}
         options={{
           disableDefaultUI: true,
-          mapId: resolvedMapId,
-          styles: [{ featureType: "poi", stylers: [{ visibility: "off" }] }]
+          mapId: resolvedMapId
         }}
         onLoad={handleMapLoad}
         onDragEnd={handleMapDragEnd}

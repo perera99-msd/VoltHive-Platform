@@ -24,6 +24,26 @@ exports.getAllStations = async (req, res) => {
   }
 };
 
+exports.getOwnerStations = async (req, res) => {
+  try {
+    const owner = await User.findOne({ firebaseUid: req.user.uid });
+    if (!owner || owner.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'Only owners can access their stations.' });
+    }
+
+    const stations = await Station.find({ ownerId: owner._id }).sort({ createdAt: -1 });
+    const normalizedStations = stations.map(serializeStationForClient);
+
+    return res.status(200).json({
+      success: true,
+      count: normalizedStations.length,
+      data: normalizedStations,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
 exports.createStation = async (req, res) => {
   try {
     const requiredFields = ['stationName', 'location', 'chargerType', 'powerOutputKW', 'basePricePerKwh'];

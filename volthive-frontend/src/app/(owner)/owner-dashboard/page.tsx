@@ -1,17 +1,50 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import StationMap from '../../../components/StationMap';
 import OwnerSidebar from '../../../components/owner/OwnerSidebar';
 import OwnerHome from '../../../components/owner/views/OwnerHome';
+import LiveOperationsView from '../../../components/owner/views/LiveOperationsView';
 import StationsView from '../../../components/owner/views/StationsView';
 import AccountView from '../../../components/driver/views/AccountView';
 import RateCalendar from '../../../components/owner/RateCalendar';
 import { motion, AnimatePresence } from 'framer-motion';
+import { apiUrl } from '../../../lib/api';
+import { auth } from '../../../lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import type { Station } from '../../../components/StationMap';
 
 export default function OwnerDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'stations' | 'map' | 'rates' | 'account'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'liveops' | 'stations' | 'map' | 'rates' | 'account'>('liveops');
+  const [stations, setStations] = useState<Station[]>([]);
   const isMapView = activeTab === 'map';
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setStations([]);
+        return;
+      }
+
+      try {
+        const token = await user.getIdToken();
+        const response = await fetch(apiUrl('/api/stations/owner'), {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        const payload = await response.json();
+        if (response.ok && payload?.data) {
+          setStations(payload.data);
+        }
+      } catch (error) {
+        console.error('Failed to load owner stations:', error);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <ProtectedRoute>
@@ -19,7 +52,7 @@ export default function OwnerDashboard() {
         
         {/* MAP LAYER (Always in background) */}
         <div className="absolute inset-0 w-full h-full z-0 lg:pl-65">
-          <StationMap stations={[]} onBookClick={() => {}} userLocation={null} />
+          <StationMap stations={stations} onBookClick={() => {}} userLocation={null} />
         </div>
 
         {/* SIDEBAR NAVIGATION */}
@@ -33,7 +66,7 @@ export default function OwnerDashboard() {
           animate={{ opacity: 0, scaleX: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute top-0 left-0 right-0 h-[2px] z-30 bg-linear-to-r from-(--brand-blue) to-(--brand-green) pointer-events-none"
+          className="absolute top-0 left-0 right-0 h-0.5 z-30 bg-linear-to-r from-(--brand-blue) to-(--brand-green) pointer-events-none"
         />
         </AnimatePresence>
 
@@ -65,6 +98,7 @@ export default function OwnerDashboard() {
             {/* Scrollable Views */}
             <div className="flex-1 w-full pb-40 md:pb-16 pt-8 px-6 lg:px-10 max-w-7xl mx-auto">
               {activeTab === 'overview' && <OwnerHome />}
+              {activeTab === 'liveops' && <LiveOperationsView />}
               {activeTab === 'stations' && <StationsView />}
               {activeTab === 'rates' && <RateCalendar />}
               {activeTab === 'account' && <AccountView />}
