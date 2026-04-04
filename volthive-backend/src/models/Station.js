@@ -1,55 +1,78 @@
 // volthive-backend/src/models/Station.js
 const mongoose = require('mongoose');
 
-const rateEntrySchema = new mongoose.Schema({
-  dayOfWeek: { type: Number, min: 0, max: 6, required: true },
-  startTime: { type: String, required: true },
-  endTime: { type: String, required: true },
-  rate: { type: Number, min: 0, required: true },
-}, { _id: false });
+const ChargerSchema = new mongoose.Schema({
+  plugType: { 
+    type: String, 
+    required: true,
+    enum: ['CCS2', 'Type 2', 'CHAdeMO', 'CCS1', 'Type 1', 'GB/T']
+  },
+  powerKW: { 
+    type: Number, 
+    required: true 
+  },
+  status: {
+    type: String,
+    enum: ['AVAILABLE', 'PENDING_APPROVAL', 'RESERVED', 'CHARGING', 'OFFLINE'],
+    default: 'AVAILABLE'
+  },
+  // If the charger is currently in use, we link the active booking ID here
+  activeBookingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    default: null
+  }
+});
 
-const rateConfigSchema = new mongoose.Schema({
-  baseRate: { type: Number, min: 0, default: 0 },
-  customRates: { type: [rateEntrySchema], default: [] },
-}, { _id: false });
-
-const stationSchema = new mongoose.Schema({
+const StationSchema = new mongoose.Schema({
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: true,
   },
-  stationName: { type: String, required: true },
-  address: { type: String, default: '' },
-  network: { type: String, default: 'Independent' }, // e.g., Tesla, ChargePoint, Independent
-  
-  // Geospatial Data for the "Best Value" Distance Calculation
+  stationName: {
+    type: String,
+    required: [true, 'Station name is required'],
+    trim: true,
+  },
+  address: {
+    type: String,
+    default: '',
+  },
   location: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number], required: true } // [longitude, latitude] - Must be this order!
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: true,
+    },
   },
-  
-  // Specs from your new dataset
-  chargerType: { type: String, required: true }, // Level 2, DC Fast, CCS2, etc.
-  powerOutputKW: { type: Number, required: true },
-  
-  // Ports & Availability
-  portsTotal: { type: Number, required: true, default: 1 },
-  portsAvailable: { type: Number, required: true, default: 1 },
-  
-  // THE CRUCIAL RULE-BASED FLAG
-  isBookingEnabled: { 
-    type: Boolean, 
-    default: false // If false, frontend only shows "Call" or "Get Directions"
+  chargers: [ChargerSchema], // Array of physical chargers
+  basePricePerKwh: {
+    type: Number,
+    required: true,
   },
-  
-  // Pricing
-  basePricePerKwh: { type: Number, required: true },
-  rateConfig: { type: rateConfigSchema, default: () => ({ baseRate: 0, customRates: [] }) },
-  
+  rateConfig: {
+    baseRate: { type: Number, default: 85 },
+    customRates: [
+      {
+        dayOfWeek: { type: Number, min: 0, max: 6 }, // 0 = Sunday
+        startTime: String, // e.g., "18:00"
+        endTime: String,   // e.g., "22:00"
+        rate: Number,
+      }
+    ]
+  },
+  isBookingEnabled: {
+    type: Boolean,
+    default: true,
+  },
 }, { timestamps: true });
 
-// Create a 2dsphere index for Map / Distance calculations
-stationSchema.index({ location: '2dsphere' });
+// Index for fast geospatial queries (Smart Match)
+StationSchema.index({ location: '2dsphere' });
 
-module.exports = mongoose.model('Station', stationSchema);
+module.exports = mongoose.model('Station', StationSchema);

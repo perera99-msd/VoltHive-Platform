@@ -5,6 +5,7 @@ import { apiUrl } from '../../../lib/api';
 import { auth } from '../../../lib/firebase';
 
 interface Charger {
+  _id?: string;
   plugType: string;
   powerKW: number;
   status: string;
@@ -33,7 +34,15 @@ export default function StationsView() {
   const fetchStations = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch(apiUrl('/api/stations'));
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        setStations([]);
+        return;
+      }
+
+      const res = await fetch(apiUrl('/api/stations/owner'), {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const payload = await res.json();
         const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
@@ -168,7 +177,17 @@ export default function StationsView() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-(--brand-muted) text-sm font-medium">Available</span>
-                <span className="text-(--ui-success) font-semibold">{station.chargers.filter(c => c.status === 'Available').length} / {station.chargers.length}</span>
+                <span className="text-(--ui-success) font-semibold">{station.chargers.filter(c => c.status === 'Available' || c.status === 'AVAILABLE').length} / {station.chargers.length}</span>
+              </div>
+              <div className="pt-2 border-t border-(--brand-border)">
+                <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-2">Chargers</p>
+                <div className="flex flex-wrap gap-2">
+                  {station.chargers.map((charger, index) => (
+                    <span key={charger._id || `${station._id}-${index}`} className="px-2.5 py-1 rounded-lg border border-(--brand-border) bg-background text-[11px] font-semibold text-(--brand-ink)">
+                      {charger.plugType} • {charger.powerKW}kW • {charger.status}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -229,12 +248,12 @@ export default function StationsView() {
                 <p className="text-(--brand-muted) text-sm font-bold uppercase tracking-wider mb-3">Charger Details</p>
                 <div className="space-y-2">
                   {selectedStation.chargers.map((charger, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-(--background)/50 rounded-lg border border-(--brand-border)">
+                    <div key={charger._id || idx} className="flex items-center justify-between p-3 bg-(--background)/50 rounded-lg border border-(--brand-border)">
                       <div>
                         <p className="font-medium text-(--brand-ink)">{charger.plugType}</p>
                         <p className="text-xs text-(--brand-muted)">{charger.powerKW} kW</p>
                       </div>
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${charger.status === 'Available' ? 'bg-(--ui-success)/10 text-(--ui-success)' : 'bg-(--brand-border)/50 text-(--brand-muted)'}`}>
+                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${charger.status === 'Available' || charger.status === 'AVAILABLE' ? 'bg-(--ui-success)/10 text-(--ui-success)' : 'bg-(--brand-border)/50 text-(--brand-muted)'}`}>
                         {charger.status}
                       </span>
                     </div>

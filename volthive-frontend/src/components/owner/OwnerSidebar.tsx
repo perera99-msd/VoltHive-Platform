@@ -3,8 +3,8 @@ import Image from 'next/image';
 import { useAuth } from '../../context/AuthContext';
 
 interface SidebarProps {
-  activeTab: 'overview' | 'stations' | 'map' | 'rates' | 'account';
-  onTabChange: (tab: 'overview' | 'stations' | 'map' | 'rates' | 'account') => void;
+  activeTab: 'overview' | 'liveops' | 'stations' | 'map' | 'rates' | 'account';
+  onTabChange: (tab: 'overview' | 'liveops' | 'stations' | 'map' | 'rates' | 'account') => void;
 }
 
 export default function OwnerSidebar({ activeTab, onTabChange }: SidebarProps) {
@@ -50,6 +50,11 @@ export default function OwnerSidebar({ activeTab, onTabChange }: SidebarProps) {
             Dashboard
           </button>
 
+          <button onClick={() => onTabChange('liveops')} className={getDesktopTabStyle('liveops')}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><circle cx="12" cy="12" r="1"/><path d="M12 7v10M7 12h10M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
+            Live Operations
+          </button>
+
           <button onClick={() => onTabChange('stations')} className={getDesktopTabStyle('stations')}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             Hardware
@@ -88,6 +93,12 @@ export default function OwnerSidebar({ activeTab, onTabChange }: SidebarProps) {
         <div className="flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('overview')}>
           <div className={`flex items-center justify-center ${getMobileTabStyle('overview')}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+        </div>
+
+        <div className="flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('liveops')}>
+          <div className={`flex items-center justify-center ${getMobileTabStyle('liveops')}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6"><circle cx="12" cy="12" r="1"/><path d="M12 7v10M7 12h10M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/></svg>
           </div>
         </div>
 

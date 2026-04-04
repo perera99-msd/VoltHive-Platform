@@ -7,6 +7,7 @@ const {
   getAllStations,     // From your completed Sprint 2 task
   createStation,      // From your completed Sprint 2 task
   getStationById,
+  getOwnerStations,
   deleteStation,
   updateStationRates
 } = require('../controllers/stationController');
@@ -24,7 +25,6 @@ const { protect } = require('../middleware/authMiddleware');
  * @access  Public
  */
 router.get('/', getAllStations);
-router.get('/:id', getStationById);
 
 /**
  * @route   POST /api/stations/smart-match
@@ -32,6 +32,16 @@ router.get('/:id', getStationById);
  * @access  Public
  */
 router.post('/smart-match', getSmartMatchStations);
+
+
+/**
+ * @route   GET /api/stations/owner
+ * @desc    Get stations for the authenticated owner
+ * @access  Private (Requires Owner JWT Token)
+ */
+router.get('/owner', protect, getOwnerStations);
+
+router.get('/:id', getStationById);
 
 
 // ==========================================

@@ -33,7 +33,7 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
             >
               Open Live Map
             </button>
-            <button className="px-5 py-3 rounded-xl bg-(--brand-card)/90 border border-(--brand-border) text-(--brand-ink) text-sm font-semibold hover:bg-(--background)">
+            <button className="px-5 py-3 rounded-xl bg-(--brand-card)/90 border border-(--brand-border) text-(--brand-ink) text-sm font-semibold hover:bg-background">
               Monthly Summary
             </button>
           </div>
@@ -101,8 +101,8 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
             <h3 className="font-semibold text-(--brand-ink)">Quick Actions</h3>
             <div className="mt-4 space-y-2.5">
               <button onClick={onBookNow} className="w-full py-2.5 rounded-lg bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) text-sm font-semibold hover:brightness-105">Find Nearby Station</button>
-              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-(--background) text-(--brand-ink) text-sm font-semibold hover:border-(--brand-blue)">Manage Vehicles</button>
-              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-(--background) text-(--brand-ink) text-sm font-semibold hover:border-(--brand-green)">View Payments</button>
+              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-background text-(--brand-ink) text-sm font-semibold hover:border-(--brand-blue)">Manage Vehicles</button>
+              <button className="w-full py-2.5 rounded-lg border border-(--brand-border) bg-background text-(--brand-ink) text-sm font-semibold hover:border-(--brand-green)">View Payments</button>
             </div>
           </div>
 

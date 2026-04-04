@@ -3,25 +3,34 @@ const toNumber = (value, fallback = 0) => {
   return Number.isFinite(next) ? next : fallback;
 };
 
-const mapPortsToChargers = (station) => {
-  const total = Math.max(1, toNumber(station.portsTotal, 1));
-  const available = Math.max(0, Math.min(total, toNumber(station.portsAvailable, total)));
+const normalizeChargerStatus = (status) => {
+  const next = String(status || '').toUpperCase();
 
-  return Array.from({ length: total }, (_, index) => ({
-    plugType: station.chargerType || 'Unknown',
-    powerKW: toNumber(station.powerOutputKW, 0),
-    status: index < available ? 'Available' : 'Occupied',
-  }));
+  if (next === 'AVAILABLE') return 'Available';
+  if (next === 'PENDING_APPROVAL') return 'Pending Approval';
+  if (next === 'RESERVED') return 'Reserved';
+  if (next === 'CHARGING') return 'Charging';
+  if (next === 'OFFLINE') return 'Offline';
+
+  return String(status || 'Unknown');
 };
 
 const serializeStationForClient = (stationDoc) => {
   const station = typeof stationDoc.toObject === 'function' ? stationDoc.toObject() : stationDoc;
+  const chargers = Array.isArray(station.chargers)
+    ? station.chargers.map((charger) => ({
+        ...charger,
+        plugType: charger.plugType || 'Unknown',
+        powerKW: toNumber(charger.powerKW, 0),
+        status: normalizeChargerStatus(charger.status),
+      }))
+    : [];
 
   return {
     ...station,
     name: station.stationName,
     pricePerKWh: toNumber(station.basePricePerKwh, 0),
-    chargers: mapPortsToChargers(station),
+    chargers,
   };
 };
 
