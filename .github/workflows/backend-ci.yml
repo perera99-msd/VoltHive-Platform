@@ -1,19 +1,21 @@
-name: VoltHive Backend CI
+name: VoltHive Backend CI/CD
 
 on:
   push:
     branches: [ "develop" ]
     paths:
-      - 'volthive-backend/**' # Only run when backend code changes
+      - 'volthive-backend/**'
   pull_request:
     branches: [ "develop" ]
     paths:
       - 'volthive-backend/**'
 
 jobs:
+  # -------------------------------------------
+  # JOB 1: Code Verification & Syntax Check
+  # -------------------------------------------
   build-and-test:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         node-version: [18.x]
@@ -33,8 +35,30 @@ jobs:
       working-directory: ./volthive-backend
       run: npm ci
 
-    # If you write tests later (e.g., Jest), this will run them. 
-    # For now, we just ensure the app can compile without syntax errors.
     - name: Check Syntax (Dry Run)
       working-directory: ./volthive-backend
       run: node --check src/server.js
+
+  # -------------------------------------------
+  # JOB 2: Docker Build & Push to Docker Hub
+  # -------------------------------------------
+  docker-build-push:
+    runs-on: ubuntu-latest
+    needs: build-and-test # <--- CRITICAL: This tells GitHub to only run this if Job 1 passes!
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./volthive-backend
+          push: true
+          tags: dimalshxperera/volthive-backend:latest
