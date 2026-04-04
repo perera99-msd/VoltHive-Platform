@@ -5,7 +5,10 @@ const router = express.Router();
 const { 
   getSmartMatchStations,
   getAllStations,     // From your completed Sprint 2 task
-  createStation       // From your completed Sprint 2 task
+  createStation,      // From your completed Sprint 2 task
+  getStationById,
+  deleteStation,
+  updateStationRates
 } = require('../controllers/stationController');
 
 // Import authentication middleware to protect owner routes
@@ -21,6 +24,7 @@ const { protect } = require('../middleware/authMiddleware');
  * @access  Public
  */
 router.get('/', getAllStations);
+router.get('/:id', getStationById);
 
 /**
  * @route   POST /api/stations/smart-match
@@ -40,6 +44,8 @@ router.post('/smart-match', getSmartMatchStations);
  * @access  Private (Requires Owner JWT Token)
  */
 router.post('/', protect, createStation);
+router.delete('/:id', protect, deleteStation);
+router.put('/:id/rates', protect, updateStationRates);
 
 // Note: Future routes for editing/deleting stations by the owner can be added here
 // router.put('/:id', protect, updateStation);

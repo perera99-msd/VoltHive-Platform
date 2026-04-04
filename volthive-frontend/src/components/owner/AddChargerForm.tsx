@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { apiUrl } from '../../lib/api';
+import { auth } from '../../lib/firebase';
 
 interface AddChargerFormProps {
   onSuccess: () => void;
@@ -73,25 +74,44 @@ export default function AddChargerForm({ onSuccess, onCancel }: AddChargerFormPr
     setIsSubmitting(true);
 
     try {
-      // Create FormData for multipart upload (images)
-      const submitData = new FormData();
-      submitData.append('stationName', formData.stationName);
-      submitData.append('address', formData.address);
-      submitData.append('latitude', formData.latitude);
-      submitData.append('longitude', formData.longitude);
-      submitData.append('chargerTypes', JSON.stringify(formData.chargerTypes));
-      submitData.append('powerLevel', formData.powerLevel);
-      submitData.append('pricePerKWh', formData.pricePerKWh);
-      submitData.append('contactNumber', formData.contactNumber);
-      submitData.append('enableBooking', String(formData.enableBooking));
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Please sign in again. Authentication token is missing.');
+      }
 
-      formData.images.forEach(img => {
-        submitData.append('images', img);
-      });
+      const latitude = Number(formData.latitude);
+      const longitude = Number(formData.longitude);
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error('Latitude and longitude are required and must be valid numbers.');
+      }
+
+      const numericPower = Number(formData.powerLevel.replace(/[^\d.]/g, ''));
+      if (!Number.isFinite(numericPower)) {
+        throw new Error('Invalid power level.');
+      }
+
+      const payload = {
+        stationName: formData.stationName,
+        address: formData.address,
+        location: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
+        chargerType: formData.chargerTypes[0] || 'CCS2',
+        powerOutputKW: numericPower,
+        portsTotal: Math.max(1, formData.chargerTypes.length),
+        portsAvailable: Math.max(1, formData.chargerTypes.length),
+        isBookingEnabled: formData.enableBooking,
+        basePricePerKwh: Number(formData.pricePerKWh),
+      };
 
       const res = await fetch(apiUrl('/api/stations'), {
         method: 'POST',
-        body: submitData,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -242,7 +262,7 @@ export default function AddChargerForm({ onSuccess, onCancel }: AddChargerFormPr
             </button>
 
             {mapOpen && (
-              <div className="bg-(--background) rounded-lg p-4 h-64 flex items-center justify-center border-2 border-dashed border-(--brand-border)">
+              <div className="bg-background rounded-lg p-4 h-64 flex items-center justify-center border-2 border-dashed border-(--brand-border)">
                 <p className="text-(--brand-muted) text-center">
                   Map integration coming soon.<br/>
                   <span className="text-xs">Use coordinates above or manual entry</span>

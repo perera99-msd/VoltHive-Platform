@@ -1,6 +1,18 @@
 // volthive-backend/src/models/Station.js
 const mongoose = require('mongoose');
 
+const rateEntrySchema = new mongoose.Schema({
+  dayOfWeek: { type: Number, min: 0, max: 6, required: true },
+  startTime: { type: String, required: true },
+  endTime: { type: String, required: true },
+  rate: { type: Number, min: 0, required: true },
+}, { _id: false });
+
+const rateConfigSchema = new mongoose.Schema({
+  baseRate: { type: Number, min: 0, default: 0 },
+  customRates: { type: [rateEntrySchema], default: [] },
+}, { _id: false });
+
 const stationSchema = new mongoose.Schema({
   ownerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -8,6 +20,7 @@ const stationSchema = new mongoose.Schema({
     required: true
   },
   stationName: { type: String, required: true },
+  address: { type: String, default: '' },
   network: { type: String, default: 'Independent' }, // e.g., Tesla, ChargePoint, Independent
   
   // Geospatial Data for the "Best Value" Distance Calculation
@@ -32,6 +45,7 @@ const stationSchema = new mongoose.Schema({
   
   // Pricing
   basePricePerKwh: { type: Number, required: true },
+  rateConfig: { type: rateConfigSchema, default: () => ({ baseRate: 0, customRates: [] }) },
   
 }, { timestamps: true });
 

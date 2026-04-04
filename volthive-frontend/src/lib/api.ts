@@ -10,3 +10,23 @@ export const apiUrl = (path: string) => {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${BACKEND_BASE_URL}${normalizedPath}`;
 };
+
+export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(init?.headers || {}),
+    },
+  });
+
+  const isJson = response.headers.get('content-type')?.includes('application/json');
+  const payload = isJson ? await response.json() : null;
+
+  if (!response.ok) {
+    const message = payload?.message || `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return payload as T;
+}

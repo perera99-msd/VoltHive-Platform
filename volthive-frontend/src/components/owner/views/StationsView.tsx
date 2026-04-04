@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import AddChargerForm from '../AddChargerForm';
 import { apiUrl } from '../../../lib/api';
+import { auth } from '../../../lib/firebase';
 
 interface Charger {
   plugType: string;
@@ -34,8 +35,9 @@ export default function StationsView() {
       setIsLoading(true);
       const res = await fetch(apiUrl('/api/stations'));
       if (res.ok) {
-        const data = await res.json();
-        setStations(data);
+        const payload = await res.json();
+        const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
+        setStations(stationsArray);
       }
     } catch (error) {
       console.error('Failed to fetch stations:', error);
@@ -47,8 +49,17 @@ export default function StationsView() {
   const deleteStation = async (stationId: string) => {
     if (confirm('Are you sure you want to delete this station? This action cannot be undone.')) {
       try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          alert('Please sign in again to delete stations.');
+          return;
+        }
+
         const res = await fetch(apiUrl(`/api/stations/${stationId}`), {
           method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         if (res.ok) {
           setStations(stations.filter(s => s._id !== stationId));
