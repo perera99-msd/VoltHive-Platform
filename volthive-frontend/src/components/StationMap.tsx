@@ -9,9 +9,10 @@ const defaultCenter = { lat: 6.9271, lng: 79.8612 }; // Colombo
 
 // --- TYPES ---
 interface Charger {
+  _id: string;
   plugType: string;
   powerKW: number;
-  status: 'Available' | 'Occupied' | 'Offline';
+  status: 'Available' | 'Occupied' | 'Offline' | string;
 }
 
 export interface Station {

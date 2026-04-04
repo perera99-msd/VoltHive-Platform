@@ -15,7 +15,7 @@ interface Station {
   address: string;
   location: { coordinates: [number, number] };
   pricePerKWh: number;
-  chargers: { plugType: string; powerKW: number; status: 'Available' | 'Occupied' | 'Offline' }[];
+  chargers: { _id: string; plugType: string; powerKW: number; status: string }[];
 }
 
 // ============================================================================
