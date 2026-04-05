@@ -30,7 +30,7 @@ Volthive/
       lib/
 ```
 
-## 🧩 Services
+## 🧩 Services 
 
 - `volthive-frontend`: Next.js 16 + TypeScript app for drivers and station owners.
 - `volthive-backend`: Express 5 + MongoDB API with Firebase token verification.
