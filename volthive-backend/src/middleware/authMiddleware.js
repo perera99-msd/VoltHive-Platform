@@ -5,8 +5,19 @@ const path = require('path');
 const getFirebaseCredential = () => {
   // Preferred: base64-encoded JSON payload in env var
   if (process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
-    const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_BASE64, 'base64').toString('utf8');
-    return admin.credential.cert(JSON.parse(decoded));
+    try {
+      // Trim the string to remove accidental newlines/spaces from copy-paste
+      const base64Data = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64.trim();
+      
+      // Convert Base64 string back to a normal UTF-8 string
+      const decoded = Buffer.from(base64Data, 'base64').toString('utf8');
+      
+      // Parse the valid JSON string
+      return admin.credential.cert(JSON.parse(decoded));
+    } catch (error) {
+      console.error('Firebase Base64 Parsing Error:', error.message);
+      throw new Error('Failed to parse FIREBASE_SERVICE_ACCOUNT_BASE64. Ensure it is a valid base64-encoded JSON string.');
+    }
   }
 
   // Optional: explicit path via env var
