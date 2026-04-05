@@ -4,8 +4,6 @@
 
 ![VoltHive Banner](./Images/Banner/bannerVolthive.jpg)
 
-![VoltHive Logo](./Images/Logo/Logo_Only-removebg-preview.png)
-
 **Smart, Secure, and Seamless EV Charging at Your Fingertips**
 
 [![Node.js](https://img.shields.io/badge/Node.js-v18.x-green)](https://nodejs.org)
@@ -22,7 +20,7 @@
 
 ## 🎯 Overview
 
-VoltHive is a **comprehensive, production-ready EV charging platform** designed for academic research and real-world deployment. It bridges drivers seeking charge ports with station owners offering premium charging solutions through an intelligent, geographically-aware matching system.
+VoltHive is a **comprehensive, production-ready EV charging platform** designed for academic research and real-world deployment. It bridges drivers seeking charge ports with station owners offering reliable EV charging while helping balance Sri Lanka’s national grid.
 
 ### 🌟 Key Highlights
 
@@ -38,59 +36,22 @@ VoltHive is a **comprehensive, production-ready EV charging platform** designed 
 
 ## 📸 Visual Walkthrough
 
-### 🏠 Landing Page
+<!-- Screenshot Grid Start -->
 <div align="center">
-  
-![Home Page](./Images/Screenshots/Home.png)
-
-*Professional landing interface showcasing key features and platform overview* ✨
-
+  <table>
+    <tr>
+      <td><img src="./Images/Screenshots/Home.png" alt="Home Page" width="180"/></td>
+      <td><img src="./Images/Screenshots/Login.png" alt="Login Page" width="180"/></td>
+      <td><img src="./Images/Screenshots/MAin%20MAp%28Desktop%29.png" alt="Main Map Desktop" width="180"/></td>
+    </tr>
+    <tr>
+      <td><img src="./Images/Screenshots/Main%20Map%20Mobile.png" alt="Main Map Mobile" width="180"/></td>
+      <td><img src="./Images/Screenshots/My%20Cars.png" alt="My Cars Page" width="180"/></td>
+      <td><img src="./Images/Screenshots/User%20Profile.png" alt="User Profile Page" width="180"/></td>
+    </tr>
+  </table>
 </div>
-
-### 🔐 Authentication
-<div align="center">
-  
-![Login Page](./Images/Screenshots/Login.png)
-
-*Secure Firebase-powered authentication with email/password and OAuth support* 🔒
-
-</div>
-
-### 🗺️ Smart Station Discovery (Desktop)
-<div align="center">
-  
-![Main Map Desktop](./Images/Screenshots/MAin%20MAp%28Desktop%29.png)
-
-*Interactive Google Maps integration with real-time station markers and smart filtering* 📍
-
-</div>
-
-### 📱 Mobile Experience
-<div align="center">
-  
-![Main Map Mobile](./Images/Screenshots/Main%20Map%20Mobile.png)
-
-*Responsive mobile-first design for on-the-go station discovery* 📱
-
-</div>
-
-### 🚗 Vehicle Management
-<div align="center">
-  
-![My Cars Page](./Images/Screenshots/My%20Cars.png)
-
-*Manage your vehicle fleet with detailed specs and charging history* 🔋
-
-</div>
-
-### 👤 User Profile
-<div align="center">
-  
-![User Profile Page](./Images/Screenshots/User%20Profile.png)
-
-*Personalized dashboard with booking history, preferences, and account settings* ⚙️
-
-</div>
+<!-- Screenshot Grid End -->
 
 ---
 
