@@ -1,43 +1,9 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "nodeVersion": "18.x",
-  "env": {
-    "NEXT_PUBLIC_BACKEND_URL": {
-      "description": "Backend API URL for API calls",
-      "example": "https://api.volthive.com"
-    },
-    "NEXT_PUBLIC_FIREBASE_API_KEY": {
-      "description": "Firebase Web API Key",
-      "required": true
-    },
-    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": {
-      "description": "Firebase Auth Domain",
-      "required": true
-    },
-    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": {
-      "description": "Firebase Project ID",
-      "required": true
-    },
-    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": {
-      "description": "Firebase Storage Bucket",
-      "required": true
-    },
-    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": {
-      "description": "Firebase Messaging Sender ID",
-      "required": true
-    },
-    "NEXT_PUBLIC_FIREBASE_APP_ID": {
-      "description": "Firebase App ID",
-      "required": true
-    },
-    "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY": {
-      "description": "Google Maps Browser API Key",
-      "required": true
-    }
-  },
   "functions": {
     "api/**": {
       "maxDuration": 60
