@@ -7,29 +7,118 @@ const Station = require('../models/Station');
 const User = require('../models/User');
 const verifyToken = require('../middleware/authMiddleware');
 
-// 1. POST /api/bookings - Driver requests a reservation
+/**
+ * Validate booking input
+ */
+const validateBookingInput = (req, res) => {
+  const { stationId, chargerId, date, startTime, endTime, lockedPricePerKwh } = req.body;
+
+  // Validate required fields
+  if (!stationId || !chargerId || !date || !startTime || !endTime || typeof lockedPricePerKwh !== 'number') {
+    return res.status(400).json({
+      success: false,
+      message: 'Missing or invalid required fields',
+      required: ['stationId', 'chargerId', 'date', 'startTime', 'endTime', 'lockedPricePerKwh (number)']
+    });
+  }
+
+  // Validate MongoDB ObjectIds
+  if (!mongoose.Types.ObjectId.isValid(stationId) || !mongoose.Types.ObjectId.isValid(chargerId)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid stationId or chargerId format'
+    });
+  }
+
+  // Validate price is positive
+  if (lockedPricePerKwh < 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Price per kWh cannot be negative'
+    });
+  }
+
+  // Validate date format (YYYY-MM-DD)
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!datePattern.test(date)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Date must be in YYYY-MM-DD format'
+    });
+  }
+
+  // Validate time format (HH:MM)
+  const timePattern = /^([01]\d|2[0-3]):([0-5]\d)$/;
+  if (!timePattern.test(startTime) || !timePattern.test(endTime)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Time must be in HH:MM format (24-hour)'
+    });
+  }
+
+  // Validate start time is before end time
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+
+  if (startMinutes >= endMinutes) {
+    return res.status(400).json({
+      success: false,
+      message: 'Start time must be before end time'
+    });
+  }
+
+  return null; // No validation errors
+};
+
+/**
+ * POST /api/bookings - Driver requests a reservation
+ */
 router.post('/', verifyToken, async (req, res) => {
+  // Validate input
+  const validationError = validateBookingInput(req, res);
+  if (validationError) return;
+
   const { stationId, chargerId, date, startTime, endTime, lockedPricePerKwh } = req.body;
   
   try {
+    // Check user is a driver
     const user = await User.findOne({ firebaseUid: req.user.uid });
     if (!user || user.role !== 'driver') {
-      return res.status(403).json({ message: 'Only drivers can make bookings.' });
+      return res.status(403).json({
+        success: false,
+        message: 'Only drivers can make bookings.'
+      });
     }
 
+    // Find station
     const station = await Station.findById(stationId);
-    if (!station) return res.status(404).json({ message: 'Station not found.' });
-
-    // Find the specific physical charger
-    const charger = station.chargers.id(chargerId);
-    if (!charger) return res.status(404).json({ message: 'Specific charger not found.' });
-
-    // Check if it's already taken right now
-    if (charger.status !== 'AVAILABLE') {
-      return res.status(400).json({ message: 'This charger is currently not available.' });
+    if (!station) {
+      return res.status(404).json({
+        success: false,
+        message: 'Station not found.'
+      });
     }
 
-    // Create the Financial Transaction Record
+    // Find specific charger
+    const charger = station.chargers.id(chargerId);
+    if (!charger) {
+      return res.status(404).json({
+        success: false,
+        message: 'Charger not found at this station.'
+      });
+    }
+
+    // Check charger availability
+    if (charger.status !== 'AVAILABLE') {
+      return res.status(409).json({
+        success: false,
+        message: `Charger is not available. Current status: ${charger.status}`
+      });
+    }
+
+    // Create booking record
     const newBooking = new Booking({
       driver: user._id,
       station: stationId,
@@ -43,61 +132,127 @@ router.post('/', verifyToken, async (req, res) => {
 
     await newBooking.save();
 
-    // Lock the charger state so nobody else can book it simultaneously
+    // Lock charger to prevent double-booking
     charger.status = 'PENDING_APPROVAL';
     charger.activeBookingId = newBooking._id;
     await station.save();
 
-    res.status(201).json({ success: true, data: newBooking });
+    res.status(201).json({
+      success: true,
+      message: 'Booking created successfully',
+      data: newBooking
+    });
+
   } catch (error) {
-    console.error('Error creating booking:', error);
-    res.status(500).json({ message: 'Server error while creating booking.' });
+    console.error('Booking creation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create booking',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
-// 2. GET /api/bookings/driver - Get driver's history
+/**
+ * GET /api/bookings/driver - Get driver's booking history
+ */
 router.get('/driver', verifyToken, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.user.uid });
-    if (!user || user.role !== 'driver') return res.status(403).json({ message: 'Access denied.' });
+    if (!user || user.role !== 'driver') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only drivers can view their bookings.'
+      });
+    }
 
     const bookings = await Booking.find({ driver: user._id })
       .populate('station', 'stationName address location')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
       
-    res.status(200).json({ success: true, data: bookings });
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching driver bookings:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bookings'
+    });
   }
 });
 
-// 3. GET /api/bookings/station/:stationId - Get existing bookings for a station (MUST BE BEFORE /:id routes)
-router.get('/station/:stationId', verifyToken, async (req, res) => {
+/**
+ * GET /api/bookings/station/:stationId - Get bookings for a station
+ * WARNING: Must come BEFORE /:id routes
+ */
+router.get('/station/:stationId', async (req, res) => {
   try {
     const { stationId } = req.params;
-    
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(stationId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid station ID format'
+      });
+    }
+
     const bookings = await Booking.find({ station: stationId })
-      .select('date startTime endTime status chargerId')
-      .sort({ date: 1, startTime: 1 });
+      .select('date startTime endTime status chargerId driver')
+      .sort({ date: 1, startTime: 1 })
+      .lean();
     
-    res.status(200).json({ success: true, data: bookings });
+    res.status(200).json({
+      success: true,
+      count: bookings.length,
+      data: bookings
+    });
+
   } catch (error) {
     console.error('Error fetching station bookings:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch station bookings'
+    });
   }
 });
 
-// 4. GET /api/bookings/owner - Get Owner's POS Queue
+/**
+ * GET /api/bookings/owner - Get owner's Point-of-Sale queue
+ */
 router.get('/owner', verifyToken, async (req, res) => {
   try {
     const user = await User.findOne({ firebaseUid: req.user.uid });
-    if (!user || user.role !== 'owner') return res.status(403).json({ message: 'Access denied.' });
+    if (!user || user.role !== 'owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only station owners can view the POS queue.'
+      });
+    }
 
+    // Get all stations for this owner
     const myStations = await Station.find({ ownerId: user._id }).select('_id');
     const stationIds = myStations.map(s => s._id);
 
-    const bookings = await Booking.find({ station: { $in: stationIds } })
-      .populate('station', 'stationName address chargers')
+    if (stationIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: 'No stations found for this owner',
+        count: 0,
+        data: []
+      });
+    }
+
+    // Get all pending bookings for these stations
+    const bookings = await Booking.find({
+      station: { $in: stationIds },
+      status: { $in: ['Pending', 'Confirmed', 'Active_Charging'] }
+    })
       .populate('driver', 'name email phone')
       .sort({ createdAt: -1 });
     
