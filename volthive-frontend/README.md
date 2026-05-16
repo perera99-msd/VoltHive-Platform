@@ -1,63 +1,43 @@
-# VoltHive Frontend
+# VoltHive Frontend 🌐
 
-Next.js frontend for the VoltHive EV charging aggregator.
+Next.js 16 application for EV drivers and station owners.
 
-## Tech Stack
+## Stack
 
-- Next.js (App Router)
-- React
-- TypeScript
-- Firebase Auth (client)
-- Google Maps via `@vis.gl/react-google-maps`
+- Next.js (App Router) + React + TypeScript
+- Firebase Authentication (client)
+- Google Maps via `@react-google-maps/api`
+- Framer Motion for UI transitions
 
-## Run Locally
-
-1. Install dependencies:
+## Setup
 
 ```bash
+cp .env.example .env.local
 npm install
-```
-
-2. Configure environment variables in `.env.local`:
-
-```bash
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-NEXT_PUBLIC_FIREBASE_API_KEY=...
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-NEXT_PUBLIC_FIREBASE_APP_ID=...
-```
-
-3. Start the dev server:
-
-```bash
 npm run dev
 ```
 
-Frontend runs at `http://localhost:3000`.
+App URL: `http://localhost:3000`
 
-## Structure
+## Environment
 
-```text
-src/
-	app/
-		(driver)/driver-dashboard/
-		(owner)/owner-dashboard/
-		login/
-		layout.tsx
-		page.tsx
-	components/
-		ProtectedRoute.tsx
-		StationMap.tsx
-	context/
-		AuthContext.tsx
-	lib/
-		firebase.ts
-```
+Use `.env.example` as the source of truth for required variables.
 
-## Notes
+Important:
 
-- Routes call backend API at `http://localhost:5000`.
-- Ensure backend is running before testing dashboard flows.
+- `NEXT_PUBLIC_BACKEND_URL`
+- Firebase web config values
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+
+## Architecture Notes
+
+- `src/app`: route-level UI and page composition
+- `src/components`: reusable widgets and dashboard modules
+- `src/context`: auth state and session context
+- `src/lib`: API and Firebase client helpers
+
+## Runtime Notes
+
+- The UI expects backend responses in `{ success, data }` shape for most APIs.
+- Owner actions require Firebase auth token headers.
+- Ensure backend CORS allowlist contains your frontend origin.
