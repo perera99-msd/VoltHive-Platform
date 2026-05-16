@@ -35,6 +35,7 @@ interface StationMapProps {
   userLocation?: { lat: number; lng: number } | null;
   stations?: Station[];
   onBookClick?: (station: Station) => void;
+  isGuest?: boolean;
 }
 
 const PLUG_TYPES = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T'];
@@ -106,21 +107,25 @@ function AdvancedMapMarker({
   return null;
 }
 
-export default function StationMap({ userLocation, stations = [], onBookClick }: StationMapProps) {
+export default function StationMap({ userLocation, stations = [], onBookClick, isGuest = false }: StationMapProps) {
   const [detectedUserLocation, setDetectedUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showLocationWarning, setShowLocationWarning] = useState(false);
   const mapRef = useRef<google.maps.Map | null>(null);
   const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null);
   const hasAutoCenteredUser = useRef(false);
 
   const effectiveUserLocation = userLocation ?? detectedUserLocation;
 
-  // Controlled viewport state so map doesn't jump unexpectedly on popup close.
   const [viewportCenter, setViewportCenter] = useState<{ lat: number; lng: number }>(defaultCenter);
   const [viewportZoom, setViewportZoom] = useState<number>(13);
 
   useEffect(() => {
     if (userLocation) return;
-    if (!('geolocation' in navigator)) return;
+    if (!('geolocation' in navigator)) {
+      // Defer state update to avoid synchronous setState in effect
+      const timer = setTimeout(() => setShowLocationWarning(true), 0);
+      return () => clearTimeout(timer);
+    }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
@@ -130,15 +135,18 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
         };
 
         setDetectedUserLocation(nextLocation);
+        setShowLocationWarning(false);
 
-        // Auto-center once on first resolved location.
         if (!hasAutoCenteredUser.current) {
           setViewportCenter(nextLocation);
           setViewportZoom(13);
           hasAutoCenteredUser.current = true;
         }
       },
-      (error) => console.error('Location error:', error),
+      (error) => {
+        console.warn('Location error:', error);
+        setShowLocationWarning(true);
+      },
       { enableHighAccuracy: true }
     );
   }, [userLocation]);
@@ -163,11 +171,8 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   });
 
-  // AdvancedMarkerElement requires a valid map ID. Use project env if present,
-  // otherwise fall back to Google's demo map ID for local/dev environments.
   const resolvedMapId = process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID';
 
-  // --- ROUTING EFFECT ---
   useEffect(() => {
     if (viewState === 'results' && results.length > 0 && effectiveUserLocation && window.google) {
       const targetStation = results[selectedIndex];
@@ -191,7 +196,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
     }
   }, [results, selectedIndex, effectiveUserLocation, viewState]);
 
-  // --- HANDLERS ---
   const togglePlug = (plug: string) => {
     setSelectedPlugs(prev => 
       prev.includes(plug) ? prev.filter(p => p !== plug) : [...prev, plug]
@@ -203,10 +207,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
     if (selectedPlugs.length === 0) return alert("Please select at least one plug type.");
     
     setIsLoading(true);
-    // Mocking API delay for UX
     setTimeout(() => {
-      // TODO: Replace with actual backend fetch
-      // Mock Data mimicking your AI Smart Match output
       const mockResults: RankedStation[] = stations.slice(0, 3).map((s, i) => ({
         ...s,
         currentDynamicPrice: 85 + (i * 10),
@@ -310,9 +311,8 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
         onLoad={handleMapLoad}
         onDragEnd={handleMapDragEnd}
         onZoomChanged={handleMapZoomChanged}
-        onClick={() => setActiveIdleStation(null)} // Click map to close popups
+        onClick={() => setActiveIdleStation(null)} 
       >
-        {/* User Location */}
         {effectiveUserLocation && (
           <AdvancedMapMarker
             map={mapInstance}
@@ -322,7 +322,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
           />
         )}
 
-        {/* Idle Mode: Show all stations */}
         {viewState === 'idle' && stations.map((station) => (
            <AdvancedMapMarker
              key={station._id}
@@ -331,12 +330,8 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
              iconUrl="/icons/station.png"
              iconSize={32}
              onClick={() => {
-               // If a parent supplied an onBookClick handler (dashboard), prefer that
-               // so the central BookingDrawer shows the updated UI. Otherwise fall
-               // back to the map's internal popup behavior.
                if (onBookClick) {
                  onBookClick(station);
-                 // Ensure the map's internal popup doesn't remain visible
                  setActiveIdleStation(null);
                  focusOnStation(station);
                } else {
@@ -347,7 +342,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
            />
         ))}
 
-        {/* Results Mode: Target Route */}
         {viewState === 'results' && currentOption && (
           <AdvancedMapMarker
             map={mapInstance}
@@ -357,13 +351,33 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
           />
         )}
 
-        {/* Drawing the Route */}
         {directionsResponse && viewState === 'results' && (
           <DirectionsRenderer directions={directionsResponse} options={{ suppressMarkers: true, polylineOptions: { strokeColor: 'var(--brand-blue)', strokeWeight: 5 } }} />
         )}
       </GoogleMap>
 
-      {/* --- OVERLAYS & UI --- */}
+      {(!effectiveUserLocation && showLocationWarning) && (
+        <div className="fixed bottom-32 left-4 right-4 md:bottom-8 md:right-8 md:left-auto z-[100] bg-(--brand-card) border border-(--brand-border) shadow-xl p-3 rounded-2xl flex items-start gap-3 max-w-sm md:max-w-sm mx-auto animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="text-(--accent-blue) shrink-0 mt-0.5">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-(--brand-ink)">Location Services Disabled</p>
+            <p className="text-[13px] text-(--brand-muted) mt-1 leading-relaxed">Enable device location to center the map and see nearby stations.</p>
+          </div>
+          <button 
+            onClick={() => setShowLocationWarning(false)} 
+            className="text-(--brand-muted) hover:text-(--brand-ink) bg-background hover:bg-(--brand-border) rounded-full p-1 transition-colors self-start -mt-1 -mr-1"
+          >
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
       {effectiveUserLocation && (
@@ -374,7 +388,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
           exit={{ opacity: 0, y: 14, scale: 0.94 }}
           transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           onClick={handleRecenterToUser}
-          title="Back to my location"
           className="absolute right-4 bottom-28 md:bottom-8 z-20 w-11 h-11 rounded-xl bg-(--brand-card)/85 backdrop-blur-xl border border-(--brand-border) text-(--brand-ink) shadow-[0_10px_24px_rgba(0,0,0,0.12)] hover:bg-(--brand-card) transition-all flex items-center justify-center"
         >
           <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor" className="w-5 h-5">
@@ -384,26 +397,36 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
       )}
       </AnimatePresence>
 
-      {/* 1. TOP BAR: Find Best Station (Idle State) */}
       <AnimatePresence mode="wait">
       {viewState === 'idle' && (
         <motion.div
           key="find-best-btn"
           {...fadeSlide}
-          className="absolute top-6 md:top-10 left-1/2 -translate-x-1/2 z-10 w-[74%] max-w-xs"
+          className="absolute top-6 md:top-10 left-1/2 -translate-x-1/2 z-10 w-[85%] max-w-sm"
         >
           <button 
-            onClick={() => { setViewState('searching'); setActiveIdleStation(null); setDirectionsResponse(null); }}
-            className="w-full py-3 bg-gradient-to-r from-(--brand-card)/95 to-(--background)/95 backdrop-blur-xl text-(--brand-ink) border border-(--brand-border) rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.14)] font-bold text-sm flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02]"
+            onClick={() => { 
+              if (isGuest) return; 
+              setViewState('searching'); setActiveIdleStation(null); setDirectionsResponse(null); 
+            }}
+            disabled={isGuest}
+            className={`w-full py-3 bg-gradient-to-r from-(--brand-card)/95 to-(--background)/95 backdrop-blur-xl text-(--brand-ink) border border-(--brand-border) rounded-full shadow-[0_12px_32px_rgba(0,0,0,0.14)] font-bold flex flex-col items-center justify-center transition-all ${isGuest ? 'opacity-90 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
           >
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="var(--brand-blue)" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
-            Find Best Value Station
+            <div className="flex items-center gap-2.5 text-sm">
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="var(--brand-blue)" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+              Find Best Value Station
+              {isGuest && (
+                <span className="ml-1 px-1.5 py-0.5 rounded text-[9px] bg-(--brand-blue)/10 text-(--brand-blue) uppercase tracking-wider">Locked</span>
+              )}
+            </div>
+            {isGuest && (
+              <span className="text-[10px] font-medium text-(--brand-muted) mt-0.5">Sign in to unlock AI Smart Match</span>
+            )}
           </button>
         </motion.div>
       )}
       </AnimatePresence>
 
-      {/* 2. SEARCH MODAL: Smart Match Input */}
       <AnimatePresence mode="wait">
       {viewState === 'searching' && (
         <motion.div
@@ -421,7 +444,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
           <div className="mb-5 h-px w-full bg-gradient-to-r from-transparent via-(--brand-border) to-transparent" />
 
           <div className="space-y-6">
-            {/* Battery Slider */}
             <div>
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-bold text-(--brand-muted) uppercase tracking-wider">Current Battery</label>
@@ -433,7 +455,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
               />
             </div>
             
-            {/* Plug Type Grid */}
             <div>
               <label className="text-sm font-bold text-(--brand-muted) uppercase tracking-wider block mb-3">Compatible Plugs</label>
               <div className="grid grid-cols-3 gap-2">
@@ -469,12 +490,10 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
       )}
       </AnimatePresence>
 
-      {/* 3. STATION POPUP: Full Centered Glassmorphic Booking Drawer */}
       <AnimatePresence mode="wait">
       {activeIdleStation && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6 font-sans">
           
-          {/* BACKGROUND DIMMER */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -484,7 +503,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
             onClick={() => setActiveIdleStation(null)}
           />
 
-          {/* THE SMART MODAL */}
           <motion.div
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -492,12 +510,9 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="relative w-full max-w-2xl bg-(--brand-card)/95 backdrop-blur-3xl rounded-t-[2.5rem] md:rounded-[2rem] shadow-[0_20px_60px_rgba(0,0,0,0.15)] border border-(--brand-border) flex flex-col max-h-[92dvh] md:max-h-[85dvh] overflow-hidden"
           >
-            {/* Header / Drag Handle & Close Button */}
             <div className="flex justify-center md:justify-end items-center p-5 pb-2 shrink-0">
-              {/* Mobile Handle */}
               <div className="w-12 h-1.5 bg-(--brand-border) rounded-full md:hidden absolute left-1/2 -translate-x-1/2 top-4" />
               
-              {/* Close Button */}
               <button 
                 onClick={() => setActiveIdleStation(null)}
                 className="w-8 h-8 bg-(--background) hover:bg-(--brand-border) text-(--brand-muted) hover:text-(--ui-error) rounded-full flex items-center justify-center transition-colors z-10 ml-auto"
@@ -508,10 +523,8 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
               </button>
             </div>
 
-            {/* SCROLLABLE CONTENT AREA */}
             <div className="flex-1 overflow-y-auto px-6 md:px-8 pb-32 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               
-              {/* Station Identity */}
               <div className="mb-6">
                 {((activeIdleStation as RankedStation).routeData || (activeIdleStation as RankedStation).currentDynamicPrice) && (
                   <div className="grid grid-cols-2 gap-3 mb-4">
@@ -563,7 +576,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
                   </span>
                 </p>
 
-                {/* QUICK ACTIONS ROW */}
                 <div className="flex items-center gap-3 mt-6">
                   <button 
                     onClick={() => openGoogleMaps(activeIdleStation.location.coordinates[1], activeIdleStation.location.coordinates[0])}
@@ -587,9 +599,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
                 </div>
               </div>
 
-              {/* Premium Specs Grid */}
               <div className="grid grid-cols-2 gap-3 mb-8">
-                {/* Price - Full Width Hero Card */}
                 <div className="col-span-2 bg-(--background) p-5 rounded-2xl border border-(--brand-border) shadow-sm flex items-end justify-between">
                   <div>
                     <p className="text-(--brand-muted) text-[11px] font-bold uppercase tracking-widest mb-1">Charging Rate</p>
@@ -605,7 +615,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
                   </div>
                 </div>
 
-                {/* Max Power Card */}
                 <div className="bg-(--background) p-5 rounded-2xl border border-(--brand-border) shadow-sm">
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-(--brand-muted) mb-3">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
@@ -619,7 +628,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
                   </p>
                 </div>
 
-                {/* Connectors Card */}
                 <div className="bg-(--background) p-5 rounded-2xl border border-(--brand-border) shadow-sm">
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-(--brand-muted) mb-3">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
@@ -636,7 +644,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
                 </div>
               </div>
 
-              {/* Hardware Network (Minimalist List) */}
               <div className="mb-4">
                 <h3 className="text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest mb-3 ml-1">Hardware Status</h3>
                 <div className="bg-(--background) rounded-2xl border border-(--brand-border) shadow-sm overflow-hidden">
@@ -669,7 +676,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
 
             </div>
 
-            {/* FIXED BOTTOM ACTION BAR */}
             <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6 bg-gradient-to-t from-(--brand-card) via-(--brand-card)/95 to-transparent rounded-b-[2rem]">
               <button 
                 onClick={() => onBookClick && onBookClick(activeIdleStation)}
@@ -687,7 +693,6 @@ export default function StationMap({ userLocation, stations = [], onBookClick }:
       )}
       </AnimatePresence>
 
-      {/* 4. RESULTS CAROUSEL: Smart Match Top 3 */}
       <AnimatePresence mode="wait">
       {viewState === 'results' && currentOption && (
         <motion.div

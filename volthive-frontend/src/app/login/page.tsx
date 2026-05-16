@@ -13,8 +13,7 @@ export default function AuthPage() {
   const router = useRouter();
 
   const authContext = useAuth();
-  const { login, signup } = authContext;
-  const signInWithGoogle = (authContext as { signInWithGoogle?: () => Promise<void> }).signInWithGoogle;
+  const { login, signup, signInWithGoogle } = authContext;
 
   const [isLogin, setIsLogin] = useState(true);
   
@@ -29,21 +28,59 @@ export default function AuthPage() {
   // UI State
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
 
   const handleGoogleAuth = async () => {
     setError('');
     setLoading(true);
     try {
-      if (signInWithGoogle) {
-        await signInWithGoogle();
-        // Handle Google Auth backend logic here similar to standard login
-        router.push(role === 'owner' ? '/owner-dashboard' : '/driver-dashboard');
-      } else {
-        setError('Google Sign-In is not fully configured in AuthContext yet.');
+      const userCredential = await signInWithGoogle();
+      const token = await userCredential.user.getIdToken();
+
+      // 1. Check if the user already exists in our MongoDB database
+      const profileRes = await fetch(apiUrl('/api/users/profile'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (profileRes.ok) {
+        // User exists: log them in and route based on their existing DB role
+        const userData = await profileRes.json();
+        router.push(userData.role === 'owner' ? '/owner-dashboard' : '/driver-dashboard');
+      } 
+      else if (profileRes.status === 404) {
+        // User is new: register them in the DB using the UI's selected role
+        const createRes = await fetch(apiUrl('/api/users'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            name: userCredential.user.displayName || 'VoltHive User',
+            email: userCredential.user.email,
+            mobile: mobile || '', // Google doesn't provide mobile, so send empty string or what's typed
+            role: isLogin ? 'driver' : role, // Default to driver if they click google auth on the login view
+            firebaseUid: userCredential.user.uid
+          })
+        });
+
+        if (!createRes.ok) throw new Error('Failed to save user data to database.');
+        
+        // Route based on newly created role
+        const assignedRole = isLogin ? 'driver' : role;
+        router.push(assignedRole === 'owner' ? '/owner-dashboard' : '/driver-dashboard');
+      } 
+      else {
+        throw new Error('Failed to verify identity with the server.');
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Google authentication failed.';
-      setError(message);
+      // Catch specific Firebase closure errors
+      if (message.includes('popup-closed-by-user')) {
+        setError('Authentication popup was closed.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -104,12 +141,26 @@ export default function AuthPage() {
 
         if (!res.ok) throw new Error('Failed to save user data');
 
-        if (role === 'owner') router.push('/owner-dashboard');
-        else router.push('/driver-dashboard');
+        // Prevent auto-login: sign the Firebase user out, show success, then switch UI back to login
+        await auth.signOut();
+        setSuccess('Account created successfully. Redirecting to login...');
+        setTimeout(() => {
+          setSuccess('');
+          setIsLogin(true);
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setName('');
+          setMobile('');
+        }, 1400);
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Authentication failed. Please try again.';
-      setError(message);
+      if (message.includes('email-already-in-use')) {
+        setError('An account with this email already exists.');
+      } else {
+        setError(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +196,7 @@ export default function AuthPage() {
       </Link>
 
       {/* =========================================================
-          LEFT PANE (Desktop Only - UNTOUCHED)
+          LEFT PANE (Desktop Only)
       ========================================================= */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-end p-16 xl:p-20 overflow-hidden border-r border-(--brand-border) bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)]">
         <div className="absolute -top-[16%] -right-[10%] w-[58%] h-[54%] rounded-full bg-(--accent-blue)/30 blur-[110px] z-0 pointer-events-none"></div>
@@ -333,7 +384,12 @@ export default function AuthPage() {
 
             </div>
 
-            {/* 5. ERROR & SUBMIT */}
+            {/* 5. STATUS MESSAGES & SUBMIT */}
+            {success && (
+              <div className="p-3 mt-4 bg-green-50 border border-green-100 rounded-xl text-[13px] font-medium text-green-600 animate-in fade-in duration-300">
+                {success}
+              </div>
+            )}
             {error && (
               <div className="p-3 mt-4 bg-red-50 border border-red-100 rounded-xl text-[13px] font-medium text-red-600 animate-in fade-in duration-300">
                 {error}
