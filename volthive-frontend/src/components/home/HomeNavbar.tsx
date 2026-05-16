@@ -70,7 +70,7 @@ export default function HomeNavbar({ onLogoClick, onNavigateSection }: HomeNavba
           {/* Desktop Auth Buttons (Hidden on Mobile) */}
           <div className="hidden md:flex items-center gap-3">
             <Link
-              href="/login"
+              href="/driver-login"
               className="px-6 py-2.5 text-[14px] font-semibold text-(--brand-card) rounded-full bg-linear-to-r from-(--brand-blue) to-(--brand-green) shadow-[0_10px_20px_-10px_rgba(74,144,164,0.65)] transition-all hover:brightness-105 active:scale-95"
             >
               Get Started
@@ -116,7 +116,7 @@ export default function HomeNavbar({ onLogoClick, onNavigateSection }: HomeNavba
             
             <div className="h-px w-full bg-(--brand-border) my-2" />
             
-            <Link href="/login" className="text-center font-bold text-(--brand-card) px-4 py-3.5 bg-linear-to-r from-(--brand-blue) to-(--brand-green) rounded-xl shadow-md shadow-(color:--accent-blue)/20 active:scale-95 transition-all">Get Started</Link>
+            <Link href="/driver-login" className="text-center font-bold text-(--brand-card) px-4 py-3.5 bg-linear-to-r from-(--brand-blue) to-(--brand-green) rounded-xl shadow-md shadow-(color:--accent-blue)/20 active:scale-95 transition-all">Get Started</Link>
           </div>
           </motion.div>
         )}

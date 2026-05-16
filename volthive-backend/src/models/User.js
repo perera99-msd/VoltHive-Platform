@@ -19,6 +19,22 @@ const userSchema = new mongoose.Schema({
     type: String, 
     required: true, 
     unique: true 
+  },
+  // --- OWNER SPECIFIC FIELDS ---
+  telephone: { 
+    type: String 
+  },
+  nicOrBrc: { 
+    type: String 
+  },
+  address: { 
+    type: String 
+  },
+  district: { 
+    type: String 
+  },
+  town: { 
+    type: String 
   }
 }, { 
   timestamps: true // Automatically adds createdAt and updatedAt fields

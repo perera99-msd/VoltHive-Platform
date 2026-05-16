@@ -11,7 +11,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   useEffect(() => {
     // If the auth check is done and there is no user, kick them to login
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/driver-login');
     }
   }, [user, loading, router]);
 

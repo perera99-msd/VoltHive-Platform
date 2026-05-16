@@ -369,7 +369,7 @@ export default function BookingDrawer({ station, onClose, isGuest = false }: Boo
         <div className="absolute bottom-0 left-0 right-0 p-5 pt-8 bg-linear-to-t from-(--brand-card) via-(--brand-card)/95 to-transparent rounded-b-[2.5rem] z-20 backdrop-blur-sm">
           {isGuest ? (
             <Link 
-              href="/login"
+              href="/driver-login"
               className="group w-full py-4 rounded-2xl font-bold text-base shadow-lg flex justify-center items-center gap-2 border relative overflow-hidden transition-all duration-300 bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white hover:shadow-[0_16px_40px_rgba(74,144,164,0.4)] shadow-[0_8px_28px_rgba(74,144,164,0.25)] border-(--brand-blue)/30 hover:-translate-y-0.5"
             >
               <span className="relative z-10 font-bold">Sign in to Reserve Slot</span>

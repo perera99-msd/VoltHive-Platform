@@ -36,10 +36,10 @@ export default function Hero() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-stretch sm:items-center justify-center lg:justify-start max-w-88 sm:max-w-none mx-auto lg:mx-0">
-            <Link href="/login" className="w-full sm:w-auto px-7 py-3.5 sm:px-8 sm:py-4 rounded-full bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) font-semibold text-sm sm:text-base hover:brightness-105 active:scale-95 transition-all shadow-[0_12px_24px_-10px_rgba(36,84,196,0.6)] flex items-center justify-center">
+            <Link href="/driver-login" className="w-full sm:w-auto px-7 py-3.5 sm:px-8 sm:py-4 rounded-full bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) font-semibold text-sm sm:text-base hover:brightness-105 active:scale-95 transition-all shadow-[0_12px_24px_-10px_rgba(36,84,196,0.6)] flex items-center justify-center">
               Start Charging
             </Link>
-            <Link href="/login" className="w-full sm:w-auto px-7 py-3.5 sm:px-8 sm:py-4 rounded-full bg-(--brand-card) border border-(--brand-border) text-(--brand-ink) font-semibold text-sm sm:text-base hover:border-(--accent-blue) hover:bg-(--accent-blue)/10 active:scale-95 transition-all flex items-center justify-center shadow-sm">
+            <Link href="/owner-login" className="w-full sm:w-auto px-7 py-3.5 sm:px-8 sm:py-4 rounded-full bg-(--brand-card) border border-(--brand-border) text-(--brand-ink) font-semibold text-sm sm:text-base hover:border-(--accent-blue) hover:bg-(--accent-blue)/10 active:scale-95 transition-all flex items-center justify-center shadow-sm">
               Partner with VoltHive
             </Link>
           </div>
