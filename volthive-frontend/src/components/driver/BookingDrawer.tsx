@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { apiUrl } from '../../lib/api';
 import { auth } from '../../lib/firebase';
 import BookingConfirmModal from './BookingConfirmModal';
@@ -19,6 +20,7 @@ interface Station {
 interface BookingDrawerProps {
   station: Station | null;
   onClose: () => void;
+  isGuest?: boolean;
 }
 
 type MatchedStation = Station & {
@@ -37,16 +39,16 @@ interface ExistingBooking {
   driverName?: string;
 }
 
-export default function BookingDrawer({ station, onClose }: BookingDrawerProps) {
+export default function BookingDrawer({ station, onClose, isGuest = false }: BookingDrawerProps) {
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>([]);
   const [selectedChargerId, setSelectedChargerId] = useState<string | null>(null);
 
-  // Fetch existing bookings when station changes
   useEffect(() => {
     const fetchExistingBookings = async () => {
+      if (isGuest) return; 
       try {
         const token = await auth.currentUser?.getIdToken();
         if (!token) return;
@@ -67,13 +69,12 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
     if (station?._id) {
       fetchExistingBookings();
     }
-  }, [station?._id]);
+  }, [station?._id, isGuest]);
 
   if (!station) return null;
 
   const stationData = station as MatchedStation;
 
-  // --- DATA EXTRACTION ---
   const chargersList = station.chargers || [];
   const availableChargersList = chargersList.filter(
     c => c.status === 'Available' || c.status === 'AVAILABLE'
@@ -86,7 +87,6 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
   const routeDistance = stationData.routeData?.distanceKm ?? null;
   const driveTime = stationData.routeData?.driveTimeMins ?? null;
 
-  // --- BOOKING LOGIC ---
   const handleSecureReservation = async (bookingData: {
     date: string;
     startTime: string;
@@ -134,7 +134,6 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
         setBookingSuccess(true);
         setShowBookingModal(false);
         
-        // Auto-cancel after 3 minutes if owner doesn't respond
         const bookingId = data.data?._id;
         setTimeout(async () => {
           try {
@@ -148,7 +147,7 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
           } catch (error) {
             console.error('Failed to auto-cancel booking:', error);
           }
-        }, 3 * 60 * 1000); // 3 minutes
+        }, 3 * 60 * 1000);
 
         setTimeout(() => {
           setBookingSuccess(false);
@@ -168,18 +167,15 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-6 font-sans">
       
-      {/* 1. ATMOSPHERIC BACKGROUND DIMMER */}
       <div 
         className="absolute inset-0 bg-(--brand-ink)/30 backdrop-blur-md transition-opacity duration-500 ease-(--ease-premium)"
         onClick={onClose}
       />
 
-      {/* 2. THE 9:16 PREMIUM GLASS CARD */}
       <div 
-        className="relative w-full max-w-105 bg-linear-to-br from-(--brand-card)/95 to-(--brand-card)/60 backdrop-blur-3xl rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-(--brand-border)/60 flex flex-col h-[90dvh] md:h-[85dvh] max-h-212.5 overflow-hidden vh-rise-in"
+        className="relative w-full max-w-105 bg-linear-to-br from-(--brand-card)/95 to-(--brand-card)/60 backdrop-blur-3xl rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-(--brand-border)/60 flex flex-col h-[90dvh] md:h-[85dvh] max-h-212.5 overflow-hidden vh-rise-in md:mt-24"
       >
         
-        {/* Header / Close Button Area */}
         <div className="flex justify-center md:justify-end items-center p-5 pb-0 shrink-0 z-10 relative">
           <div className="w-12 h-1.5 bg-(--brand-muted)/30 rounded-full md:hidden absolute left-1/2 -translate-x-1/2 top-4" />
           <button 
@@ -192,7 +188,6 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
           </button>
         </div>
 
-        {/* SCROLLABLE GLASS CONTENT */}
         <div className="flex-1 overflow-y-auto px-7 pb-36 pt-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] relative z-0">
           
           <div className="mb-6 relative">
@@ -254,7 +249,6 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
               </a>
             </div>
 
-            {/* Status Confidence Warning */}
             <div className="mt-5 p-3.5 bg-(--ui-warning)/8 border border-(--ui-warning)/20 rounded-xl backdrop-blur-sm">
               <p className="text-[11px] text-(--brand-muted) leading-relaxed">
                 <span className="font-bold text-(--ui-warning)">⚠️ Tip:</span> Charger status updates every minute. For confirmation, tap <span className="font-semibold">Contact</span> to connect directly with the station owner.
@@ -314,20 +308,19 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
-                                            {/* Selection Indicator */}
-                                            {isAvailable && (
-                                              <div className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                                                isSelected
-                                                  ? 'bg-linear-to-br from-(--brand-blue) to-(--brand-green) border-(--brand-blue)'
-                                                  : 'border-(--brand-border)/40 hover:border-(--brand-blue)/60'
-                                              }`}>
-                                                {isSelected && (
-                                                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3 h-3 text-white">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                                  </svg>
-                                                )}
-                                              </div>
-                                            )}
+                      {isAvailable && (
+                        <div className={`absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-linear-to-br from-(--brand-blue) to-(--brand-green) border-(--brand-blue)'
+                            : 'border-(--brand-border)/40 hover:border-(--brand-blue)/60'
+                        }`}>
+                          {isSelected && (
+                            <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-3 h-3 text-white">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                            </svg>
+                          )}
+                        </div>
+                      )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
@@ -353,7 +346,6 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
                         </div>
                       </div>
 
-                      {/* Status Badge */}
                       <div className={`px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border flex items-center gap-1.5 whitespace-nowrap ${
                         isAvailable
                           ? 'bg-(--ui-success)/15 text-(--ui-success) border-(--ui-success)/30'
@@ -374,44 +366,54 @@ export default function BookingDrawer({ station, onClose }: BookingDrawerProps) 
           </div>
         </div>
 
-        {/* 3. FIXED BOTTOM ACTION BAR (Gradient Glow) */}
         <div className="absolute bottom-0 left-0 right-0 p-5 pt-8 bg-linear-to-t from-(--brand-card) via-(--brand-card)/95 to-transparent rounded-b-[2.5rem] z-20 backdrop-blur-sm">
-          <button 
-            onClick={() => setShowBookingModal(true)}
-            disabled={isBooking || bookingSuccess || availableChargers === 0 || !selectedChargerId}
-            className={`group w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] shadow-lg flex justify-center items-center gap-2 border relative overflow-hidden transition-all duration-300 ${
-              bookingSuccess 
-                ? 'bg-linear-to-br from-(--ui-success) to-emerald-500 text-white shadow-[0_12px_30px_rgba(16,185,129,0.35)]' 
-                : availableChargers === 0 || !selectedChargerId
-                ? 'bg-(--background)/60 text-(--brand-muted) cursor-not-allowed shadow-none border-(--brand-border)/40'
-                : 'bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white hover:shadow-[0_16px_40px_rgba(74,144,164,0.4)] shadow-[0_8px_28px_rgba(74,144,164,0.25)] border-(--brand-blue)/30 hover:-translate-y-0.5'
-            }`}
-          >
-            {!bookingSuccess && availableChargers > 0 && selectedChargerId && (
-              <div className="absolute inset-0 w-full h-full bg-linear-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-            )}
-            
-            <span className="relative z-10 font-bold">
-              {isBooking ? 'Securing Slot...' : bookingSuccess ? 'Slot Confirmed!' : availableChargers === 0 ? 'Station Full' : !selectedChargerId ? 'Select a Charger' : 'Secure Slot'}
-            </span>
-            
-            {!isBooking && !bookingSuccess && availableChargers > 0 && selectedChargerId && (
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-300">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+          {isGuest ? (
+            <Link 
+              href="/login"
+              className="group w-full py-4 rounded-2xl font-bold text-base shadow-lg flex justify-center items-center gap-2 border relative overflow-hidden transition-all duration-300 bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white hover:shadow-[0_16px_40px_rgba(74,144,164,0.4)] shadow-[0_8px_28px_rgba(74,144,164,0.25)] border-(--brand-blue)/30 hover:-translate-y-0.5"
+            >
+              <span className="relative z-10 font-bold">Sign in to Reserve Slot</span>
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-300">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
               </svg>
-            )}
-            {bookingSuccess && (
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6 relative z-10 animate-pulse">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-            )}
-          </button>
+            </Link>
+          ) : (
+            <button 
+              onClick={() => setShowBookingModal(true)}
+              disabled={isBooking || bookingSuccess || availableChargers === 0 || !selectedChargerId}
+              className={`group w-full py-4 rounded-2xl font-bold text-base active:scale-[0.98] shadow-lg flex justify-center items-center gap-2 border relative overflow-hidden transition-all duration-300 ${
+                bookingSuccess 
+                  ? 'bg-linear-to-br from-(--ui-success) to-emerald-500 text-white shadow-[0_12px_30px_rgba(16,185,129,0.35)]' 
+                  : availableChargers === 0 || !selectedChargerId
+                  ? 'bg-(--background)/60 text-(--brand-muted) cursor-not-allowed shadow-none border-(--brand-border)/40'
+                  : 'bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white hover:shadow-[0_16px_40px_rgba(74,144,164,0.4)] shadow-[0_8px_28px_rgba(74,144,164,0.25)] border-(--brand-blue)/30 hover:-translate-y-0.5'
+              }`}
+            >
+              {!bookingSuccess && availableChargers > 0 && selectedChargerId && (
+                <div className="absolute inset-0 w-full h-full bg-linear-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
+              )}
+              
+              <span className="relative z-10 font-bold">
+                {isBooking ? 'Securing Slot...' : bookingSuccess ? 'Slot Confirmed!' : availableChargers === 0 ? 'Station Full' : !selectedChargerId ? 'Select a Charger' : 'Secure Slot'}
+              </span>
+              
+              {!isBooking && !bookingSuccess && availableChargers > 0 && selectedChargerId && (
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-300">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
+                </svg>
+              )}
+              {bookingSuccess && (
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-6 h-6 relative z-10 animate-pulse">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
 
       </div>
 
-      {/* Booking Confirm Modal */}
-      {showBookingModal && (
+      {showBookingModal && !isGuest && (
         <BookingConfirmModal
           stationName={displayName}
           address={station.address || 'Location provided on map'}

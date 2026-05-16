@@ -7,6 +7,7 @@ import Hero from '../components/home/Hero';
 import Features from '../components/home/Features';
 import Footer from '../components/home/Footer';
 import StationMap from '../components/StationMap';
+import BookingDrawer from '../components/driver/BookingDrawer';
 import { apiUrl } from '../lib/api';
 
 interface Station {
@@ -17,110 +18,6 @@ interface Station {
   pricePerKWh: number;
   chargers: { _id: string; plugType: string; powerKW: number; status: string }[];
 }
-
-// ============================================================================
-// PUBLIC STATION DRAWER (Locked Features for non-logged-in users)
-// ============================================================================
-const PublicStationDrawer = ({ station, onClose }: { station: Station | null, onClose: () => void }) => {
-  if (!station) return null;
-
-  const availableChargers = station.chargers.filter(c => c.status === 'Available').length;
-  const totalChargers = station.chargers.length;
-  const maxPower = Math.max(...station.chargers.map(c => c.powerKW));
-  const plugTypes = Array.from(new Set(station.chargers.map(c => c.plugType)));
-
-  return (
-    <>
-      <div className="fixed inset-0 bg-(--brand-ink)/10 backdrop-blur-[2px] z-[70] transition-opacity duration-300" onClick={onClose} />
-      <div className="fixed z-[80] flex flex-col bg-(--brand-card)/95 backdrop-blur-3xl shadow-[0_-10px_80px_rgba(0,0,0,0.15)] transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] animate-in bottom-0 left-0 right-0 h-[85dvh] sm:h-[75dvh] md:w-110 md:h-dvh md:top-0 md:bottom-auto md:left-auto md:rounded-l-[2.5rem] md:border-l border-(--brand-border) rounded-t-[2.5rem] slide-in-from-bottom-full md:slide-in-from-right-full pb-8 md:pb-0 overflow-x-hidden">
-        
-        {/* Handle for Mobile, Close Button for Desktop */}
-        <div className="flex justify-center md:justify-end items-center p-6 pb-2 shrink-0">
-          <div className="w-12 h-1.5 bg-(--brand-border) rounded-full md:hidden" />
-          <button onClick={onClose} className="hidden md:flex w-8 h-8 bg-background hover:bg-(--accent-blue)/10 text-(--brand-muted) rounded-full items-center justify-center transition-colors">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 pb-32 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-          
-          <div className="mb-6 mt-2">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-(--accent-green)/10 text-(--brand-green-deep) text-[11px] font-bold uppercase tracking-widest border border-(--brand-green)/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-(--brand-green) animate-pulse" />
-                {availableChargers} of {totalChargers} Available
-              </span>
-            </div>
-            <h2 className="text-[28px] font-semibold text-(--brand-ink) tracking-tight leading-tight mb-2">{station.name}</h2>
-            <p className="text-(--brand-muted) text-[14px] flex items-start gap-2 leading-relaxed">{station.address}</p>
-
-            {/* Public Quick Actions */}
-            <div className="flex items-center gap-3 mt-6">
-              <a 
-                href={`https://www.google.com/maps/dir/?api=1&destination=${station.location.coordinates[1]},${station.location.coordinates[0]}`}
-                target="_blank" rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-(--accent-blue)/10 hover:bg-(--accent-blue)/20 text-(--brand-blue-deep) rounded-2xl text-[13px] font-bold transition-all border border-(--accent-blue)/20"
-              >
-                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-                Directions
-              </a>
-              <a 
-                href="tel:0112345678" 
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-(--brand-card) hover:bg-background text-(--brand-ink) rounded-2xl text-[13px] font-bold transition-all border border-(--brand-border) shadow-sm"
-              >
-                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.864-1.041l-3.286-.47a1.125 1.125 0 00-1.073.436l-2.276 3.034c-2.126-1.01-3.951-2.835-4.96-4.96l3.034-2.276a1.125 1.125 0 00.436-1.073l-.47-3.286c-.075-.512-.525-.864-1.041-.864H4.5a2.25 2.25 0 00-2.25 2.25z" /></svg>
-                Call
-              </a>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className="col-span-2 bg-(--brand-card)/60 p-5 rounded-3xl border border-(--brand-border) shadow-sm flex items-end justify-between">
-              <div>
-                <p className="text-(--brand-muted) text-[11px] font-bold uppercase tracking-widest mb-1">Charging Rate</p>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-4xl font-light tracking-tighter text-(--brand-ink)">{station.pricePerKWh}</span>
-                  <span className="text-sm font-semibold text-(--brand-muted)">LKR / kWh</span>
-                </div>
-              </div>
-            </div>
-            <div className="bg-(--brand-card)/60 p-5 rounded-3xl border border-(--brand-border) shadow-sm">
-              <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-0.5">Max Output</p>
-              <p className="text-xl font-light text-(--brand-ink)">{maxPower} <span className="text-sm font-semibold text-(--brand-muted)">kW</span></p>
-            </div>
-            <div className="bg-(--brand-card)/60 p-5 rounded-3xl border border-(--brand-border) shadow-sm">
-              <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-2">Connectors</p>
-              <div className="flex flex-wrap gap-1.5">
-                {plugTypes.map(plug => (
-                  <span key={plug} className="px-2 py-1 bg-background text-(--brand-muted) text-[10px] font-bold rounded uppercase border border-(--brand-border)">{plug}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Premium AI Lock Banner */}
-          <div className="p-4 rounded-2xl bg-linear-to-r from-(--accent-blue)/10 to-(--accent-green)/10 border border-(--accent-blue)/20 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-(--brand-card) flex items-center justify-center shadow-sm text-(--brand-blue) shrink-0 border border-(--brand-border)">
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09l2.846.813-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-(--brand-ink)">Smart Match AI</p>
-              <p className="text-[12px] font-medium text-(--brand-muted) mt-0.5 leading-relaxed">Sign in to unlock AI predictions, live queue tracking, and instant reservations.</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Locked Reservation Button */}
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-linear-to-t from-(--brand-card) via-(--brand-card)/95 to-transparent rounded-b-[2.5rem] md:rounded-b-none">
-          <Link href="/login" className="w-full py-4 rounded-2xl bg-(--brand-ink) text-(--brand-card) font-semibold text-[15px] hover:bg-(--brand-blue-deep) transition-all active:scale-[0.98] shadow-[0_12px_30px_rgba(26,26,26,0.18)] flex justify-center items-center gap-2">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-            Sign in to Reserve Slot
-          </Link>
-        </div>
-      </div>
-    </>
-  );
-};
 
 const joinSteps = [
   {
@@ -247,6 +144,7 @@ export default function Home() {
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   
   const [isMapView, setIsMapView] = useState(false);
+  const [showLocationWarning, setShowLocationWarning] = useState(false);
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -270,10 +168,18 @@ export default function Home() {
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
-        (error) => console.error("Location error:", error),
+        (position) => {
+          setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+          setShowLocationWarning(false);
+        },
+        (error) => {
+          console.warn("Location access denied or unavailable.");
+          setShowLocationWarning(true);
+        },
         { enableHighAccuracy: true }
       );
+    } else {
+      setTimeout(() => setShowLocationWarning(true), 0);
     }
   }, []);
 
@@ -283,7 +189,6 @@ export default function Home() {
         const res = await fetch(apiUrl('/api/stations'));
         if (res.ok) {
           const payload = await res.json();
-          // Backend returns { success, count, data } — prefer the array if present
           const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
           setStations(stationsArray);
         }
@@ -311,6 +216,7 @@ export default function Home() {
             <div className="w-full h-full pt-22 sm:pt-26 overflow-x-hidden">
              <StationMap
                stations={stations}
+               isGuest={true}
                onBookClick={(station) =>
                  setSelectedStation({
                    _id: station._id,
@@ -324,7 +230,13 @@ export default function Home() {
                userLocation={userLocation}
              />
           </div>
-          {selectedStation && <PublicStationDrawer station={selectedStation} onClose={() => setSelectedStation(null)} />}
+          {selectedStation && (
+            <BookingDrawer 
+              station={selectedStation} 
+              onClose={() => setSelectedStation(null)} 
+              isGuest={true} 
+            />
+          )}
         </div>
 
         {/* HOME / MARKETING VIEW */}
@@ -371,6 +283,33 @@ export default function Home() {
           )}
         </button>
       </div>
+
+      {/* 4. LOCATION WARNING TOAST (Non-blocking) */}
+      {(showLocationWarning && isMapView) && (
+        <div className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-[100] bg-(--brand-card) border border-(--brand-border) shadow-xl p-4 rounded-2xl flex items-start gap-3 max-w-sm animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="text-(--accent-blue) shrink-0 mt-0.5">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-(--brand-ink)">Location Services Disabled</p>
+            <p className="text-[13px] text-(--brand-muted) mt-1 leading-relaxed">
+              Turn on device location to see nearby charging stations and accurate distances.
+            </p>
+          </div>
+          <button 
+            onClick={() => setShowLocationWarning(false)} 
+            className="text-(--brand-muted) hover:text-(--brand-ink) bg-background hover:bg-(--brand-border) rounded-full p-1 transition-colors self-start -mt-1 -mr-1"
+            aria-label="Dismiss location warning"
+          >
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
     </main>
   );
