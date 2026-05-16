@@ -251,8 +251,8 @@ Python package requirements:
   - landing page + map mode toggle
   - fetches public station data
   - shows marketing sections and public station drawer
-
-- src/app/login/page.tsx:
+ 
+ - src/app/(driver)/driver-login/page.tsx:
   - login/signup UI
   - Firebase auth calls
   - backend user profile/bootstrap calls
@@ -282,8 +282,8 @@ Python package requirements:
   - path builder apiUrl
   - fetchJson helper with error parsing
 
-- src/components/ProtectedRoute.tsx:
-  - redirects unauthenticated users to /login
+ - src/components/ProtectedRoute.tsx:
+  - redirects unauthenticated users to /driver-login
 
 - src/components/MotionShell.tsx:
   - route transition container animation
@@ -545,7 +545,7 @@ Note: A legacy/simple Dockerfile-like content currently appears in volthive-back
 - src/app/globals.css
 - src/app/layout.tsx
 - src/app/page.tsx
-- src/app/login/page.tsx
+- src/app/(driver)/driver-login/page.tsx
 - src/app/(driver)/driver-dashboard/page.tsx
 - src/app/(owner)/owner-dashboard/page.tsx
 - src/components/MotionShell.tsx

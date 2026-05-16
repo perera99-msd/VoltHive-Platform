@@ -23,7 +23,6 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
-  const [role, setRole] = useState<'driver' | 'owner'>('driver');
   
   // UI State
   const [error, setError] = useState('');
@@ -59,7 +58,7 @@ export default function AuthPage() {
             name: userCredential.user.displayName || 'VoltHive User',
             email: userCredential.user.email,
             mobile: mobile || '', // Google doesn't provide mobile, so send empty string or what's typed
-            role: isLogin ? 'driver' : role, // Default to driver if they click google auth on the login view
+            role: 'driver',
             firebaseUid: userCredential.user.uid
           })
         });
@@ -67,8 +66,7 @@ export default function AuthPage() {
         if (!createRes.ok) throw new Error('Failed to save user data to database.');
         
         // Route based on newly created role
-        const assignedRole = isLogin ? 'driver' : role;
-        router.push(assignedRole === 'owner' ? '/owner-dashboard' : '/driver-dashboard');
+        router.push('/driver-dashboard');
       } 
       else {
         throw new Error('Failed to verify identity with the server.');
@@ -91,12 +89,9 @@ export default function AuthPage() {
     setError('');
 
     // Pre-flight Validation for Registration
-    if (!isLogin) {
+      if (!isLogin) {
       if (password !== confirmPassword) {
         return setError('Passwords do not match.');
-      }
-      if (role === 'owner' && !mobile.trim()) {
-        return setError('Mobile number is required for Station Owners.');
       }
       if (password.length < 6) {
         return setError('Password must be at least 6 characters long.');
@@ -134,7 +129,7 @@ export default function AuthPage() {
             name,
             email,
             mobile, // Sent to backend
-            role,
+            role: 'driver',
             firebaseUid: userCredential.user.uid
           })
         });
@@ -255,34 +250,7 @@ export default function AuthPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             
-            {/* 1. ROLE SELECTOR (Only on Sign Up) */}
-              {!isLogin && (
-              <div className="p-1 rounded-xl bg-(--accent-blue)/10 border border-(--brand-border) lg:border-transparent flex relative overflow-hidden mb-6">
-                <button
-                  type="button"
-                  onClick={() => setRole('driver')}
-                  className={`relative z-10 flex-1 py-2.5 text-sm font-semibold transition-colors duration-300 ${
-                    role === 'driver' ? 'text-(--brand-ink)' : 'text-(--brand-muted) hover:text-(--brand-ink)'
-                  }`}
-                >
-                  EV Driver
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole('owner')}
-                  className={`relative z-10 flex-1 py-2.5 text-sm font-semibold transition-colors duration-300 ${
-                    role === 'owner' ? 'text-(--brand-ink)' : 'text-(--brand-muted) hover:text-(--brand-ink)'
-                  }`}
-                >
-                  Station Owner
-                </button>
-
-                <div
-                  className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-(--brand-card) rounded-lg shadow-sm border border-(--brand-border)/50 transition-transform duration-300 ease-out z-0"
-                  style={{ transform: role === 'driver' ? 'translateX(0)' : 'translateX(calc(100% + 4px))' }}
-                />
-              </div>
-            )}
+            {/* role selector removed - owner registration moved to separate pages */}
 
             {/* 2. GOOGLE OAUTH BUTTON */}
             <button
@@ -339,12 +307,9 @@ export default function AuthPage() {
 
               {!isLogin && (
                 <div className="col-span-1 space-y-1.5 animate-in fade-in duration-500">
-                  <label className="text-[13px] font-semibold text-(--brand-muted)">
-                    Mobile <span className="font-normal">({role === 'owner' ? 'Required' : 'Optional'})</span>
-                  </label>
+                  <label className="text-[13px] font-semibold text-(--brand-muted)">Mobile <span className="font-normal">(Optional)</span></label>
                   <input
                     type="tel"
-                    required={role === 'owner'}
                     placeholder="+94 7X XXX XXXX"
                     className="w-full px-4 py-3.5 rounded-xl bg-(--brand-card)/60 lg:bg-(--brand-card)/90 border border-(--brand-card)/50 lg:border-(--brand-border) focus:bg-(--brand-card) focus:border-(--accent-blue) focus:ring-2 focus:ring-(--accent-blue)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted) sm:text-sm"
                     value={mobile}
