@@ -15,6 +15,10 @@ const normalizeChargerStatus = (status) => {
   return String(status || 'Unknown');
 };
 
+const displayChargerStatus = (status) => {
+  return normalizeChargerStatus(status);
+};
+
 const serializeStationForClient = (stationDoc) => {
   const station = typeof stationDoc.toObject === 'function' ? stationDoc.toObject() : stationDoc;
   const chargers = Array.isArray(station.chargers)
@@ -22,7 +26,8 @@ const serializeStationForClient = (stationDoc) => {
         ...charger,
         plugType: charger.plugType || 'Unknown',
         powerKW: toNumber(charger.powerKW, 0),
-        status: normalizeChargerStatus(charger.status),
+        status: charger.status, // Keep original enum value from DB
+        statusDisplay: displayChargerStatus(charger.status), // Separate display field
       }))
     : [];
 

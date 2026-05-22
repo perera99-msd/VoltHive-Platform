@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const stationRoutes = require('./routes/stationRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const aiRoutes = require('./routes/aiRoutes');
+const chargerRoutes = require('./routes/chargerRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -96,6 +97,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/stations', stationRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/chargers', chargerRoutes);
 
 // ============================================
 // 404 HANDLER

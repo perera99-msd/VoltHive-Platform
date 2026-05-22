@@ -4,16 +4,21 @@ import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  requiredRole?: 'driver' | 'owner';
+}
+
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     // If the auth check is done and there is no user, kick them to login
     if (!loading && !user) {
-      router.push('/driver-login');
+      router.push(requiredRole === 'owner' ? '/owner-login' : '/driver-login');
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, requiredRole]);
 
   // Show a loading spinner while Firebase checks the user's token
   if (loading) {

@@ -17,43 +17,40 @@ interface BaseRateConfig {
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const TIME_SLOTS = ['00:00', '06:00', '09:00', '12:00', '16:00', '18:00', '21:00'];
+// generate 24 hourly slots starting at 00:00, display as start times; labels will show range
+const TIME_SLOTS = Array.from({ length: 24 }).map((_, i) => `${String(i).padStart(2, '0')}:00`);
 
 interface RateCalendarProps {
   onBack?: () => void;
 }
 
 export default function RateCalendar({ onBack }: RateCalendarProps) {
-  const [selectedStation, setSelectedStation] = useState('');
+  const [selectedCharger, setSelectedCharger] = useState('');
   const [baseRate, setBaseRate] = useState<number>(150);
   const [weeklyRates, setWeeklyRates] = useState<RateEntry[]>([]);
   const [editingRate, setEditingRate] = useState<RateEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [stations, setStations] = useState<Array<{ id: string; name: string }>>([]);
+  const [chargers, setChargers] = useState<Array<{ id: string; name: string; raw?: any }>>([]);
 
   useEffect(() => {
-    const loadStations = async () => {
+    const loadChargers = async () => {
       try {
-        const res = await fetch(apiUrl('/api/stations'));
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+        const res = await fetch(apiUrl('/api/chargers/owner'), { headers: { Authorization: `Bearer ${token}` } });
         if (!res.ok) return;
 
         const payload = await res.json();
-        const list = (Array.isArray(payload) ? payload : (payload?.data ?? [])).map((station: { _id: string; name?: string; stationName?: string }) => ({
-          id: station._id,
-          name: station.name || station.stationName || 'Unnamed Station',
-        }));
-
-        setStations(list);
-        if (list.length > 0) {
-          setSelectedStation((current) => current || list[0].id);
-        }
+        const list = (payload?.data || []).map((c: any) => ({ id: c._id, name: `${c.stationName} • ${c.plugType || 'Charger'}`, raw: c }));
+        setChargers(list);
+        // Do not auto-select charger; user must pick one to view/edit rates
       } catch (error) {
-        console.error('Failed to load stations for rate calendar:', error);
+        console.error('Failed to load chargers for rate calendar:', error);
       }
     };
 
-    loadStations();
+    loadChargers();
   }, []);
 
   const addOrUpdateRate = (rate: RateEntry) => {
@@ -86,8 +83,8 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
   };
 
   const saveRates = async () => {
-    if (!selectedStation) {
-      alert('Select a station before saving rates.');
+    if (!selectedCharger) {
+      alert('Select a charger before saving rates.');
       return;
     }
 
@@ -98,23 +95,26 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         throw new Error('Please sign in again. Authentication token is missing.');
       }
 
-      const config: BaseRateConfig = {
-        stationId: selectedStation,
+      const payload = {
         baseRate,
         customRates: weeklyRates,
       };
 
-      const res = await fetch(apiUrl(`/api/stations/${selectedStation}/rates`), {
+      const res = await fetch(apiUrl(`/api/chargers/${selectedCharger}/rates`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(config),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
         alert('Rates saved successfully!');
+      } else {
+        const err = await res.json().catch(() => null);
+        console.error('Save rates failed', err);
+        alert('Failed to save rates');
       }
     } catch (error) {
       console.error('Failed to save rates:', error);
@@ -124,9 +124,15 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
     }
   };
 
-  const getCustomRate = (day: number, time: string): number | null => {
-    const rate = weeklyRates.find(r => r.dayOfWeek === day && r.startTime === time);
-    return rate ? rate.rate : null;
+  // returns custom rate entry if present
+  const getCustomRate = (day: number, time: string): RateEntry | null => {
+    const entry = weeklyRates.find(r => r.dayOfWeek === day && r.startTime === time);
+    return entry || null;
+  };
+
+  const getDisplayedRate = (day: number, time: string): number => {
+    const custom = getCustomRate(day, time);
+    return custom ? custom.rate : baseRate;
   };
 
   return (
@@ -153,19 +159,37 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         {/* Left Sidebar - Station & Base Rate */}
         <div className="space-y-4">
           
-          {/* Station Selector */}
+          {/* Charger Selector */}
           <div className="bg-white rounded-2xl border border-(--brand-border) p-6">
-            <label className="block text-sm font-semibold text-(--brand-ink) mb-3">Select Station</label>
+            <label className="block text-sm font-semibold text-(--brand-ink) mb-3">Select Charger</label>
             <select 
-              value={selectedStation}
-              onChange={(e) => {
-                setSelectedStation(e.target.value);
+              value={selectedCharger}
+              onChange={async (e) => {
+                const id = e.target.value;
+                setSelectedCharger(id);
                 setWeeklyRates([]);
+                // load rate config for selected charger
+                try {
+                  const token = await auth.currentUser?.getIdToken();
+                  const res = await fetch(apiUrl(`/api/chargers/${id}/rates`), { headers: { Authorization: `Bearer ${token}` } });
+                  if (!res.ok) return;
+                  const payload = await res.json();
+                  const data = payload.data;
+                  if (data?.rateConfig) {
+                    setBaseRate(data.rateConfig.baseRate || data.charger.basePricePerKwh || 150);
+                    setWeeklyRates(data.rateConfig.customRates || []);
+                  } else {
+                    setBaseRate(data.charger.basePricePerKwh || 150);
+                    setWeeklyRates([]);
+                  }
+                } catch (err) {
+                  console.error('Failed to load charger rates', err);
+                }
               }}
               className="w-full px-4 py-3 border border-(--brand-border) rounded-lg focus:border-(--accent-blue) focus:ring-1 focus:ring-(--accent-blue) outline-none transition-all text-sm bg-white"
             >
-              {stations.map(station => (
-                <option key={station.id} value={station.id}>{station.name}</option>
+              {chargers.map(ch => (
+                <option key={ch.id} value={ch.id}>{ch.name}</option>
               ))}
             </select>
           </div>
@@ -197,102 +221,109 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         </div>
 
         {/* Main Content - Rate Table */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-(--brand-border) p-6 overflow-hidden">
-          
-          {/* Add/Edit Form */}
-          {showAddForm && (
-            <div className="mb-6 p-4 bg-(--background)/50 rounded-xl border border-(--brand-border)">
-              <h3 className="font-semibold text-(--brand-ink) mb-4">
-                {editingRate ? 'Edit Rate' : 'Add Custom Rate'}
-              </h3>
-              <AddRateForm 
-                onSubmit={addOrUpdateRate}
-                onCancel={() => {
-                  setShowAddForm(false);
-                  setEditingRate(null);
-                }}
-                initialRate={editingRate}
-              />
+        <div className="lg:col-span-2">
+          {!selectedCharger && (
+            <div className="bg-white rounded-2xl border border-(--brand-border) p-6">
+              <p className="text-(--brand-muted)">Please select a charger to view and edit the hourly tariff table.</p>
             </div>
           )}
 
-          {/* Rate Table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-background text-(--brand-muted) text-[11px] uppercase tracking-wider font-bold">
-                  <th className="px-4 py-3 text-left">Day</th>
-                  {TIME_SLOTS.map(time => (
-                    <th key={time} className="px-3 py-3 text-center text-xs">{time}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-(--brand-border)">
-                {DAYS.map((day, dayIdx) => (
-                  <tr key={day} className="hover:bg-(--background)/50 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-(--brand-ink)">{day}</td>
-                    {TIME_SLOTS.map(time => {
-                      const customRate = getCustomRate(dayIdx, time);
-                      return (
-                        <td key={`${dayIdx}-${time}`} className="px-3 py-3 text-center">
-                          <button 
-                            onClick={() => {
-                              if (customRate) {
-                                setEditingRate({
-                                  dayOfWeek: dayIdx,
-                                  startTime: time,
-                                  endTime: '',
-                                  rate: customRate,
-                                });
-                              } else {
-                                setEditingRate({
-                                  dayOfWeek: dayIdx,
-                                  startTime: time,
-                                  endTime: '',
-                                  rate: baseRate,
-                                });
-                              }
-                              setShowAddForm(true);
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                              customRate
-                                ? 'bg-(--ui-success)/20 text-(--ui-success) hover:bg-(--ui-success)/30'
-                                : 'bg-(--brand-border)/50 text-(--brand-muted) hover:bg-(--brand-border)'
-                            }`}
-                          >
-                            {customRate ? `${customRate}` : '–'}
-                          </button>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {selectedCharger && (
+            <div className="bg-white rounded-2xl border border-(--brand-border) p-6 overflow-hidden">
 
-          {/* Custom Rates List */}
-          {weeklyRates.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-(--brand-border)">
-              <h4 className="text-sm font-bold text-(--brand-ink) mb-3">Custom Rates Applied</h4>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {weeklyRates.map((rate, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg">
-                    <div className="text-sm">
-                      <p className="font-medium text-(--brand-ink)">
-                        {DAYS[rate.dayOfWeek]} • {rate.startTime}
-                      </p>
-                      <p className="text-(--brand-muted) text-xs">{rate.rate} LKR/kWh</p>
-                    </div>
-                    <button 
-                      onClick={() => deleteRate(rate.dayOfWeek, rate.startTime)}
-                      className="text-(--ui-error) hover:bg-(--ui-error)/10 px-2 py-1 rounded transition-colors"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
+              {/* Add/Edit Form */}
+              {showAddForm && (
+                <div className="mb-6 p-4 bg-(--background)/50 rounded-xl border border-(--brand-border)">
+                  <h3 className="font-semibold text-(--brand-ink) mb-4">
+                    {editingRate ? 'Edit Rate' : 'Add Custom Rate'}
+                  </h3>
+                  <AddRateForm 
+                    onSubmit={addOrUpdateRate}
+                    onCancel={() => {
+                      setShowAddForm(false);
+                      setEditingRate(null);
+                    }}
+                    initialRate={editingRate}
+                  />
+                </div>
+              )}
+
+              {/* Rate Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-background text-(--brand-muted) text-[11px] uppercase tracking-wider font-bold">
+                      <th className="px-4 py-3 text-left">Day</th>
+                      {TIME_SLOTS.map(time => {
+                        const nextHour = TIME_SLOTS[(TIME_SLOTS.indexOf(time) + 1) % TIME_SLOTS.length];
+                        return (
+                          <th key={time} className="px-3 py-3 text-center text-xs">{`${time} - ${nextHour}`}</th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-(--brand-border)">
+                    {DAYS.map((day, dayIdx) => (
+                      <tr key={day} className="hover:bg-(--background)/50 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-(--brand-ink)">{day}</td>
+                        {TIME_SLOTS.map(time => {
+                          const custom = getCustomRate(dayIdx, time);
+                          const display = getDisplayedRate(dayIdx, time);
+                          const nextHour = TIME_SLOTS[(TIME_SLOTS.indexOf(time) + 1) % TIME_SLOTS.length];
+
+                          return (
+                            <td key={`${dayIdx}-${time}`} className="px-3 py-3 text-center">
+                              <button 
+                                onClick={() => {
+                                  setEditingRate({
+                                    dayOfWeek: dayIdx,
+                                    startTime: time,
+                                    endTime: nextHour,
+                                    rate: custom ? custom.rate : baseRate,
+                                  });
+                                  setShowAddForm(true);
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                  custom
+                                    ? 'bg-(--ui-success)/20 text-(--ui-success) hover:bg-(--ui-success)/30'
+                                    : 'bg-(--brand-border)/50 text-(--brand-muted) hover:bg-(--brand-border)'
+                                }`}
+                              >
+                                {display}
+                              </button>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
+
+              {/* Custom Rates List */}
+              {weeklyRates.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-(--brand-border)">
+                  <h4 className="text-sm font-bold text-(--brand-ink) mb-3">Custom Rates Applied</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {weeklyRates.map((rate, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg">
+                        <div className="text-sm">
+                          <p className="font-medium text-(--brand-ink)">
+                            {DAYS[rate.dayOfWeek]} • {rate.startTime}
+                          </p>
+                          <p className="text-(--brand-muted) text-xs">{rate.rate} LKR/kWh</p>
+                        </div>
+                        <button 
+                          onClick={() => deleteRate(rate.dayOfWeek, rate.startTime)}
+                          className="text-(--ui-error) hover:bg-(--ui-error)/10 px-2 py-1 rounded transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,31 +1,41 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import AddChargerForm from '../AddChargerForm';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../lib/api';
-import { auth } from '../../../lib/firebase';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 
-interface Charger {
-  _id?: string;
-  plugType: string;
-  powerKW: number;
-  status: string;
-}
-
-interface Station {
+type Station = {
   _id: string;
-  name: string;
+  stationName: string;
+  ownerName?: string;
   address: string;
-  location: { coordinates: [number, number] };
-  pricePerKWh: number;
-  chargers: Charger[];
-}
+  chargers?: unknown[];
+};
 
 export default function StationsView() {
+  const { user } = useAuth();
   const [stations, setStations] = useState<Station[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAddingNew, setIsAddingNew] = useState(false);
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [viewState, setViewState] = useState<'list' | 'create'>('list');
+
+  // Map Picker State
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [mapCenter, setMapCenter] = useState({ lat: 6.9271, lng: 79.8612 });
+
+  // Station Form
+  const [sName, setSName] = useState('');
+  const [sAddress, setSAddress] = useState('');
+  const [sPhone, setSPhone] = useState('');
+  const [sLat, setSLat] = useState('');
+  const [sLng, setSLng] = useState('');
+  const [sDescription, setSDescription] = useState('');
+
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+  });
 
   useEffect(() => {
     fetchStations();
@@ -33,252 +43,193 @@ export default function StationsView() {
 
   const fetchStations = async () => {
     try {
-      setIsLoading(true);
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        setStations([]);
-        return;
-      }
-
-      const res = await fetch(apiUrl('/api/stations/owner'), {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const token = await user?.getIdToken();
+      const res = await fetch(apiUrl('/api/stations/owner'), { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
-        const payload = await res.json();
-        const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
-        setStations(stationsArray);
+        const data = await res.json();
+        setStations(data.data || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch stations:', error);
+    } catch (err) {
+      console.error(err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const deleteStation = async (stationId: string) => {
-    if (confirm('Are you sure you want to delete this station? This action cannot be undone.')) {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) {
-          alert('Please sign in again to delete stations.');
-          return;
-        }
+  const handleCreateStation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const token = await user?.getIdToken();
+      const payload = {
+        stationName: sName,
+        address: sAddress,
+        phone: sPhone,
+        description: sDescription,
+        ownerName: user?.displayName || 'VoltHive Partner',
+        location: { type: 'Point', coordinates: [Number(sLng), Number(sLat)] }
+      };
 
-        const res = await fetch(apiUrl(`/api/stations/${stationId}`), {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (res.ok) {
-          setStations(stations.filter(s => s._id !== stationId));
-          if (selectedStation?._id === stationId) setSelectedStation(null);
-        }
-      } catch (error) {
-        console.error('Failed to delete station:', error);
+      const res = await fetch(apiUrl('/api/stations'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        await fetchStations();
+        setViewState('list');
+        setSName(''); setSAddress(''); setSPhone(''); setSLat(''); setSLng(''); setSDescription('');
+      } else {
+        alert("Failed to create station.");
       }
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const filteredStations = stations.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.address.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setSLat(e.latLng.lat().toFixed(6));
+      setSLng(e.latLng.lng().toFixed(6));
+    }
+  };
 
-  if (isAddingNew) {
-    return <AddChargerForm onSuccess={() => { fetchStations(); setIsAddingNew(false); }} onCancel={() => setIsAddingNew(false)} />;
-  }
+  const handleLocationRequest = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        setMapCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setShowMapPicker(true);
+      });
+    } else {
+      setShowMapPicker(true);
+    }
+  };
+
+  const inputCls = "w-full px-4 py-3.5 bg-background border border-(--brand-border) rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-(--brand-blue)/20 focus:border-(--brand-blue) text-(--brand-ink)";
+
+  if (loading) return <div className="p-10 font-bold text-(--brand-blue)">Loading Network Data...</div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      
-      {/* === HEADER === */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-6xl mx-auto relative">
+      <div className="flex justify-between items-end mb-8">
         <div>
-          <h1 className="text-3xl font-semibold text-(--brand-ink) tracking-tight">Hardware Stations</h1>
-          <p className="text-(--brand-muted) text-sm mt-1">Manage all your charging stations and hardware</p>
+          <h1 className="text-3xl font-bold tracking-tight text-(--brand-ink) mb-1">My Stations</h1>
+          <p className="text-(--brand-muted) text-[15px] font-medium">Establish and manage your physical site locations.</p>
         </div>
-        <button 
-          onClick={() => setIsAddingNew(true)}
-          className="px-6 py-3 bg-(--brand-blue) text-white font-semibold rounded-xl hover:bg-(--brand-blue-deep) transition-colors flex items-center gap-2 shadow-lg"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Add New Station
-        </button>
-      </div>
-
-      {/* === SEARCH BAR === */}
-      <div className="flex items-center bg-white border border-(--brand-border) rounded-xl px-4 py-3 w-full shadow-sm">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 text-(--brand-muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input 
-          type="text" 
-          placeholder="Search by station name or address..." 
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-transparent outline-none ml-3 text-sm w-full text-(--brand-ink) placeholder:text-(--brand-muted)"
-        />
-      </div>
-
-      {/* === LOADING STATE === */}
-      {isLoading && (
-        <div className="bg-white rounded-2xl border border-(--brand-border) p-12 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-2 border-(--brand-border) border-t-(--brand-blue) rounded-full animate-spin" />
-            <p className="text-(--brand-muted) font-medium">Loading stations...</p>
-          </div>
-        </div>
-      )}
-
-      {/* === EMPTY STATE === */}
-      {!isLoading && filteredStations.length === 0 && (
-        <div className="bg-white rounded-2xl border border-(--brand-border) p-12 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 rounded-full bg-(--accent-blue)/10 flex items-center justify-center text-(--accent-blue) mb-4">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          </div>
-          <h3 className="text-lg font-semibold text-(--brand-ink) mb-2">No stations yet</h3>
-          <p className="text-(--brand-muted) mb-6 max-w-xs">Create your first charging station to get started</p>
-          <button 
-            onClick={() => setIsAddingNew(true)}
-            className="px-5 py-2.5 bg-(--brand-blue) text-white font-semibold rounded-lg hover:bg-(--brand-blue-deep) transition-colors"
-          >
-            Create Station
+        {viewState === 'list' && (
+          <button onClick={() => setViewState('create')} className="flex items-center gap-2 bg-gradient-to-r from-(--brand-blue) to-(--brand-green) text-white px-6 py-3.5 rounded-xl text-[15px] font-bold shadow-lg shadow-(--brand-blue)/25 hover:brightness-105 active:scale-95 transition-all">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Add New Station
           </button>
-        </div>
-      )}
-
-      {/* === STATIONS GRID === */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredStations.map((station) => (
-          <div 
-            key={station._id} 
-            className="bg-white rounded-2xl border border-(--brand-border) shadow-sm hover:shadow-md transition-all overflow-hidden group"
-          >
-            {/* Card Header with Badge */}
-            <div className="p-6 pb-4 border-b border-(--brand-border)">
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-lg font-semibold text-(--brand-ink) group-hover:text-(--brand-blue) transition-colors">{station.name}</h3>
-                <span className="px-3 py-1 bg-(--accent-blue)/10 text-(--accent-blue) text-[10px] font-bold uppercase tracking-wider rounded-lg">
-                  {station.chargers.length} Chargers
-                </span>
-              </div>
-              <p className="text-(--brand-muted) text-sm flex items-start gap-1.5">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4 mt-0.5 shrink-0"><path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
-                <span className="line-clamp-2">{station.address}</span>
-              </p>
-            </div>
-
-            {/* Stats */}
-            <div className="p-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-(--brand-muted) text-sm font-medium">Charging Rate</span>
-                <span className="text-(--brand-ink) font-semibold">{station.pricePerKWh} LKR/kWh</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-(--brand-muted) text-sm font-medium">Available</span>
-                <span className="text-(--ui-success) font-semibold">{station.chargers.filter(c => c.status === 'Available' || c.status === 'AVAILABLE').length} / {station.chargers.length}</span>
-              </div>
-              <div className="pt-2 border-t border-(--brand-border)">
-                <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-2">Chargers</p>
-                <div className="flex flex-wrap gap-2">
-                  {station.chargers.map((charger, index) => (
-                    <span key={charger._id || `${station._id}-${index}`} className="px-2.5 py-1 rounded-lg border border-(--brand-border) bg-background text-[11px] font-semibold text-(--brand-ink)">
-                      {charger.plugType} • {charger.powerKW}kW • {charger.status}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="px-6 pb-6 pt-3 flex gap-2">
-              <button 
-                onClick={() => setSelectedStation(station)}
-                className="flex-1 px-3 py-2.5 bg-(--accent-blue)/10 hover:bg-(--accent-blue)/20 text-(--brand-blue) font-semibold text-sm rounded-lg transition-colors"
-              >
-                View Details
-              </button>
-              <button 
-                onClick={() => deleteStation(station._id)}
-                className="flex-1 px-3 py-2.5 bg-(--ui-error)/10 hover:bg-(--ui-error)/20 text-(--ui-error) font-semibold text-sm rounded-lg transition-colors"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+        )}
       </div>
 
-      {/* === STATION DETAIL MODAL === */}
-      {selectedStation && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedStation(null)}>
-          <div 
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl p-8 animate-in fade-in zoom-in duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold text-(--brand-ink)">{selectedStation.name}</h2>
-              <button 
-                onClick={() => setSelectedStation(null)}
-                className="w-8 h-8 rounded-full bg-(--brand-border)/50 hover:bg-(--brand-border) transition-colors flex items-center justify-center"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-(--brand-muted)"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <AnimatePresence mode="wait">
+        {viewState === 'list' && (
+          <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stations.length === 0 ? (
+              <div className="col-span-full py-20 bg-(--brand-card)/50 border border-dashed border-(--brand-border) rounded-3xl text-center">
+                <div className="w-16 h-16 bg-(--surface-soft) rounded-full flex items-center justify-center mx-auto mb-4 text-(--brand-blue)">
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                <h3 className="text-lg font-bold text-(--brand-ink)">No Locations Deployed</h3>
+                <p className="text-sm text-(--brand-muted) mt-1 max-w-sm mx-auto">Establish a physical premise before installing hardware chargers.</p>
+              </div>
+            ) : (
+              stations.map(station => (
+                <div key={station._id} className="bg-(--brand-card) border border-(--brand-border) rounded-3xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col">
+                  <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-(--brand-blue)/20 to-(--brand-green)/10 flex items-center justify-center text-(--brand-blue) mb-5">
+                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-(--brand-ink) mb-1 truncate">{station.stationName}</h3>
+                  <p className="text-xs font-semibold text-(--brand-muted) uppercase tracking-wider mb-3">Owner: {station.ownerName || user?.displayName}</p>
+                  <p className="text-sm text-(--brand-muted) mb-4 line-clamp-2">{station.address}</p>
+                  <div className="mt-auto pt-4 border-t border-(--brand-border)/60 flex justify-between items-center text-[12px] font-bold text-(--brand-muted)">
+                    <span>{station.chargers?.length || 0} Hardware Units Linked</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </motion.div>
+        )}
+
+        {viewState === 'create' && (
+          <motion.div key="create" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-3xl bg-(--brand-card) rounded-[2rem] p-8 border border-(--brand-border) shadow-[0_20px_60px_-15px_rgba(9,32,52,0.1)] relative">
+            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink)"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 className="text-2xl font-bold text-(--brand-ink) mb-6">Create New Premise</h2>
+            
+            <form onSubmit={handleCreateStation} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Station Name</label>
+                  <input required type="text" placeholder="e.g. VoltHive City Center Parking" value={sName} onChange={e => setSName(e.target.value)} className={inputCls} />
+                </div>
+                
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Physical Address</label>
+                  <input required type="text" placeholder="Full street address" value={sAddress} onChange={e => setSAddress(e.target.value)} className={inputCls} />
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Map Coordinates</label>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <input required type="text" placeholder="Latitude" value={sLat} onChange={e => setSLat(e.target.value)} className={`${inputCls} flex-1`} />
+                    <input required type="text" placeholder="Longitude" value={sLng} onChange={e => setSLng(e.target.value)} className={`${inputCls} flex-1`} />
+                    <button type="button" onClick={handleLocationRequest} className="px-6 py-3.5 bg-(--surface-soft) text-(--brand-blue) rounded-xl border border-(--brand-border) font-bold hover:bg-(--brand-blue)/10 transition-colors shrink-0 flex justify-center items-center gap-2">
+                      <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                      Pin on Map
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Contact Phone</label>
+                  <input type="text" required placeholder="+94 7X XXX XXXX" value={sPhone} onChange={e => setSPhone(e.target.value)} className={inputCls} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Owner / Operating Company</label>
+                  <input type="text" disabled value={user?.displayName || 'Auto-Detected'} className={`${inputCls} bg-(--background) opacity-70 cursor-not-allowed`} />
+                </div>
+
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Short Description (Optional)</label>
+                  <textarea rows={3} placeholder="e.g. Basement level 2, next to the elevators." value={sDescription} onChange={e => setSDescription(e.target.value)} className={inputCls} />
+                </div>
+              </div>
+
+              <button type="submit" className="w-full py-4 mt-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all">
+                Finalize & Create Station
               </button>
-            </div>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="space-y-6">
-              <div>
-                <p className="text-(--brand-muted) text-sm font-bold uppercase tracking-wider mb-2">Location</p>
-                <p className="text-(--brand-ink) text-base">{selectedStation.address}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+      {/* MAP MODAL OVERLAY */}
+      <AnimatePresence>
+        {showMapPicker && isLoaded && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-(--brand-ink)/60 backdrop-blur-md">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-(--brand-card) rounded-[2rem] overflow-hidden w-full max-w-4xl h-[70vh] shadow-2xl flex flex-col border border-(--brand-border)">
+              <div className="px-6 py-4 border-b border-(--brand-border) flex justify-between items-center bg-(--background)">
                 <div>
-                  <p className="text-(--brand-muted) text-sm font-bold uppercase tracking-wider mb-2">Rate</p>
-                  <p className="text-2xl font-semibold text-(--brand-ink)">{selectedStation.pricePerKWh} <span className="text-sm font-medium text-(--brand-muted)">LKR/kWh</span></p>
-                </div>
-                <div>
-                  <p className="text-(--brand-muted) text-sm font-bold uppercase tracking-wider mb-2">Total Chargers</p>
-                  <p className="text-2xl font-semibold text-(--brand-ink)">{selectedStation.chargers.length}</p>
+                  <h3 className="font-bold text-(--brand-ink) text-lg">Pin Location</h3>
+                  <p className="text-xs font-medium text-(--brand-muted)">Click anywhere on the map to grab exact coordinates.</p>
                 </div>
               </div>
-
-              <div>
-                <p className="text-(--brand-muted) text-sm font-bold uppercase tracking-wider mb-3">Charger Details</p>
-                <div className="space-y-2">
-                  {selectedStation.chargers.map((charger, idx) => (
-                    <div key={charger._id || idx} className="flex items-center justify-between p-3 bg-(--background)/50 rounded-lg border border-(--brand-border)">
-                      <div>
-                        <p className="font-medium text-(--brand-ink)">{charger.plugType}</p>
-                        <p className="text-xs text-(--brand-muted)">{charger.powerKW} kW</p>
-                      </div>
-                      <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase ${charger.status === 'Available' || charger.status === 'AVAILABLE' ? 'bg-(--ui-success)/10 text-(--ui-success)' : 'bg-(--brand-border)/50 text-(--brand-muted)'}`}>
-                        {charger.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div className="flex-1 relative bg-slate-100">
+                <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={mapCenter} zoom={14} onClick={handleMapClick} options={{ disableDefaultUI: true }}>
+                  {sLat && sLng && <Marker position={{ lat: Number(sLat), lng: Number(sLng) }} />}
+                </GoogleMap>
               </div>
-
-              <div className="flex gap-3 pt-4 border-t border-(--brand-border)">
-                <button 
-                  onClick={() => setSelectedStation(null)}
-                  className="flex-1 px-4 py-3 bg-(--brand-border)/50 hover:bg-(--brand-border) text-(--brand-ink) font-semibold rounded-lg transition-colors"
-                >
-                  Close
-                </button>
-                <button 
-                  onClick={() => deleteStation(selectedStation._id)}
-                  className="flex-1 px-4 py-3 bg-(--ui-error) hover:bg-(--ui-error)/90 text-white font-semibold rounded-lg transition-colors"
-                >
-                  Delete Station
-                </button>
+              <div className="p-4 bg-(--background) border-t border-(--brand-border) flex justify-between items-center">
+                <div className="text-sm font-bold text-(--brand-blue)">{sLat && sLng ? `Selected: ${sLat}, ${sLng}` : 'Click map...'}</div>
+                <button onClick={() => setShowMapPicker(false)} className="px-6 py-3 bg-(--brand-ink) text-white rounded-xl font-bold hover:bg-(--brand-blue-deep) transition-colors">Confirm Pin</button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
