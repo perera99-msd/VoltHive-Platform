@@ -5,13 +5,37 @@ const verifyToken = require('../middleware/authMiddleware');
 
 // POST /api/users - Create a new user in MongoDB
 router.post('/', verifyToken, async (req, res) => {
-  const { name, email, role, firebaseUid } = req.body;
+  const { 
+    name, 
+    email, 
+    role, 
+    firebaseUid,
+    telephone,
+    nicOrBrc,
+    address,
+    district,
+    town 
+  } = req.body;
+
   try {
     let user = await User.findOne({ firebaseUid });
     if (user) {
       return res.status(400).json({ message: 'User already exists in database' });
     }
-    user = new User({ name, email, role, firebaseUid });
+    
+    // Create new user with all fields (driver will just not provide the owner fields)
+    user = new User({ 
+      name, 
+      email, 
+      role, 
+      firebaseUid,
+      telephone,
+      nicOrBrc,
+      address,
+      district,
+      town
+    });
+    
     await user.save();
     res.status(201).json(user);
   } catch (error) {

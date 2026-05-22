@@ -116,6 +116,9 @@ function HomeSections() {
             <div className="inline-flex items-center gap-2 self-start lg:self-auto px-4 py-2 rounded-full border border-(--brand-border) bg-background text-(--brand-muted) text-sm font-semibold">
               Network ready
             </div>
+            <div className="ml-3 self-start lg:self-auto">
+              <Link href="/owner-login" className="px-4 py-2 rounded-full text-sm font-semibold bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) shadow-[0_8px_20px_rgba(74,144,164,0.18)]">Owner Login</Link>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-4">
