@@ -83,12 +83,12 @@ router.post('/', verifyToken, async (req, res) => {
   const { stationId, chargerId, date, startTime, endTime, lockedPricePerKwh } = req.body;
   
   try {
-    // Check user is a driver
+    // Check user role
     const user = await User.findOne({ firebaseUid: req.user.uid });
-    if (!user || user.role !== 'driver') {
+    if (!user || (user.role !== 'driver' && user.role !== 'owner')) {
       return res.status(403).json({
         success: false,
-        message: 'Only drivers can make bookings.'
+        message: 'Not authorized to create bookings.'
       });
     }
 
@@ -248,15 +248,19 @@ router.get('/owner', verifyToken, async (req, res) => {
       });
     }
 
-    // Get all pending bookings for these stations
+    const statusFilter = req.query.all === 'true' 
+      ? ['Pending', 'Confirmed', 'Active_Charging', 'Completed', 'Cancelled', 'No_Show']
+      : ['Pending', 'Confirmed', 'Active_Charging'];
+
+    // Get bookings for these stations
     const bookings = await Booking.find({
       station: { $in: stationIds },
-      status: { $in: ['Pending', 'Confirmed', 'Active_Charging'] }
+      status: { $in: statusFilter }
     })
-      .populate('driver', 'name email phone')
+      .populate('driver', 'name email telephone')
       .sort({ createdAt: -1 });
     
-    res.status(200).json({ success: true, data: bookings });
+    res.status(200).json({ success: true, count: bookings.length, data: bookings });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -332,6 +336,49 @@ router.patch('/:id/auto-cancel', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('Error auto-cancelling booking:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// 7. PUT /api/bookings/:id - Admin/Driver edits booking time/details
+router.put('/:id', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
+
+    const { date, startTime, endTime, lockedPricePerKwh } = req.body;
+    if (date) booking.date = date;
+    if (startTime) booking.startTime = startTime;
+    if (endTime) booking.endTime = endTime;
+    if (typeof lockedPricePerKwh === 'number') booking.lockedPricePerKwh = lockedPricePerKwh;
+
+    await booking.save();
+    return res.status(200).json({ success: true, message: 'Booking updated', data: booking });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// 8. PATCH /api/bookings/:id/extend - Extend booking end time
+router.patch('/:id/extend', verifyToken, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
+
+    const { additionalMinutes, newEndTime } = req.body;
+    if (newEndTime) {
+      booking.endTime = newEndTime;
+    } else if (additionalMinutes && booking.endTime) {
+      const [h, m] = booking.endTime.split(':').map(Number);
+      const totalM = h * 60 + m + Number(additionalMinutes);
+      const newH = Math.floor(totalM / 60) % 24;
+      const newM = totalM % 60;
+      booking.endTime = `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+    }
+
+    await booking.save();
+    return res.status(200).json({ success: true, message: 'Session extended successfully', data: booking });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
 

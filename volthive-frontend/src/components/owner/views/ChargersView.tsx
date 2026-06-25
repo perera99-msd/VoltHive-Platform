@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../lib/api';
+import EditChargerModal from '../EditChargerModal';
+import ConfirmModal from '../../common/ConfirmModal';
+import Toast from '../../common/Toast';
 
 type Charger = {
   plugType?: string;
@@ -27,6 +30,9 @@ export default function ChargersView() {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewState, setViewState] = useState<'list' | 'add'>('list');
+  const [editingCharger, setEditingCharger] = useState<unknown>(null);
+  const [deletingChargerId, setDeletingChargerId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' } | null>(null);
 
   // New Charger Form State
   const [selectedStationId, setSelectedStationId] = useState('');
@@ -37,14 +43,15 @@ export default function ChargersView() {
   const [baseRate, setBaseRate] = useState('85');
 
   const fetchStations = useCallback(async () => {
-    if (!user) return;
     try {
       const token = await user?.getIdToken();
-      const res = await fetch(apiUrl('/api/stations/owner'), { headers: { Authorization: `Bearer ${token}` } });
+      if (!token) return;
+      const res = await fetch(apiUrl('/api/stations/owner'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setStations(data.data || []);
-        if (data.data?.length > 0) setSelectedStationId(data.data[0]._id);
       }
     } catch (err) {
       console.error(err);
@@ -57,9 +64,33 @@ export default function ChargersView() {
     fetchStations();
   }, [fetchStations]);
 
+  const executeDeleteCharger = async (chargerId: string) => {
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(apiUrl(`/api/chargers/${chargerId}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeletingChargerId(null);
+      if (res.ok) {
+        setToastMessage({ msg: 'Hardware unit permanently removed.', type: 'success' });
+        fetchStations();
+      } else {
+        setToastMessage({ msg: 'Failed to delete charger hardware.', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setDeletingChargerId(null);
+      setToastMessage({ msg: 'Network failure communicating with server.', type: 'error' });
+    }
+  };
+
   const handleAddCharger = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStationId) return alert("Please select a station first.");
+    if (!selectedStationId) {
+      setToastMessage({ msg: 'Please select a station premise first.', type: 'error' });
+      return;
+    }
 
     try {
       const token = await user?.getIdToken();
@@ -93,11 +124,13 @@ export default function ChargersView() {
         await fetchStations();
         setViewState('list');
         setConnectorType('CCS2'); setPowerKW('50'); setBaseRate('85'); setConnectorCount('single');
+        setToastMessage({ msg: 'Hardware installed successfully!', type: 'success' });
       } else {
-        alert("Failed to install hardware.");
+        setToastMessage({ msg: 'Failed to install hardware.', type: 'error' });
       }
     } catch (err) {
       console.error(err);
+      setToastMessage({ msg: 'Network failure installing hardware.', type: 'error' });
     }
   };
 
@@ -150,11 +183,12 @@ export default function ChargersView() {
                       <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Location</th>
                       <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Power & Rate</th>
                       <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Status</th>
+                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-(--brand-border)/60">
                     {allChargers.map((c: ChargerWithStation, i: number) => (
-                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                      <tr key={i} className="hover:bg-(--surface-soft)/50 transition-colors">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-(--background) border border-(--brand-border) flex items-center justify-center font-black text-(--brand-blue) text-sm">
@@ -173,6 +207,12 @@ export default function ChargersView() {
                             {c.statusDisplay || c.status}
                           </span>
                         </td>
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setEditingCharger(c)} className="px-3 py-1 rounded-lg bg-(--surface-soft) text-(--brand-blue) hover:bg-(--brand-blue) hover:text-white font-bold text-xs cursor-pointer">Edit</button>
+                            <button onClick={() => setDeletingChargerId((c as unknown as { _id?: string })._id || null)} className="px-3 py-1 rounded-lg bg-(--ui-error)/10 text-(--ui-error) hover:bg-(--ui-error) hover:text-white font-bold text-xs cursor-pointer">Delete</button>
+                          </div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -184,52 +224,53 @@ export default function ChargersView() {
 
         {viewState === 'add' && (
           <motion.div key="add" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-3xl bg-(--brand-card) rounded-[2rem] p-8 border border-(--brand-border) shadow-[0_20px_60px_-15px_rgba(9,32,52,0.1)] relative">
-            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink)"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink) cursor-pointer"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 className="text-2xl font-bold text-(--brand-ink) mb-6">Install Hardware Unit</h2>
             
             <form onSubmit={handleAddCharger} className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Target Station Premises</label>
-                <select required value={selectedStationId} onChange={e => setSelectedStationId(e.target.value)} className={inputCls}>
-                  {stations.map(s => <option key={s._id} value={s._id}>{s.stationName} - {s.address}</option>)}
+              <div>
+                <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Assign to Station Premise</label>
+                <select value={selectedStationId} onChange={(e) => setSelectedStationId(e.target.value)} className={inputCls}>
+                  <option value="">-- Choose Station --</option>
+                  {stations.map((s) => <option key={s._id} value={s._id}>{s.stationName}</option>)}
                 </select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Connector Setup</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setConnectorCount('single')} className={`py-3 rounded-xl border text-sm font-bold transition-all ${connectorCount === 'single' ? 'bg-(--brand-blue)/10 border-(--brand-blue) text-(--brand-blue-deep)' : 'bg-(--background) border-(--brand-border) text-(--brand-muted)'}`}>Single (1 Port)</button>
-                    <button type="button" onClick={() => setConnectorCount('double')} className={`py-3 rounded-xl border text-sm font-bold transition-all ${connectorCount === 'double' ? 'bg-(--brand-blue)/10 border-(--brand-blue) text-(--brand-blue-deep)' : 'bg-(--background) border-(--brand-border) text-(--brand-muted)'}`}>Double (2 Ports)</button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Connector Type</label>
-                  <select value={connectorType} onChange={e => setConnectorType(e.target.value)} className={inputCls}>
-                    <option value="CCS2">CCS2 (Fast DC)</option>
-                    <option value="CHAdeMO">CHAdeMO</option>
-                    <option value="Type 2">Type 2 (AC)</option>
-                    <option value="CCS1">CCS1</option>
-                    <option value="Other">Type Manually...</option>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Connector Standard</label>
+                  <select value={connectorType} onChange={(e) => setConnectorType(e.target.value)} className={inputCls}>
+                    <option value="CCS2">CCS2 (DC Fast)</option>
+                    <option value="Type 2">Type 2 (AC Mennekes)</option>
+                    <option value="CHAdeMO">CHAdeMO (DC)</option>
+                    <option value="GB/T">GB/T Standard</option>
+                    <option value="Other">Custom Standard</option>
                   </select>
                 </div>
 
                 {connectorType === 'Other' && (
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Custom Connector Type</label>
-                    <input required type="text" placeholder="e.g. GB/T" value={customConnector} onChange={e => setCustomConnector(e.target.value)} className={inputCls} />
+                  <div>
+                    <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Custom Plug Name</label>
+                    <input type="text" required value={customConnector} onChange={(e) => setCustomConnector(e.target.value)} placeholder="e.g. Tesla NACS" className={inputCls} />
                   </div>
                 )}
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Max Output Power (kW)</label>
-                  <input required type="number" placeholder="50" value={powerKW} onChange={e => setPowerKW(e.target.value)} className={inputCls} />
+                <div>
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Max Power Output (kW)</label>
+                  <input type="number" required min="3" max="400" value={powerKW} onChange={(e) => setPowerKW(e.target.value)} className={inputCls} />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Base Rate (Rs/kWh)</label>
-                  <input required type="number" placeholder="85" value={baseRate} onChange={e => setBaseRate(e.target.value)} className={inputCls} />
+                <div>
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Base Tariff (Rs/kWh)</label>
+                  <input type="number" required min="0" value={baseRate} onChange={(e) => setBaseRate(e.target.value)} className={inputCls} />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Port Configuration</label>
+                  <select value={connectorCount} onChange={(e) => setConnectorCount(e.target.value)} className={inputCls}>
+                    <option value="single">Single Gun (1 Booking Port)</option>
+                    <option value="double">Dual Gun (2 Sim Booking Ports)</option>
+                  </select>
                 </div>
               </div>
 
@@ -239,13 +280,36 @@ export default function ChargersView() {
                 </p>
               </div>
 
-              <button type="submit" className="w-full py-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all">
+              <button type="submit" className="w-full py-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer">
                 Finalize Installation
               </button>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EditChargerModal
+        charger={editingCharger as unknown as null}
+        isOpen={!!editingCharger}
+        onClose={() => setEditingCharger(null)}
+        onSaved={fetchStations}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deletingChargerId)}
+        title="Permanently Remove Hardware"
+        message="Are you sure you want to permanently remove this charging unit from your network? All linked rate tariffs and connector booking slots will be purged."
+        confirmText="Remove Hardware"
+        isDanger={true}
+        onClose={() => setDeletingChargerId(null)}
+        onConfirm={() => deletingChargerId && executeDeleteCharger(deletingChargerId)}
+      />
+
+      <Toast
+        message={toastMessage?.msg || null}
+        type={toastMessage?.type || 'error'}
+        onClose={() => setToastMessage(null)}
+      />
     </div>
   );
 }

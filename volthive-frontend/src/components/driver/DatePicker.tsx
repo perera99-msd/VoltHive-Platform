@@ -34,6 +34,7 @@ export default function DatePicker({ selectedDate, onDateChange }: DatePickerPro
         {dates.map((d) => (
           <button
             key={d.date}
+            type="button"
             onClick={() => onDateChange(d.date)}
             className={`flex flex-col items-center px-4 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${
               selectedDate === d.date

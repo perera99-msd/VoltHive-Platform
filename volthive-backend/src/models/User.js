@@ -35,7 +35,17 @@ const userSchema = new mongoose.Schema({
   },
   town: { 
     type: String 
-  }
+  },
+  // --- DRIVER SPECIFIC FIELDS ---
+  vehicles: [{
+    make: { type: String, required: true },
+    model: { type: String, required: true },
+    year: { type: String, default: '2025' },
+    batteryKWh: { type: Number, default: 40 },
+    connector: { type: String, default: 'CCS2 Fast' },
+    maxKW: { type: Number, default: 50 },
+    isPrimary: { type: Boolean, default: false }
+  }]
 }, { 
   timestamps: true // Automatically adds createdAt and updatedAt fields
 });

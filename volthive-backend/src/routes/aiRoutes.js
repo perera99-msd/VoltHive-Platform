@@ -93,4 +93,55 @@ router.get('/pricing-suggestion', verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/ai/forecast
+ * Get 6-hour hourly and 5-day weekly surge prediction charts
+ */
+router.get('/forecast', verifyToken, async (req, res) => {
+  try {
+    const aiServiceUrl = process.env.FLASK_API_URL || 'http://localhost:5001';
+    const payload = {
+      weather_condition: req.query.weather || 'Clear',
+      temperature_c: Number(req.query.temp) || 28
+    };
+
+    const response = await axios.post(`${aiServiceUrl}/api/ai/forecast`, payload, { timeout: 5000 });
+    return res.status(200).json(response.data);
+  } catch (error) {
+    console.warn('AI forecast service failed or offline, using fallback:', error.message);
+    
+    // Solid fallback if Python AI service isn't running locally
+    const now = new Date();
+    const hourly = [];
+    for (let i = 0; i < 6; i++) {
+      const t = new Date(now.getTime() + i * 3600000);
+      const h = t.getHours();
+      const peak = (17 <= h && h <= 20) || (7 <= h && h <= 9);
+      hourly.push({
+        time: `${String(h).padStart(2, '0')}:00`,
+        hour: h,
+        occupancy: peak ? 85.0 : 45.0,
+        multiplier: peak ? 1.25 : 1.0,
+        recommendation: peak ? "High Surge Demand" : "Normal Demand"
+      });
+    }
+
+    const daily = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].slice(0, 5).map((day, idx) => ({
+      day,
+      date: `06/${26 + idx}`,
+      occupancy: 68 + idx * 4,
+      avgMultiplier: idx > 2 ? 1.15 : 1.05,
+      status: idx > 2 ? "High Peak Hub" : "Steady Demand"
+    }));
+
+    return res.status(200).json({
+      status: "success",
+      weather: { condition: "Clear", temp: 28, source: "System Fallback Forecast" },
+      hourly,
+      daily,
+      lastUpdated: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+  }
+});
+
 module.exports = router;

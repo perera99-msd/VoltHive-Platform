@@ -5,6 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../lib/api';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import EditStationModal from '../EditStationModal';
+import ConfirmModal from '../../common/ConfirmModal';
+import Toast from '../../common/Toast';
 
 type Station = {
   _id: string;
@@ -19,6 +22,9 @@ export default function StationsView() {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewState, setViewState] = useState<'list' | 'create'>('list');
+  const [editingStation, setEditingStation] = useState<Station | null>(null);
+  const [deletingStationId, setDeletingStationId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' } | null>(null);
 
   // Map Picker State
   const [showMapPicker, setShowMapPicker] = useState(false);
@@ -33,8 +39,7 @@ export default function StationsView() {
   const [sDescription, setSDescription] = useState('');
 
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
   });
 
   useEffect(() => {
@@ -44,7 +49,10 @@ export default function StationsView() {
   const fetchStations = async () => {
     try {
       const token = await user?.getIdToken();
-      const res = await fetch(apiUrl('/api/stations/owner'), { headers: { Authorization: `Bearer ${token}` } });
+      if (!token) return;
+      const res = await fetch(apiUrl('/api/stations/owner'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setStations(data.data || []);
@@ -53,6 +61,27 @@ export default function StationsView() {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const executeDeleteStation = async (stationId: string) => {
+    try {
+      const token = await user?.getIdToken();
+      const res = await fetch(apiUrl(`/api/stations/${stationId}`), {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setDeletingStationId(null);
+      if (res.ok) {
+        setToastMessage({ msg: 'Station premise and linked hardware permanently removed.', type: 'success' });
+        fetchStations();
+      } else {
+        setToastMessage({ msg: 'Failed to delete station premise.', type: 'error' });
+      }
+    } catch (err) {
+      console.error(err);
+      setDeletingStationId(null);
+      setToastMessage({ msg: 'Network failure communicating with server.', type: 'error' });
     }
   };
 
@@ -79,11 +108,13 @@ export default function StationsView() {
         await fetchStations();
         setViewState('list');
         setSName(''); setSAddress(''); setSPhone(''); setSLat(''); setSLng(''); setSDescription('');
+        setToastMessage({ msg: 'Station premise deployed successfully!', type: 'success' });
       } else {
-        alert("Failed to create station.");
+        setToastMessage({ msg: 'Failed to create station premise.', type: 'error' });
       }
     } catch (err) {
       console.error(err);
+      setToastMessage({ msg: 'Network failure deploying station.', type: 'error' });
     }
   };
 
@@ -145,7 +176,11 @@ export default function StationsView() {
                   <p className="text-xs font-semibold text-(--brand-muted) uppercase tracking-wider mb-3">Owner: {station.ownerName || user?.displayName}</p>
                   <p className="text-sm text-(--brand-muted) mb-4 line-clamp-2">{station.address}</p>
                   <div className="mt-auto pt-4 border-t border-(--brand-border)/60 flex justify-between items-center text-[12px] font-bold text-(--brand-muted)">
-                    <span>{station.chargers?.length || 0} Hardware Units Linked</span>
+                    <span>{Array.isArray(station.chargers) ? station.chargers.length : 0} Hardware Units Linked</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingStation(station)} className="px-3 py-1.5 rounded-lg bg-(--surface-soft) text-(--brand-blue) hover:bg-(--brand-blue) hover:text-white transition-all font-bold cursor-pointer">Edit</button>
+                      <button onClick={() => setDeletingStationId(station._id)} className="px-3 py-1.5 rounded-lg bg-(--ui-error)/10 text-(--ui-error) hover:bg-(--ui-error) hover:text-white transition-all font-bold cursor-pointer">Delete</button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -155,7 +190,7 @@ export default function StationsView() {
 
         {viewState === 'create' && (
           <motion.div key="create" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-3xl bg-(--brand-card) rounded-[2rem] p-8 border border-(--brand-border) shadow-[0_20px_60px_-15px_rgba(9,32,52,0.1)] relative">
-            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink)"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink) cursor-pointer"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <h2 className="text-2xl font-bold text-(--brand-ink) mb-6">Create New Premise</h2>
             
             <form onSubmit={handleCreateStation} className="space-y-5">
@@ -175,7 +210,7 @@ export default function StationsView() {
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                     <input required type="text" placeholder="Latitude" value={sLat} onChange={e => setSLat(e.target.value)} className={`${inputCls} flex-1`} />
                     <input required type="text" placeholder="Longitude" value={sLng} onChange={e => setSLng(e.target.value)} className={`${inputCls} flex-1`} />
-                    <button type="button" onClick={handleLocationRequest} className="px-6 py-3.5 bg-(--surface-soft) text-(--brand-blue) rounded-xl border border-(--brand-border) font-bold hover:bg-(--brand-blue)/10 transition-colors shrink-0 flex justify-center items-center gap-2">
+                    <button type="button" onClick={handleLocationRequest} className="px-6 py-3.5 bg-(--surface-soft) text-(--brand-blue) rounded-xl border border-(--brand-border) font-bold hover:bg-(--brand-blue)/10 transition-colors shrink-0 flex justify-center items-center gap-2 cursor-pointer">
                       <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                       Pin on Map
                     </button>
@@ -183,8 +218,8 @@ export default function StationsView() {
                 </div>
                 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Contact Phone</label>
-                  <input type="text" required placeholder="+94 7X XXX XXXX" value={sPhone} onChange={e => setSPhone(e.target.value)} className={inputCls} />
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Support Contact</label>
+                  <input required type="tel" placeholder="+94 11 234 5678" value={sPhone} onChange={e => setSPhone(e.target.value)} className={inputCls} />
                 </div>
 
                 <div className="space-y-1.5">
@@ -193,43 +228,65 @@ export default function StationsView() {
                 </div>
 
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Short Description (Optional)</label>
-                  <textarea rows={3} placeholder="e.g. Basement level 2, next to the elevators." value={sDescription} onChange={e => setSDescription(e.target.value)} className={inputCls} />
+                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider">Premise Notes</label>
+                  <input type="text" placeholder="Optional directions..." value={sDescription} onChange={e => setSDescription(e.target.value)} className={inputCls} />
                 </div>
               </div>
 
-              <button type="submit" className="w-full py-4 mt-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all">
-                Finalize & Create Station
+              <button type="submit" className="w-full py-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer">
+                Deploy Premise
               </button>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* MAP MODAL OVERLAY */}
       <AnimatePresence>
-        {showMapPicker && isLoaded && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-(--brand-ink)/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-(--brand-card) rounded-[2rem] overflow-hidden w-full max-w-4xl h-[70vh] shadow-2xl flex flex-col border border-(--brand-border)">
-              <div className="px-6 py-4 border-b border-(--brand-border) flex justify-between items-center bg-(--background)">
-                <div>
-                  <h3 className="font-bold text-(--brand-ink) text-lg">Pin Location</h3>
-                  <p className="text-xs font-medium text-(--brand-muted)">Click anywhere on the map to grab exact coordinates.</p>
-                </div>
+        {showMapPicker && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} className="bg-(--brand-card) rounded-3xl overflow-hidden w-full max-w-4xl h-[80vh] flex flex-col border border-(--brand-border) shadow-2xl">
+              <div className="p-4 bg-(--surface-soft) border-b border-(--brand-border) flex justify-between items-center">
+                <h3 className="font-bold text-(--brand-ink)">Pin Station Location</h3>
+                <button onClick={() => setShowMapPicker(false)} className="p-2 text-(--brand-muted) hover:text-(--brand-ink) cursor-pointer">✕</button>
               </div>
-              <div className="flex-1 relative bg-slate-100">
-                <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={mapCenter} zoom={14} onClick={handleMapClick} options={{ disableDefaultUI: true }}>
-                  {sLat && sLng && <Marker position={{ lat: Number(sLat), lng: Number(sLng) }} />}
-                </GoogleMap>
+              <div className="flex-1 relative bg-(--surface-soft)">
+                {isLoaded ? (
+                  <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={mapCenter} zoom={14} onClick={handleMapClick} options={{ disableDefaultUI: true }}>
+                    {sLat && sLng && <Marker position={{ lat: Number(sLat), lng: Number(sLng) }} />}
+                  </GoogleMap>
+                ) : <div className="p-10 text-center font-bold">Loading Maps...</div>}
               </div>
               <div className="p-4 bg-(--background) border-t border-(--brand-border) flex justify-between items-center">
                 <div className="text-sm font-bold text-(--brand-blue)">{sLat && sLng ? `Selected: ${sLat}, ${sLng}` : 'Click map...'}</div>
-                <button onClick={() => setShowMapPicker(false)} className="px-6 py-3 bg-(--brand-ink) text-white rounded-xl font-bold hover:bg-(--brand-blue-deep) transition-colors">Confirm Pin</button>
+                <button onClick={() => setShowMapPicker(false)} className="px-6 py-3 bg-(--brand-ink) text-white rounded-xl font-bold hover:bg-(--brand-blue-deep) transition-colors cursor-pointer">Confirm Pin</button>
               </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      <EditStationModal
+        station={editingStation as unknown as null}
+        isOpen={!!editingStation}
+        onClose={() => setEditingStation(null)}
+        onSaved={fetchStations}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deletingStationId)}
+        title="Permanently Delete Station"
+        message="Are you sure you want to delete this station premise? This will permanently remove all linked hardware charging units and active operator logs."
+        confirmText="Delete Station"
+        isDanger={true}
+        onClose={() => setDeletingStationId(null)}
+        onConfirm={() => deletingStationId && executeDeleteStation(deletingStationId)}
+      />
+
+      <Toast
+        message={toastMessage?.msg || null}
+        type={toastMessage?.type || 'error'}
+        onClose={() => setToastMessage(null)}
+      />
     </div>
   );
 }

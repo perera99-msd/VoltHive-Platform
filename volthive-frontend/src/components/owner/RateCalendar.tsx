@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import { auth } from '../../lib/firebase';
+import Toast from '../common/Toast';
 
 interface RateEntry {
   dayOfWeek: number; // 0 = Sunday
@@ -17,7 +18,6 @@ interface BaseRateConfig {
 }
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-// generate 24 hourly slots starting at 00:00, display as start times; labels will show range
 const TIME_SLOTS = Array.from({ length: 24 }).map((_, i) => `${String(i).padStart(2, '0')}:00`);
 
 interface RateCalendarProps {
@@ -32,6 +32,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [chargers, setChargers] = useState<Array<{ id: string; name: string; raw?: any }>>([]);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' } | null>(null);
 
   useEffect(() => {
     const loadChargers = async () => {
@@ -44,7 +45,6 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         const payload = await res.json();
         const list = (payload?.data || []).map((c: any) => ({ id: c._id, name: `${c.stationName} • ${c.plugType || 'Charger'}`, raw: c }));
         setChargers(list);
-        // Do not auto-select charger; user must pick one to view/edit rates
       } catch (error) {
         console.error('Failed to load chargers for rate calendar:', error);
       }
@@ -63,12 +63,11 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
       ));
       setEditingRate(null);
     } else {
-      // Check for duplicate
       const exists = weeklyRates.some(
         r => r.dayOfWeek === rate.dayOfWeek && r.startTime === rate.startTime
       );
       if (exists) {
-        alert('Rate for this time slot already exists');
+        setToastMessage({ msg: 'Rate for this time slot already exists.', type: 'error' });
         return;
       }
       setWeeklyRates([...weeklyRates, rate]);
@@ -84,7 +83,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
 
   const saveRates = async () => {
     if (!selectedCharger) {
-      alert('Select a charger before saving rates.');
+      setToastMessage({ msg: 'Select a charger before saving rates.', type: 'error' });
       return;
     }
 
@@ -110,15 +109,15 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
       });
 
       if (res.ok) {
-        alert('Rates saved successfully!');
+        setToastMessage({ msg: 'Rates saved successfully!', type: 'success' });
       } else {
         const err = await res.json().catch(() => null);
         console.error('Save rates failed', err);
-        alert('Failed to save rates');
+        setToastMessage({ msg: 'Failed to save rates.', type: 'error' });
       }
     } catch (error) {
       console.error('Failed to save rates:', error);
-      alert('Failed to save rates');
+      setToastMessage({ msg: 'Failed to save rates.', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -340,11 +339,17 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         <button 
           onClick={saveRates}
           disabled={isSaving}
-          className="flex-1 px-6 py-3 bg-(--brand-blue) text-white font-semibold rounded-lg hover:bg-(--brand-blue-deep) disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex-1 px-6 py-3 bg-(--brand-blue) text-white font-semibold rounded-lg hover:bg-(--brand-blue-deep) disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           {isSaving ? 'Saving...' : 'Save Rate Schedule'}
         </button>
       </div>
+
+      <Toast
+        message={toastMessage?.msg || null}
+        type={toastMessage?.type || 'error'}
+        onClose={() => setToastMessage(null)}
+      />
     </div>
   );
 }
