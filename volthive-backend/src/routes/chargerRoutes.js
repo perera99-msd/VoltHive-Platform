@@ -5,12 +5,19 @@ const {
   getOwnerChargers,
   getChargerRates,
   updateChargerRates,
-  getCurrentChargerRate
+  getCurrentChargerRate,
+  createCharger,
+  updateCharger,
+  deleteCharger
 } = require('../controllers/chargerController');
 
 router.get('/owner', protect, getOwnerChargers);
+router.post('/', protect, createCharger);
+router.put('/:id', protect, updateCharger);
+router.delete('/:id', protect, deleteCharger);
+
 router.get('/:id/rates', protect, getChargerRates);
 router.put('/:id/rates', protect, updateChargerRates);
-router.get('/:id/current-rate', getCurrentChargerRate); // public endpoint for drivers
+router.get('/:id/current-rate', getCurrentChargerRate);
 
 module.exports = router;

@@ -150,3 +150,82 @@ exports.getCurrentChargerRate = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
+
+exports.createCharger = async (req, res) => {
+  try {
+    const owner = await User.findOne({ firebaseUid: req.user.uid });
+    if (!owner || owner.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'Only owners can create chargers.' });
+    }
+
+    const { stationId, plugType, powerKW, basePricePerKwh } = req.body;
+    const station = await Station.findById(stationId);
+    if (!station) return res.status(404).json({ success: false, message: 'Station not found.' });
+    if (String(station.ownerId) !== String(owner._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized for this station.' });
+    }
+
+    station.chargers.push({
+      plugType: plugType || 'CCS2',
+      powerKW: Number(powerKW) || 50,
+      basePricePerKwh: Number(basePricePerKwh) || 85,
+      status: 'AVAILABLE'
+    });
+
+    await station.save();
+    return res.status(201).json({ success: true, message: 'Charger added', data: station.chargers });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
+exports.updateCharger = async (req, res) => {
+  try {
+    const owner = await User.findOne({ firebaseUid: req.user.uid });
+    if (!owner || owner.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'Only owners can edit chargers.' });
+    }
+
+    const chargerId = req.params.id;
+    const station = await Station.findOne({ 'chargers._id': chargerId });
+    if (!station) return res.status(404).json({ success: false, message: 'Charger not found.' });
+    if (String(station.ownerId) !== String(owner._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized.' });
+    }
+
+    const charger = station.chargers.id(chargerId);
+    const { plugType, powerKW, basePricePerKwh, status } = req.body;
+    if (plugType) charger.plugType = plugType;
+    if (typeof powerKW !== 'undefined') charger.powerKW = Number(powerKW);
+    if (typeof basePricePerKwh !== 'undefined') charger.basePricePerKwh = Number(basePricePerKwh);
+    if (status) charger.status = status;
+
+    await station.save();
+    return res.status(200).json({ success: true, message: 'Charger updated', data: charger });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
+exports.deleteCharger = async (req, res) => {
+  try {
+    const owner = await User.findOne({ firebaseUid: req.user.uid });
+    if (!owner || owner.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'Only owners can delete chargers.' });
+    }
+
+    const chargerId = req.params.id;
+    const station = await Station.findOne({ 'chargers._id': chargerId });
+    if (!station) return res.status(404).json({ success: false, message: 'Charger not found.' });
+    if (String(station.ownerId) !== String(owner._id)) {
+      return res.status(403).json({ success: false, message: 'Not authorized.' });
+    }
+
+    station.chargers.pull(chargerId);
+    await station.save();
+    await Rate.deleteOne({ chargerId });
+    return res.status(200).json({ success: true, message: 'Charger removed' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};

@@ -11,6 +11,7 @@ import ChargersView from '../../../components/owner/views/ChargersView';
 import LiveOperationsView from '../../../components/owner/views/LiveOperationsView';
 import RateCalendar from '../../../components/owner/RateCalendar';
 import OwnerMap from '../../../components/owner/views/OwnerMap'; 
+import AiForecastCard from '../../../components/owner/AiForecastCard';
 
 export default function OwnerDashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -40,15 +41,16 @@ export default function OwnerDashboardPage() {
 
   return (
     <ProtectedRoute requiredRole="owner">
-      <div className="flex h-screen w-full bg-(--background) overflow-hidden selection:bg-(--accent-blue)/30">
+      <div className="fixed inset-0 flex w-full h-full bg-(--background) overflow-hidden selection:bg-(--accent-blue)/30">
         
         <div className="absolute top-[-10%] left-[20%] w-[500px] h-[500px] rounded-full bg-(--accent-blue)/10 blur-[120px] pointer-events-none z-0" />
         <div className="absolute bottom-[-10%] right-[10%] w-[600px] h-[600px] rounded-full bg-(--accent-green)/10 blur-[120px] pointer-events-none z-0" />
 
         <OwnerSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
         
-        <main className="flex-1 relative z-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-          <div className="min-h-full p-6 md:p-8 lg:p-10 pb-10 vh-rise-in">
+        <main className="flex-1 h-full relative z-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+          <div className="p-6 md:p-10 max-w-7xl mx-auto min-h-full flex flex-col">
+            <AiForecastCard />
             {renderContent()}
           </div>
         </main>

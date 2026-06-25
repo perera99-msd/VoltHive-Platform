@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import HomeNavbar from '../components/home/HomeNavbar';
 import Hero from '../components/home/Hero';
@@ -62,76 +63,93 @@ const partnerGroups = [
 function HomeSections() {
   return (
     <>
-      <section id="how-to-join" className="relative z-10 px-4 sm:px-6 py-8 sm:py-12 max-w-7xl mx-auto overflow-x-hidden">
-        <div className="rounded-4xl sm:rounded-[2.4rem] border border-(--brand-border) bg-(--brand-card)/85 backdrop-blur-sm shadow-[0_20px_60px_-30px_rgba(9,32,52,0.24)] px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-          <div className="max-w-2xl mb-8 sm:mb-10">
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-(--brand-muted) font-semibold mb-2">How to Join</p>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-(--brand-ink) mb-3">A simple path from signup to charging.</h2>
-            <p className="text-base sm:text-lg text-(--brand-muted) leading-relaxed">The home page should make the journey obvious, especially on mobile where space is tight and decisions need to be fast.</p>
+      {/* SECTION: AI NETWORK TELEMETRY GAZETTE */}
+      <section id="news" className="relative z-10 px-6 sm:px-10 py-12 sm:py-20 max-w-[1500px] mx-auto font-sans">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] items-stretch">
+          
+          {/* Main Gazette Flagship Card */}
+          <div className="rounded-3xl sm:rounded-[3rem] border border-(--brand-border) bg-linear-to-br from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white p-10 sm:p-14 lg:p-16 shadow-2xl relative overflow-hidden flex flex-col justify-between group">
+            <div className="absolute -top-16 -right-16 h-72 w-72 rounded-full bg-white/12 blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
+            <div className="space-y-6 relative z-10">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/25 font-mono text-xs font-black uppercase tracking-widest text-white">
+                <span>TELEMETRY ENGINE ● ARCHITECTURE</span>
+              </div>
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.05]">
+                Smart pricing decisions computed from live grid data.
+              </h2>
+              <p className="text-white/95 text-base sm:text-xl leading-relaxed max-w-2xl font-medium text-balance">
+                Our predictive Python tariff module continuously queries active hardware sensor streams and local weather APIs to balance station demand loads across peak 6-hour windows.
+              </p>
+            </div>
+            
+            <div className="pt-8 mt-10 border-t border-white/20 flex items-center justify-between font-mono text-xs font-black text-white/95 relative z-10">
+              <span>PROTOCOL v2.1 ACTIVE</span>
+              <span>● AUTONOMOUS YIELD SYNC</span>
+            </div>
           </div>
 
-          <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
-            {joinSteps.map((step, index) => (
-              <article key={step.title} className="rounded-3xl border border-(--brand-border) bg-linear-to-br from-background to-(--brand-card) p-5 sm:p-6 shadow-[0_12px_30px_-20px_rgba(9,32,52,0.2)]">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-2xl bg-(--accent-blue)/12 text-(--brand-blue) font-semibold mb-4">
-                  0{index + 1}
+          {/* Side Telemetry Stack */}
+          <div className="grid gap-6">
+            {newsItems.map((item, idx) => (
+              <article key={item.title} className="rounded-3xl border border-(--brand-border) bg-(--brand-card) p-7 sm:p-9 shadow-sm hover:border-(--brand-blue) transition-all flex flex-col justify-center">
+                <div className="inline-flex items-center gap-2 font-mono text-xs font-black tracking-wider uppercase text-(--brand-blue) mb-3">
+                  <span>LOG ● 0{idx + 1}</span>
+                  <span>— {item.badge}</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-semibold text-(--brand-ink) mb-2">{step.title}</h3>
-                <p className="text-sm sm:text-[15px] leading-relaxed text-(--brand-muted)">{step.description}</p>
+                <h3 className="text-xl sm:text-2xl font-black text-(--brand-ink) mb-2.5 tracking-tight">{item.title}</h3>
+                <p className="text-sm sm:text-base text-(--brand-muted) leading-relaxed font-medium">{item.description}</p>
               </article>
             ))}
           </div>
+
         </div>
       </section>
 
-      <section id="news" className="relative z-10 px-4 sm:px-6 py-8 sm:py-12 max-w-7xl mx-auto overflow-x-hidden">
-        <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] items-stretch">
-          <div className="rounded-4xl sm:rounded-[2.4rem] border border-(--brand-border) bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-(--brand-card) p-6 sm:p-8 lg:p-10 shadow-[0_24px_60px_-30px_rgba(74,144,164,0.55)] relative overflow-hidden">
-            <div className="absolute -top-12 -right-10 h-40 w-40 rounded-full bg-(--brand-card)/15 blur-3xl" />
-            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-(--brand-card)/80 font-semibold mb-3">News</p>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-4">Updates that keep the network moving.</h2>
-            <p className="text-(--brand-card)/90 text-base sm:text-lg leading-relaxed max-w-xl">Use this space for product updates, station announcements, and service notices without forcing users to hunt across the app.</p>
-          </div>
-
-          <div className="grid gap-4 sm:gap-5">
-            {newsItems.map((item) => (
-              <article key={item.title} className="rounded-3xl border border-(--brand-border) bg-(--brand-card)/90 p-5 sm:p-6 shadow-[0_12px_30px_-20px_rgba(9,32,52,0.18)]">
-                <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-(--brand-muted) font-semibold mb-3">{item.badge}</p>
-                <h3 className="text-lg sm:text-xl font-semibold text-(--brand-ink) mb-2">{item.title}</h3>
-                <p className="text-sm sm:text-[15px] text-(--brand-muted) leading-relaxed">{item.description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="partners" className="relative z-10 px-4 sm:px-6 py-8 sm:py-12 max-w-7xl mx-auto overflow-x-hidden">
-        <div className="rounded-4xl sm:rounded-[2.4rem] border border-(--brand-border) bg-(--brand-card)/85 backdrop-blur-sm shadow-[0_20px_60px_-30px_rgba(9,32,52,0.22)] px-5 py-10 sm:px-8 lg:px-10 lg:py-14">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mb-8 sm:mb-10">
-            <div className="max-w-2xl">
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-(--brand-muted) font-semibold mb-2">Partners</p>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-(--brand-ink) mb-3">Built for operators, venues, and mobility teams.</h2>
-              <p className="text-base sm:text-lg text-(--brand-muted) leading-relaxed">VoltHive works best when the whole charging network feels connected across property, fleet, and customer experiences.</p>
+      {/* SECTION: COMMERCIAL FLEETS & POS PORTALS */}
+      <section id="partners" className="relative z-10 px-6 sm:px-10 py-12 sm:py-20 max-w-[1500px] mx-auto font-sans">
+        <div className="rounded-3xl sm:rounded-[3rem] border border-(--brand-border) bg-(--brand-card) p-10 sm:p-14 lg:p-18 shadow-[0_30px_90px_-25px_rgba(74,144,164,0.22)]">
+          
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-16">
+            <div className="max-w-3xl">
+              <p className="text-[11px] uppercase tracking-[0.28em] text-(--brand-green-deep) font-black mb-3">Commercial Operators</p>
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-(--brand-ink) mb-5">
+                Hardware checkouts without gateway fees.
+              </h2>
+              <p className="text-base sm:text-xl text-(--brand-muted) leading-relaxed font-medium text-balance">
+                Connect your physical charging station hardware to VoltHive's predictive Python surge engine and stream direct zero-cut hardware settlements.
+              </p>
             </div>
-            <div className="inline-flex items-center gap-2 self-start lg:self-auto px-4 py-2 rounded-full border border-(--brand-border) bg-background text-(--brand-muted) text-sm font-semibold">
-              Network ready
-            </div>
-            <div className="ml-3 self-start lg:self-auto">
-              <Link href="/owner-login" className="px-4 py-2 rounded-full text-sm font-semibold bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-(--brand-card) shadow-[0_8px_20px_rgba(74,144,164,0.18)]">Owner Login</Link>
+            
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0">
+              <Link 
+                href="/owner-login" 
+                className="px-9 py-4.5 rounded-full text-xs font-extrabold uppercase tracking-[0.18em] bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white shadow-lg hover:brightness-105 active:scale-95 transition-all text-center flex items-center justify-center"
+              >
+                <span>ADMIN CENTER</span>
+              </Link>
+              <Link 
+                href="/driver-login" 
+                className="px-9 py-4.5 rounded-full text-xs font-extrabold uppercase tracking-[0.18em] bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) transition-all text-center flex items-center justify-center"
+              >
+                <span>DRIVER PORTAL →</span>
+              </Link>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            {partnerGroups.map((group) => (
-              <div key={group} className="rounded-[1.35rem] border border-(--brand-border) bg-linear-to-br from-background to-(--brand-card) p-5 sm:p-6">
-                <div className="w-11 h-11 rounded-2xl bg-(--accent-green)/18 text-(--brand-green-deep) flex items-center justify-center font-semibold mb-4">
-                  •
+          <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
+            {partnerGroups.map((group, gIdx) => (
+              <div key={group} className="rounded-3xl border border-(--brand-border) bg-(--surface-soft)/30 p-8 hover:border-(--brand-green) hover:bg-(--brand-card) transition-all group shadow-none hover:shadow-xl">
+                <div className="w-12 h-12 rounded-2xl bg-(--brand-card) border border-(--brand-border) shadow-xs text-(--brand-green-deep) flex items-center justify-center font-mono font-black text-sm mb-6 group-hover:scale-110 transition-transform">
+                  0{gIdx + 1}
                 </div>
-                <h3 className="text-lg font-semibold text-(--brand-ink) mb-2">{group}</h3>
-                <p className="text-sm sm:text-[15px] text-(--brand-muted) leading-relaxed">Flexible rollout support, branded experiences, and consistent station visibility across the network.</p>
+                <h3 className="text-xl sm:text-2xl font-black text-(--brand-ink) mb-3 tracking-tight">{group}</h3>
+                <p className="text-sm sm:text-base text-(--brand-muted) leading-relaxed font-medium">
+                  Zero-fee POS hardware checkouts, custom AI surge threshold parameters, and real-time dashboard auditing.
+                </p>
               </div>
             ))}
           </div>
+
         </div>
       </section>
     </>
@@ -142,12 +160,21 @@ function HomeSections() {
 // MAIN PAGE COMPONENT
 // ============================================================================
 export default function Home() {
+  const router = useRouter();
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   
   const [isMapView, setIsMapView] = useState(false);
   const [showLocationWarning, setShowLocationWarning] = useState(false);
+
+  useEffect(() => {
+    const isPwa = window.matchMedia('(display-mode: standalone)').matches || 
+                  (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    if (isPwa) {
+      router.replace('/driver-login');
+    }
+  }, [router]);
 
   const scrollToSection = (sectionId: string) => {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });

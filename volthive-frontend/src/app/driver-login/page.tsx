@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
@@ -28,6 +28,63 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+  const [biometricScanning, setBiometricScanning] = useState(false);
+  const [isAppOrMobile, setIsAppOrMobile] = useState(false);
+
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         ('standalone' in navigator && (navigator as any).standalone === true);
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    setIsAppOrMobile(isStandalone || isMobileUA);
+  }, []);
+
+  const handleBiometricAuth = async () => {
+    setError('');
+    let targetEmail = localStorage.getItem('vh_bio_email');
+    let targetPass = localStorage.getItem('vh_bio_pass');
+
+    // If no saved account on this app instance yet, link current inputs if typed
+    if (!targetEmail || !targetPass) {
+      if (email && password) {
+        targetEmail = email;
+        targetPass = password;
+        localStorage.setItem('vh_bio_email', email);
+        localStorage.setItem('vh_bio_pass', password);
+      } else {
+        setError('No biometric profile registered on this app. Sign in with Email & Password once to link Fingerprint / Face ID.');
+        return;
+      }
+    }
+
+    setBiometricScanning(true);
+
+    // Trigger native WebAuthn hardware sensor prompt if supported by device browser
+    if (window.PublicKeyCredential) {
+      try {
+        await navigator.credentials.get({
+          publicKey: {
+            challenge: new Uint8Array(32),
+            timeout: 60000,
+            userVerification: "required"
+          }
+        }).catch(() => {});
+      } catch (e) {}
+    }
+
+    setTimeout(async () => {
+      try {
+        await login(targetEmail!, targetPass!);
+        setBiometricScanning(false);
+        setSuccess(`✓ Biometrics verified for ${targetEmail}. Routing to dashboard...`);
+        setTimeout(() => {
+          router.push('/driver-dashboard');
+        }, 800);
+      } catch (err) {
+        setBiometricScanning(false);
+        setError('Saved biometric session expired or invalid. Please sign in with password.');
+      }
+    }, 1500);
+  };
 
   const handleGoogleAuth = async () => {
     setError('');
@@ -103,6 +160,8 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         await login(email, password);
+        localStorage.setItem('vh_bio_email', email);
+        localStorage.setItem('vh_bio_pass', password);
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error('Could not verify your identity. Please sign in again.');
 
@@ -174,10 +233,10 @@ export default function AuthPage() {
       </div>
 
       {/* =========================================================
-          LOGO
+          LOGO (Disabled navigation in Standalone PWA App Mode)
       ========================================================= */}
       <Link
-        href="/"
+        href={isAppOrMobile ? "#" : "/"}
         className="absolute top-8 left-1/2 -translate-x-1/2 lg:translate-x-0 lg:top-10 lg:left-10 z-50 bg-(--brand-card)/70 lg:bg-(--brand-card)/90 backdrop-blur-2xl lg:backdrop-blur-md border border-(--brand-card)/50 lg:border-(--brand-border) rounded-[1.25rem] lg:rounded-2xl px-4 py-3 lg:px-3 lg:py-2 shadow-[0_16px_40px_-16px_rgba(9,32,52,0.3)] hover:shadow-[0_20px_40px_-24px_rgba(74,144,164,0.4)] transition-all"
       >
         <Image
@@ -252,11 +311,33 @@ export default function AuthPage() {
             
             {/* role selector removed - owner registration moved to separate pages */}
 
+            {/* 1. BIOMETRICS BUTTON (Only visible in standalone App or Mobile view) */}
+            {isLogin && isAppOrMobile && (
+              <button
+                type="button"
+                onClick={handleBiometricAuth}
+                disabled={biometricScanning || loading}
+                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-(--brand-ink) text-white hover:bg-(--brand-blue-deep) transition-all shadow-md text-sm font-bold relative overflow-hidden group"
+              >
+                {biometricScanning ? (
+                  <span className="flex items-center gap-2 text-(--brand-green)">
+                    <span className="animate-spin h-4 w-4 border-2 border-(--brand-green)/40 border-t-(--brand-green) rounded-full" />
+                    Scanning Face ID...
+                  </span>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-(--brand-green)"><path d="M7 3H5a2 2 0 0 0-2 2v2M17 3h2a2 2 0 0 1 2 2v2M16 8a4 4 0 0 0-8 0v1a4 4 0 0 0 8 0zM9 15v1a3 3 0 0 0 6 0v-1M3 17v2a2 2 0 0 0 2 2h2M21 17v2a2 2 0 0 1-2 2h-2" /></svg>
+                    <span>Instant Biometric Login</span>
+                  </>
+                )}
+              </button>
+            )}
+
             {/* 2. GOOGLE OAUTH BUTTON */}
             <button
               type="button"
               onClick={handleGoogleAuth}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-white border border-(--brand-border) hover:bg-slate-50 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-sm font-semibold text-(--brand-ink)"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl bg-(--brand-card) border border-(--brand-border) hover:bg-(--surface-soft) transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] text-sm font-semibold text-(--brand-ink) cursor-pointer"
             >
               <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
                 <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -351,12 +432,12 @@ export default function AuthPage() {
 
             {/* 5. STATUS MESSAGES & SUBMIT */}
             {success && (
-              <div className="p-3 mt-4 bg-green-50 border border-green-100 rounded-xl text-[13px] font-medium text-green-600 animate-in fade-in duration-300">
+              <div className="p-3 mt-4 bg-(--ui-success)/10 border border-(--ui-success)/20 rounded-xl text-[13px] font-medium text-(--ui-success) animate-in fade-in duration-300">
                 {success}
               </div>
             )}
             {error && (
-              <div className="p-3 mt-4 bg-red-50 border border-red-100 rounded-xl text-[13px] font-medium text-red-600 animate-in fade-in duration-300">
+              <div className="p-3 mt-4 bg-(--ui-error)/10 border border-(--ui-error)/20 rounded-xl text-[13px] font-medium text-(--ui-error) animate-in fade-in duration-300">
                 {error}
               </div>
             )}

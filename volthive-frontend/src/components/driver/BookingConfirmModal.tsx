@@ -30,6 +30,12 @@ export default function BookingConfirmModal({
   const [selectedStartTime, setSelectedStartTime] = useState<string | null>(null);
   const [selectedEndTime, setSelectedEndTime] = useState<string | null>(null);
 
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date);
+    setSelectedStartTime(null);
+    setSelectedEndTime(null);
+  };
+
   const todaysBookings = existingBookings.filter(b => b.date === selectedDate);
 
   const estimatedDuration = selectedStartTime && selectedEndTime
@@ -88,7 +94,7 @@ export default function BookingConfirmModal({
         <div className="p-6 sm:p-8 space-y-6">
           {/* Date Picker */}
           <div>
-            <DatePicker selectedDate={selectedDate} onDateChange={setSelectedDate} />
+            <DatePicker selectedDate={selectedDate} onDateChange={handleDateChange} />
           </div>
 
           {/* Time Slot Picker */}
@@ -99,6 +105,7 @@ export default function BookingConfirmModal({
               onStartTimeChange={setSelectedStartTime}
               onEndTimeChange={setSelectedEndTime}
               bookedSlots={todaysBookings}
+              isToday={selectedDate === new Date().toISOString().split('T')[0]}
             />
           </div>
 

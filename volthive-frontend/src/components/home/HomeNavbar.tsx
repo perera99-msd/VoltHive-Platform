@@ -1,128 +1,225 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface HomeNavbarProps {
-  onLogoClick: () => void;
-  onNavigateSection: (sectionId: string) => void;
+  onLogoClick?: () => void;
+  onNavigate?: (id: string) => void;
+  onNavigateSection?: (id: string) => void;
 }
 
-const navItems = [
-  { id: 'services', label: 'Services' },
-  { id: 'how-to-join', label: 'How to Join' },
-  { id: 'news', label: 'News' },
-  { id: 'partners', label: 'Partners' },
-  { id: 'about-us', label: 'About Us' },
-];
+export default function HomeNavbar({ onLogoClick, onNavigate, onNavigateSection }: HomeNavbarProps) {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
-export default function HomeNavbar({ onLogoClick, onNavigateSection }: HomeNavbarProps) {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 15);
+    };
+    window.addEventListener('scroll', handleScroll);
+    
+    const standaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                           ('standalone' in navigator && (navigator as any).standalone === true);
+    setIsStandalone(standaloneMode);
 
-  const handleNavigateSection = (sectionId: string) => {
-    setIsMobileMenuOpen(false);
-    onNavigateSection(sectionId);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Sandbox PWA App Mode: Suppress marketing navigation bar in standalone mode
+  if (isStandalone) return null;
+
+  const handleNavClick = (id: string) => {
+    setMobileMenuOpen(false);
+    if (onNavigateSection) {
+      onNavigateSection(id);
+    } else if (onNavigate) {
+      onNavigate(id);
+    } else {
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   };
 
   return (
-    <nav className="fixed w-full z-[90] top-0 pointer-events-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-4 pointer-events-auto relative">
+    <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-8 pt-4 sm:pt-6 pointer-events-none transition-all duration-500 font-sans">
+      
+      {/* FLOATING GLASS PILl COCKPIT BAR */}
+      <div className={`max-w-[1500px] mx-auto rounded-2xl sm:rounded-full pointer-events-auto transition-all duration-300 px-5 sm:px-8 flex items-center justify-between gap-4 ${
+        isScrolled 
+          ? 'py-3 bg-white/92 backdrop-blur-2xl border border-[#e0e5e3] shadow-[0_16px_48px_-12px_rgba(0,0,0,0.12)]' 
+          : 'py-4 sm:py-5 bg-white/80 backdrop-blur-xl border border-[#e0e5e3]/80 shadow-[0_8px_30px_rgba(0,0,0,0.05)]'
+      }`}>
         
-        {/* Main Navbar Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: -14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-          className="h-16 sm:h-20 rounded-[1.25rem] sm:rounded-2xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl shadow-[0_14px_38px_-25px_rgba(9,32,52,0.45)] flex items-center justify-between px-4 sm:px-7 transition-all relative z-50"
+        {/* BRAND LOGO */}
+        <Link 
+          href="/" 
+          onClick={onLogoClick}
+          className="flex items-center gap-3 transition-transform active:scale-95 shrink-0"
         >
-        
-          {/* Logo */}
-          <button type="button" className="flex items-center gap-3 active:scale-95 transition-transform" onClick={() => {
-            setIsMobileMenuOpen(false);
-            onLogoClick();
-          }}>
-            <Image
-              src="/brand/logo-without-slogan.png"
-              alt="VoltHive"
-              width={180}
-              height={50}
-              className="h-6 sm:h-9 w-auto"
-              priority
-            />
-          </button>
-        
-          {/* Desktop Links (Hidden on Mobile) */}
-          <div className="hidden md:flex items-center gap-6 lg:gap-8 text-sm font-semibold text-(--brand-muted)">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => handleNavigateSection(item.id)}
-                className="hover:text-(--brand-ink) transition-colors"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <Image
+            src="/brand/logo-without-slogan.png"
+            alt="VoltHive Platform"
+            width={170}
+            height={44}
+            className="h-7 sm:h-8.5 w-auto object-contain"
+            priority
+          />
+        </Link>
 
-          {/* Desktop Auth Buttons (Hidden on Mobile) */}
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/driver-login"
-              className="px-6 py-2.5 text-[14px] font-semibold text-(--brand-card) rounded-full bg-linear-to-r from-(--brand-blue) to-(--brand-green) shadow-[0_10px_20px_-10px_rgba(74,144,164,0.65)] transition-all hover:brightness-105 active:scale-95"
-            >
-              Get Started
-            </Link>
-          </div>
-
-          {/* Mobile Hamburger Toggle (Hidden on Desktop) */}
+        {/* CENTER SEGMENTED NAVIGATION TAB PILl */}
+        <nav className="hidden lg:flex items-center gap-1 bg-[#f5f7f6] p-1.5 rounded-full border border-[#e0e5e3] shadow-inner">
           <button 
-            className="md:hidden p-2 -mr-2 text-(--brand-ink) transition-transform active:scale-95"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            type="button"
+            onClick={() => handleNavClick('about-us')} 
+            className="px-5 py-2 rounded-full text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#6b6f72] hover:text-[#1a1a1a] hover:bg-white transition-all cursor-pointer shadow-none hover:shadow-xs"
           >
-            {isMobileMenuOpen ? (
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-            ) : (
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
-            )}
+            Platform
           </button>
-        </motion.div>
-
-        {/* Mobile Dropdown Menu */}
-        {/* Uses scale and opacity for a premium, snappy reveal animation */}
-        <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            key="mobile-nav"
-            initial={{ opacity: 0, y: -10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            transition={{ duration: 0.52, ease: [0.22, 1, 0.36, 1] }}
-            className="md:hidden absolute top-[calc(100%+8px)] left-4 right-4 origin-top z-40"
+          <button 
+            type="button"
+            onClick={() => handleNavClick('services')} 
+            className="px-5 py-2 rounded-full text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#6b6f72] hover:text-[#1a1a1a] hover:bg-white transition-all cursor-pointer shadow-none hover:shadow-xs"
           >
-          <div className="bg-(--brand-card)/95 backdrop-blur-3xl border border-(--brand-border) rounded-3xl shadow-[0_20px_60px_-15px_rgba(9,32,52,0.2)] p-4 flex flex-col gap-1.5">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
+            Capabilities
+          </button>
+          <button 
+            type="button"
+            onClick={() => handleNavClick('news')} 
+            className="px-5 py-2 rounded-full text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#6b6f72] hover:text-[#1a1a1a] hover:bg-white transition-all cursor-pointer shadow-none hover:shadow-xs"
+          >
+            Telemetry
+          </button>
+          <button 
+            type="button"
+            onClick={() => handleNavClick('partners')} 
+            className="px-5 py-2 rounded-full text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#6b6f72] hover:text-[#1a1a1a] hover:bg-white transition-all cursor-pointer shadow-none hover:shadow-xs"
+          >
+            Operators
+          </button>
+          <Link 
+            href="/download-app" 
+            className="px-5 py-2 rounded-full text-[11px] font-extrabold tracking-[0.16em] uppercase text-[#4a90a4] hover:text-[#3f7f90] hover:bg-white transition-all flex items-center gap-1.5 shadow-none hover:shadow-xs"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-[#6cb567] animate-pulse" />
+            <span>Standalone PWA</span>
+          </Link>
+        </nav>
+
+        {/* RIGHT FLAGSHIP PORTAL TRIGGERS */}
+        <div className="hidden sm:flex items-center gap-3 shrink-0">
+          <Link
+            href="/owner-login"
+            className="px-5 py-2.5 rounded-full bg-[#e8f3ef] border border-[#dcefe8] text-[#1a1a1a] font-extrabold text-[11px] uppercase tracking-[0.18em] hover:bg-[#dcefe8] transition-all active:scale-95 flex items-center gap-2 shadow-2xs"
+          >
+            <span>Admin Center</span>
+          </Link>
+          <Link
+            href="/driver-login"
+            className="px-6 py-2.5 rounded-full bg-linear-to-r from-[#4a90a4] to-[#6cb567] text-white font-extrabold text-[11px] uppercase tracking-[0.18em] hover:brightness-105 transition-all shadow-md active:scale-95 flex items-center gap-2"
+          >
+            <span>Driver Portal →</span>
+          </Link>
+        </div>
+
+        {/* MOBILE MENU TOGGLE */}
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="lg:hidden p-2.5 rounded-xl bg-[#e8f3ef] border border-[#e0e5e3] text-[#1a1a1a] hover:bg-[#dcefe8] transition-colors cursor-pointer shrink-0"
+          aria-label="Toggle Navigation"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
+
+      </div>
+
+      {/* MOBILE DROPDOWN MENU */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -16, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -16, scale: 0.98 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="lg:hidden pointer-events-auto max-w-[1500px] mx-auto mt-3 rounded-3xl bg-white/95 backdrop-blur-2xl border border-[#e0e5e3] p-6 sm:p-8 shadow-2xl flex flex-col gap-6"
+          >
+            <div className="flex flex-col gap-3 text-sm font-bold text-[#1a1a1a]">
+              <button 
                 type="button"
-                onClick={() => handleNavigateSection(item.id)}
-                className="text-left text-(--brand-ink) font-semibold px-4 py-3.5 hover:bg-background rounded-xl transition-colors"
+                onClick={() => handleNavClick('about-us')} 
+                className="text-left py-3 px-4 rounded-2xl hover:bg-[#f5f7f6] transition-colors font-extrabold tracking-wide flex items-center justify-between"
               >
-                {item.label}
+                <span>Platform Architecture</span>
+                <span className="text-xs text-[#6b6f72]">→</span>
               </button>
-            ))}
-            
-            <div className="h-px w-full bg-(--brand-border) my-2" />
-            
-            <Link href="/driver-login" className="text-center font-bold text-(--brand-card) px-4 py-3.5 bg-linear-to-r from-(--brand-blue) to-(--brand-green) rounded-xl shadow-md shadow-(color:--accent-blue)/20 active:scale-95 transition-all">Get Started</Link>
-          </div>
+              <button 
+                type="button"
+                onClick={() => handleNavClick('services')} 
+                className="text-left py-3 px-4 rounded-2xl hover:bg-[#f5f7f6] transition-colors font-extrabold tracking-wide flex items-center justify-between"
+              >
+                <span>Core Capabilities</span>
+                <span className="text-xs text-[#6b6f72]">→</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleNavClick('news')} 
+                className="text-left py-3 px-4 rounded-2xl hover:bg-[#f5f7f6] transition-colors font-extrabold tracking-wide flex items-center justify-between"
+              >
+                <span>Live Telemetry Gazette</span>
+                <span className="text-xs text-[#6b6f72]">→</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => handleNavClick('partners')} 
+                className="text-left py-3 px-4 rounded-2xl hover:bg-[#f5f7f6] transition-colors font-extrabold tracking-wide flex items-center justify-between"
+              >
+                <span>Commercial Operators</span>
+                <span className="text-xs text-[#6b6f72]">→</span>
+              </button>
+              <Link 
+                href="/download-app"
+                onClick={() => setMobileMenuOpen(false)}
+                className="text-left py-3 px-4 rounded-2xl bg-[#e8f3ef]/60 hover:bg-[#e8f3ef] transition-colors font-extrabold tracking-wide text-[#4a90a4] flex items-center justify-between"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#6cb567] animate-pulse" />
+                  <span>Standalone PWA Installation</span>
+                </div>
+                <span className="text-xs">●</span>
+              </Link>
+            </div>
+
+            <div className="flex flex-col sm:hidden gap-3 pt-4 border-t border-[#e0e5e3]">
+              <Link
+                href="/driver-login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-4 rounded-full bg-linear-to-r from-[#4a90a4] to-[#6cb567] text-white font-extrabold text-xs uppercase tracking-widest text-center shadow-lg"
+              >
+                Driver Portal →
+              </Link>
+              <Link
+                href="/owner-login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full py-4 rounded-full bg-[#e8f3ef] border border-[#dcefe8] text-[#1a1a1a] font-extrabold text-xs uppercase tracking-widest text-center"
+              >
+                Admin Center
+              </Link>
+            </div>
           </motion.div>
         )}
-        </AnimatePresence>
-        
-      </div>
-    </nav>
+      </AnimatePresence>
+    </header>
   );
 }

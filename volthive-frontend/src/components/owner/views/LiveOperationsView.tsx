@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { apiUrl } from '../../../lib/api';
 import { auth } from '../../../lib/firebase';
+import AdminBookingModal from '../AdminBookingModal';
 
 interface Booking {
   _id: string;
@@ -20,6 +21,7 @@ export default function LiveOperationsView() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Pending' | 'Confirmed' | 'Active_Charging'>('All');
+  const [showAdminBooking, setShowAdminBooking] = useState(false);
 
   const fetchBookings = async () => {
     try {
@@ -72,6 +74,25 @@ export default function LiveOperationsView() {
     }
   };
 
+  const extendSession = async (bookingId: string, mins: number) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const res = await fetch(apiUrl(`/api/bookings/${bookingId}/extend`), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ additionalMinutes: mins })
+      });
+      if (res.ok) {
+        fetchBookings();
+      } else {
+        alert('Failed to extend session duration');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const filteredBookings = bookings.filter(b => activeFilter === 'All' ? b.status !== 'Completed' && b.status !== 'Cancelled' : b.status === activeFilter);
 
   if (isLoading) return <div className="flex justify-center items-center h-64"><span className="vh-loader-soft w-8 h-8 rounded-full border-4 border-(--brand-blue) border-t-transparent animate-spin"></span></div>;
@@ -83,10 +104,15 @@ export default function LiveOperationsView() {
           <h1 className="text-3xl font-semibold text-(--brand-ink)">Live Operations (POS)</h1>
           <p className="text-(--brand-muted) text-sm mt-1">Manage incoming reservations and active charging sessions.</p>
         </div>
-        <button onClick={fetchBookings} className="px-4 py-2 bg-white border border-(--brand-border) rounded-xl text-sm font-bold text-(--brand-ink) hover:bg-(--background) shadow-sm flex items-center gap-2">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-          Refresh Live
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={() => setShowAdminBooking(true)} className="px-5 py-2.5 bg-gradient-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl text-sm font-bold shadow-md hover:brightness-105 transition-all">
+            + Create Admin Booking
+          </button>
+          <button onClick={fetchBookings} className="px-4 py-2.5 bg-white border border-(--brand-border) rounded-xl text-sm font-bold text-(--brand-ink) hover:bg-(--background) shadow-sm flex items-center gap-2">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
+            Refresh Live
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -166,12 +192,20 @@ export default function LiveOperationsView() {
                 )}
 
                 {booking.status === 'Active_Charging' && (
-                  <button 
-                    onClick={() => updateBookingStatus(booking._id, 'Completed')}
-                    className="w-full py-3 bg-(--ui-error) hover:bg-red-600 text-white font-bold rounded-xl transition-all shadow-md shadow-red-500/25 animate-pulse hover:animate-none"
-                  >
-                    Stop Charge & Generate Bill
-                  </button>
+                  <div className="space-y-2">
+                    <button 
+                      onClick={() => updateBookingStatus(booking._id, 'Completed')}
+                      className="w-full py-3 bg-(--ui-error) hover:brightness-90 text-white font-bold rounded-xl transition-all shadow-md shadow-(--ui-error)/25 animate-pulse hover:animate-none text-sm"
+                    >
+                      Stop Charge & Generate Bill
+                    </button>
+                    <button 
+                      onClick={() => extendSession(booking._id, 30)}
+                      className="w-full py-2 bg-(--surface-soft) text-(--brand-blue) hover:bg-(--brand-blue) hover:text-white font-bold rounded-xl transition-all text-xs"
+                    >
+                      + Extend Session (+30 Mins)
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -179,6 +213,12 @@ export default function LiveOperationsView() {
           ))
         )}
       </div>
+
+      <AdminBookingModal
+        isOpen={showAdminBooking}
+        onClose={() => setShowAdminBooking(false)}
+        onCreated={fetchBookings}
+      />
     </div>
   );
 }

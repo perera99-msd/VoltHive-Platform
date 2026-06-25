@@ -138,3 +138,13 @@ temp/
 *.temp
 .env.local.backup
 .env.staging.backup
+
+# ============================================
+# MACHINE LEARNING & DATASETS
+# ============================================
+Data Set/
+volthive-ai/Data Set/
+*.csv
+*.parquet
+*.h5
+*.model
