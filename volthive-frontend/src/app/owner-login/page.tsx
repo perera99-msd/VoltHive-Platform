@@ -79,10 +79,22 @@ export default function OwnerLoginPage() {
         const firebaseUser = userCredential.user;
         const token = await firebaseUser.getIdToken();
 
-        // Validate that user possesses the explicit owner database role configuration
-        const res = await fetch(apiUrl('/api/users/profile'), {
+        let res = await fetch(apiUrl('/api/users/profile'), {
           headers: { 'Authorization': `Bearer ${token}` },
         });
+
+        if (res.status === 404) {
+          res = await fetch(apiUrl('/api/users'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              name: firebaseUser.displayName || email.split('@')[0],
+              email,
+              role: 'owner',
+              firebaseUid: firebaseUser.uid
+            })
+          });
+        }
 
         if (res.ok) {
           const profile = await res.json();
@@ -92,7 +104,7 @@ export default function OwnerLoginPage() {
           }
           router.push('/owner-dashboard');
         } else {
-          throw new Error('Failed to fetch user verification context metrics.');
+          throw new Error('Failed to verify user account in database.');
         }
       }
     } catch (err: unknown) {

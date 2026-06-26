@@ -11,8 +11,8 @@
 - Universal Aggregator Map for all charging stations
 - Guaranteed Booking System for drivers
 - Web Dashboard for Station Owners
-- Smart AI Suggestions (Rule-based for now, per current requirements)
-- Basic Dynamic Pricing Engine (AI-powered)
+- Smart AI Suggestions & Dynamic Cockpit (Trained & benchmarked across 3 regression models: Random Forest, HistGradientBoosting, Ridge)
+- Real-Time Dynamic Pricing Engine (Powered by Free Open-Meteo Weather API + Admin Cricket Match Scheduler)
 - Station Command Dashboard with live tracking
 - Cross-platform responsive UI (Web + Mobile-ready)
 - Secure Firebase Authentication

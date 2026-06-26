@@ -3,7 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const verifyToken = require('../middleware/authMiddleware');
 
-// POST /api/users - Create a new user in MongoDB
+// POST /api/users - Create or heal a user in MongoDB
 router.post('/', verifyToken, async (req, res) => {
   const { 
     name, 
@@ -11,25 +11,36 @@ router.post('/', verifyToken, async (req, res) => {
     role, 
     firebaseUid,
     telephone,
+    mobile,
     nicOrBrc,
     address,
     district,
     town 
   } = req.body;
 
+  const uid = firebaseUid || req.user.uid;
+  const userEmail = (email || req.user.email || '').toLowerCase();
+  const userName = name || req.user.name || (userEmail ? userEmail.split('@')[0] : 'VoltHive User');
+
+  const orConditions = [{ firebaseUid: uid }];
+  if (userEmail) orConditions.push({ email: userEmail });
+
   try {
-    let user = await User.findOne({ firebaseUid });
+    let user = await User.findOne({ $or: orConditions });
     if (user) {
-      return res.status(400).json({ message: 'User already exists in database' });
+      user.firebaseUid = uid;
+      if (userName && userName !== 'VoltHive User') user.name = userName;
+      if (telephone || mobile) user.telephone = telephone || mobile;
+      await user.save();
+      return res.status(200).json(user);
     }
     
-    // Create new user with all fields (driver will just not provide the owner fields)
     user = new User({ 
-      name, 
-      email, 
-      role, 
-      firebaseUid,
-      telephone,
+      name: userName, 
+      email: userEmail, 
+      role: role || 'driver', 
+      firebaseUid: uid,
+      telephone: telephone || mobile || '',
       nicOrBrc,
       address,
       district,
@@ -40,21 +51,28 @@ router.post('/', verifyToken, async (req, res) => {
     res.status(201).json(user);
   } catch (error) {
     console.error('Error saving user:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // GET /api/users/profile - Get logged-in user profile & role
 router.get('/profile', verifyToken, async (req, res) => {
   try {
-    const user = await User.findOne({ firebaseUid: req.user.uid });
+    let user = await User.findOne({ firebaseUid: req.user.uid });
+    if (!user && req.user.email) {
+      user = await User.findOne({ email: req.user.email.toLowerCase() });
+      if (user) {
+        user.firebaseUid = req.user.uid;
+        await user.save();
+      }
+    }
     if (!user) {
       return res.status(404).json({ message: 'User not found in database' });
     }
     res.status(200).json(user);
   } catch (error) {
     console.error('Error fetching profile:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
