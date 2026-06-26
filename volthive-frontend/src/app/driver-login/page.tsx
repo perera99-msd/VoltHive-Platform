@@ -165,9 +165,22 @@ export default function AuthPage() {
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error('Could not verify your identity. Please sign in again.');
 
-        const res = await fetch(apiUrl('/api/users/profile'), {
+        let res = await fetch(apiUrl('/api/users/profile'), {
           headers: { Authorization: `Bearer ${token}` }
         });
+
+        if (res.status === 404) {
+          res = await fetch(apiUrl('/api/users'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              name: auth.currentUser?.displayName || email.split('@')[0],
+              email,
+              role: 'driver',
+              firebaseUid: auth.currentUser?.uid
+            })
+          });
+        }
 
         if (!res.ok) throw new Error('Failed to load your profile.');
         const userData = await res.json();

@@ -87,6 +87,13 @@ const StationSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  specialEvents: [
+    {
+      title: { type: String, required: true },
+      date: { type: String, required: true }, // YYYY-MM-DD
+      category: { type: String, default: 'Sports Event / Cricket Match' }
+    }
+  ]
 }, { timestamps: true });
 
 StationSchema.index({ location: '2dsphere' });
