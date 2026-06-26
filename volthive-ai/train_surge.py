@@ -10,16 +10,20 @@ print("⚡ Starting VoltHive Surge Pricing Model Training...")
 
 # 1. Load the Dataset
 print("1. Loading dataset...")
-try:
-    df = pd.read_csv('data/surge_pricing_data.csv')
-except FileNotFoundError:
-    print("❌ Error: surge_pricing_data.csv not found.")
+dataset_path = os.path.join("Data Set", "ev_charging_station_data.csv")
+if not os.path.exists(dataset_path):
+    dataset_path = "ev_charging_station_data.csv"
+
+if not os.path.exists(dataset_path):
+    print(f"❌ Error: {dataset_path} not found.")
     exit()
+
+df = pd.read_csv(dataset_path)
 
 # 2. Select Features (Inputs) and Target (Output)
 print("2. Preprocessing features...")
 features = ['hour_of_day', 'day_of_week', 'is_weekend', 'is_peak_hour', 
-            'weather_condition', 'local_event', 'traffic_congestion_index']
+            'weather_condition', 'local_event']
 target = 'utilization_rate'
 
 # Remove rows with missing values in these columns
