@@ -17,7 +17,7 @@ interface BaseRateConfig {
   customRates: RateEntry[];
 }
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const TIME_SLOTS = Array.from({ length: 24 }).map((_, i) => `${String(i).padStart(2, '0')}:00`);
 
 interface RateCalendarProps {
@@ -83,16 +83,14 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
 
   const saveRates = async () => {
     if (!selectedCharger) {
-      setToastMessage({ msg: 'Select a charger before saving rates.', type: 'error' });
+      setToastMessage({ msg: 'Select a hardware unit before saving rates.', type: 'error' });
       return;
     }
 
     setIsSaving(true);
     try {
       const token = await auth.currentUser?.getIdToken();
-      if (!token) {
-        throw new Error('Please sign in again. Authentication token is missing.');
-      }
+      if (!token) throw new Error('Please sign in again. Authentication token is missing.');
 
       const payload = {
         baseRate,
@@ -101,32 +99,25 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
 
       const res = await fetch(apiUrl(`/api/chargers/${selectedCharger}/rates`), {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        setToastMessage({ msg: 'Rates saved successfully!', type: 'success' });
+        setToastMessage({ msg: 'Rate schedule successfully synchronized.', type: 'success' });
       } else {
-        const err = await res.json().catch(() => null);
-        console.error('Save rates failed', err);
-        setToastMessage({ msg: 'Failed to save rates.', type: 'error' });
+        setToastMessage({ msg: 'Failed to sync rate schedule.', type: 'error' });
       }
     } catch (error) {
       console.error('Failed to save rates:', error);
-      setToastMessage({ msg: 'Failed to save rates.', type: 'error' });
+      setToastMessage({ msg: 'Network failure syncing rates.', type: 'error' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  // returns custom rate entry if present
   const getCustomRate = (day: number, time: string): RateEntry | null => {
-    const entry = weeklyRates.find(r => r.dayOfWeek === day && r.startTime === time);
-    return entry || null;
+    return weeklyRates.find(r => r.dayOfWeek === day && r.startTime === time) || null;
   };
 
   const getDisplayedRate = (day: number, time: string): number => {
@@ -135,39 +126,44 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
   };
 
   return (
-    <div className="space-y-6 pb-12 animate-in fade-in duration-500">
+    <div className="w-full relative font-sans pb-16">
       
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        {onBack && (
-          <button 
-            onClick={onBack}
-            className="w-10 h-10 rounded-lg bg-(--brand-border)/50 hover:bg-(--brand-border) flex items-center justify-center transition-colors"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5 text-(--brand-muted)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          </button>
-        )}
-        <div>
-          <h1 className="text-3xl font-semibold text-(--brand-ink)">Tariff & Rate Calendar</h1>
-          <p className="text-(--brand-muted) text-sm">Manage charging rates for different times and days</p>
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
+          {onBack && (
+            <button 
+              onClick={onBack}
+              className="w-10 h-10 rounded-xl bg-white border border-(--brand-border)/80 hover:bg-(--surface-soft) flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-4 h-4 text-(--brand-ink)"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+          )}
+          <div>
+            <div className="flex items-center gap-3 mb-1.5">
+              <h1 className="text-[24px] font-extrabold tracking-tight text-(--brand-ink)">Rate Scheduler</h1>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-(--brand-blue)/10 text-(--brand-blue) text-[9px] font-extrabold uppercase tracking-[0.12em] border border-(--brand-blue)/20">
+                Tariff Rules
+              </span>
+            </div>
+            <p className="text-[12px] text-(--brand-muted) font-medium">Configure dynamic pricing, peak hours, and base rates for hardware units.</p>
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-12 gap-5">
         
-        {/* Left Sidebar - Station & Base Rate */}
-        <div className="space-y-4">
+        {/* ── LEFT CONFIG PANEL ── */}
+        <div className="lg:col-span-4 space-y-5">
           
-          {/* Charger Selector */}
-          <div className="bg-white rounded-2xl border border-(--brand-border) p-6">
-            <label className="block text-sm font-semibold text-(--brand-ink) mb-3">Select Charger</label>
+          <div className="bg-white rounded-2xl border border-(--brand-border)/80 p-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)]">
+            <label className="block text-[10px] font-extrabold text-(--brand-muted) uppercase tracking-wider mb-2">Target Hardware</label>
             <select 
               value={selectedCharger}
               onChange={async (e) => {
                 const id = e.target.value;
                 setSelectedCharger(id);
                 setWeeklyRates([]);
-                // load rate config for selected charger
                 try {
                   const token = await auth.currentUser?.getIdToken();
                   const res = await fetch(apiUrl(`/api/chargers/${id}/rates`), { headers: { Authorization: `Bearer ${token}` } });
@@ -185,108 +181,105 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
                   console.error('Failed to load charger rates', err);
                 }
               }}
-              className="w-full px-4 py-3 border border-(--brand-border) rounded-lg focus:border-(--accent-blue) focus:ring-1 focus:ring-(--accent-blue) outline-none transition-all text-sm bg-white"
+              className="w-full px-4 py-3 bg-white border border-(--brand-border)/80 rounded-xl text-[13px] font-bold text-(--brand-ink) cursor-pointer focus:outline-none focus:border-(--brand-blue) transition-colors"
             >
-              {chargers.map(ch => (
-                <option key={ch.id} value={ch.id}>{ch.name}</option>
-              ))}
+              <option value="" disabled>Select hardware unit...</option>
+              {chargers.map(ch => <option key={ch.id} value={ch.id}>{ch.name}</option>)}
             </select>
           </div>
 
-          {/* Base Rate */}
-          <div className="bg-white rounded-2xl border border-(--brand-border) p-6 sticky top-6">
-            <div className="mb-4">
-              <p className="text-(--brand-muted) text-xs font-bold uppercase tracking-wider mb-1">Base Rate (Applies Always)</p>
-              <h3 className="text-3xl font-light text-(--brand-ink)">{baseRate} <span className="text-sm font-semibold text-(--brand-muted)">LKR/kWh</span></h3>
+          <div className="bg-white rounded-2xl border border-(--brand-border)/80 p-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#4a90a4] to-[#6cb567] opacity-80" />
+            
+            <div className="mb-4 mt-1">
+              <p className="text-(--brand-muted) text-[10px] font-extrabold uppercase tracking-wider mb-1">Global Base Rate</p>
+              <h3 className="text-[28px] font-black text-(--brand-ink) tracking-tight">{baseRate} <span className="text-[12px] font-bold text-(--brand-muted)">LKR/kWh</span></h3>
             </div>
 
-            <div className="bg-background rounded-lg p-3 mb-4">
+            <div className="relative mb-5">
               <input 
                 type="number"
                 value={baseRate}
                 onChange={(e) => setBaseRate(Number(e.target.value))}
-                step="0.01"
-                className="w-full px-3 py-2 bg-transparent outline-none text-sm font-semibold text-(--brand-ink) [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                step="1"
+                className="w-full px-4 py-3 bg-(--surface-soft)/40 border border-(--brand-border)/80 rounded-xl text-[14px] font-bold text-(--brand-ink) focus:outline-none focus:border-(--brand-blue) transition-colors"
               />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-bold text-(--brand-muted)">LKR</span>
             </div>
 
             <button 
               onClick={() => setShowAddForm(!showAddForm)}
-              className="w-full px-4 py-2.5 bg-(--accent-blue)/10 text-(--brand-blue) font-semibold text-sm rounded-lg hover:bg-(--accent-blue)/20 transition-colors"
+              className="w-full px-4 py-3 bg-(--brand-blue)/10 text-(--brand-blue) font-bold text-[12px] rounded-xl hover:bg-(--brand-blue)/20 transition-colors cursor-pointer"
             >
-              {showAddForm ? 'Cancel' : '+ Add Custom Rate'}
+              {showAddForm ? 'Cancel Form' : '+ Add Time-Based Override'}
             </button>
           </div>
         </div>
 
-        {/* Main Content - Rate Table */}
-        <div className="lg:col-span-2">
+        {/* ── RIGHT CALENDAR AREA ── */}
+        <div className="lg:col-span-8">
           {!selectedCharger && (
-            <div className="bg-white rounded-2xl border border-(--brand-border) p-6">
-              <p className="text-(--brand-muted)">Please select a charger to view and edit the hourly tariff table.</p>
+            <div className="py-16 bg-(--surface-soft)/30 border-2 border-dashed border-(--brand-border)/80 rounded-2xl text-center">
+              <div className="w-12 h-12 rounded-xl bg-white border border-(--brand-border)/80 flex items-center justify-center mx-auto mb-4 text-(--brand-muted)">
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              </div>
+              <h3 className="text-[14px] font-extrabold text-(--brand-ink)">Hardware Unit Required</h3>
+              <p className="text-[12px] text-(--brand-muted) mt-1 font-medium">Select a charging unit from the left panel to configure its rate schedule.</p>
             </div>
           )}
 
           {selectedCharger && (
-            <div className="bg-white rounded-2xl border border-(--brand-border) p-6 overflow-hidden">
-
-              {/* Add/Edit Form */}
+            <div className="bg-white rounded-2xl border border-(--brand-border)/80 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden">
+              
+              {/* Form Override */}
               {showAddForm && (
-                <div className="mb-6 p-4 bg-(--background)/50 rounded-xl border border-(--brand-border)">
-                  <h3 className="font-semibold text-(--brand-ink) mb-4">
-                    {editingRate ? 'Edit Rate' : 'Add Custom Rate'}
+                <div className="p-5 border-b border-(--brand-border)/60 bg-(--surface-soft)/40">
+                  <h3 className="text-[14px] font-extrabold text-(--brand-ink) tracking-tight mb-4">
+                    {editingRate ? 'Edit Rule' : 'New Pricing Rule'}
                   </h3>
                   <AddRateForm 
                     onSubmit={addOrUpdateRate}
-                    onCancel={() => {
-                      setShowAddForm(false);
-                      setEditingRate(null);
-                    }}
+                    onCancel={() => { setShowAddForm(false); setEditingRate(null); }}
                     initialRate={editingRate}
                   />
                 </div>
               )}
 
-              {/* Rate Table */}
+              {/* Table */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-left">
                   <thead>
-                    <tr className="bg-background text-(--brand-muted) text-[11px] uppercase tracking-wider font-bold">
-                      <th className="px-4 py-3 text-left">Day</th>
+                    <tr className="bg-(--surface-soft)/40 border-b border-(--brand-border)/60">
+                      <th className="px-5 py-3.5 text-[9px] font-extrabold text-(--brand-muted) uppercase tracking-wider sticky left-0 bg-(--surface-soft)/90 backdrop-blur z-10 w-16">Day</th>
                       {TIME_SLOTS.map(time => {
-                        const nextHour = TIME_SLOTS[(TIME_SLOTS.indexOf(time) + 1) % TIME_SLOTS.length];
-                        return (
-                          <th key={time} className="px-3 py-3 text-center text-xs">{`${time} - ${nextHour}`}</th>
-                        );
+                        const h = parseInt(time.split(':')[0]);
+                        return <th key={time} className="px-3 py-3.5 text-[9px] font-extrabold text-(--brand-muted) uppercase tracking-wider text-center min-w-[60px]">{h}h</th>;
                       })}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-(--brand-border)">
+                  <tbody className="divide-y divide-(--brand-border)/50">
                     {DAYS.map((day, dayIdx) => (
-                      <tr key={day} className="hover:bg-(--background)/50 transition-colors">
-                        <td className="px-4 py-3 font-semibold text-(--brand-ink)">{day}</td>
+                      <tr key={day} className="hover:bg-(--surface-soft)/20 transition-colors">
+                        <td className="px-5 py-3 text-[11px] font-extrabold text-(--brand-ink) sticky left-0 bg-white/90 backdrop-blur z-10 shadow-[1px_0_0_0_rgba(0,0,0,0.05)] border-r border-(--brand-border)/50">
+                          {day}
+                        </td>
                         {TIME_SLOTS.map(time => {
                           const custom = getCustomRate(dayIdx, time);
                           const display = getDisplayedRate(dayIdx, time);
                           const nextHour = TIME_SLOTS[(TIME_SLOTS.indexOf(time) + 1) % TIME_SLOTS.length];
-
                           return (
-                            <td key={`${dayIdx}-${time}`} className="px-3 py-3 text-center">
+                            <td key={`${dayIdx}-${time}`} className="px-2 py-2 text-center">
                               <button 
                                 onClick={() => {
-                                  setEditingRate({
-                                    dayOfWeek: dayIdx,
-                                    startTime: time,
-                                    endTime: nextHour,
-                                    rate: custom ? custom.rate : baseRate,
-                                  });
+                                  setEditingRate({ dayOfWeek: dayIdx, startTime: time, endTime: nextHour, rate: custom ? custom.rate : baseRate });
                                   setShowAddForm(true);
                                 }}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                className={`w-full py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer border ${
                                   custom
-                                    ? 'bg-(--ui-success)/20 text-(--ui-success) hover:bg-(--ui-success)/30'
-                                    : 'bg-(--brand-border)/50 text-(--brand-muted) hover:bg-(--brand-border)'
+                                    ? 'bg-(--brand-green)/10 text-(--brand-green-deep) border-(--brand-green)/20 hover:bg-(--brand-green)/20'
+                                    : 'bg-(--surface-soft)/40 text-(--brand-muted) border-transparent hover:border-(--brand-border)'
                                 }`}
+                                title={custom ? `Custom Rate: ${display} LKR` : `Base Rate: ${display} LKR`}
                               >
                                 {display}
                               </button>
@@ -299,22 +292,18 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
                 </table>
               </div>
 
-              {/* Custom Rates List */}
+              {/* Active Rules List */}
               {weeklyRates.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-(--brand-border)">
-                  <h4 className="text-sm font-bold text-(--brand-ink) mb-3">Custom Rates Applied</h4>
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                <div className="p-5 border-t border-(--brand-border)/60 bg-(--surface-soft)/20">
+                  <h4 className="text-[12px] font-extrabold text-(--brand-ink) uppercase tracking-wider mb-3">Active Overrides</h4>
+                  <div className="flex flex-wrap gap-2">
                     {weeklyRates.map((rate, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-background rounded-lg">
-                        <div className="text-sm">
-                          <p className="font-medium text-(--brand-ink)">
-                            {DAYS[rate.dayOfWeek]} • {rate.startTime}
-                          </p>
-                          <p className="text-(--brand-muted) text-xs">{rate.rate} LKR/kWh</p>
-                        </div>
+                      <div key={idx} className="flex items-center gap-2 pl-3 pr-1 py-1 bg-white border border-(--brand-border)/80 rounded-lg shadow-sm">
+                        <span className="text-[10px] font-extrabold text-(--brand-ink)">{DAYS[rate.dayOfWeek]} @ {rate.startTime}</span>
+                        <span className="text-[10px] font-bold text-(--brand-green-deep)">{rate.rate} LKR</span>
                         <button 
                           onClick={() => deleteRate(rate.dayOfWeek, rate.startTime)}
-                          className="text-(--ui-error) hover:bg-(--ui-error)/10 px-2 py-1 rounded transition-colors"
+                          className="w-6 h-6 rounded-md text-(--ui-error) hover:bg-(--ui-error)/10 flex items-center justify-center transition-colors cursor-pointer"
                         >
                           ✕
                         </button>
@@ -328,28 +317,26 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="flex gap-3">
-        <button 
-          onClick={() => setWeeklyRates([])}
-          className="px-6 py-3 bg-(--brand-border)/50 hover:bg-(--brand-border) text-(--brand-ink) font-semibold rounded-lg transition-colors"
-        >
-          Discard Changes
-        </button>
-        <button 
-          onClick={saveRates}
-          disabled={isSaving}
-          className="flex-1 px-6 py-3 bg-(--brand-blue) text-white font-semibold rounded-lg hover:bg-(--brand-blue-deep) disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
-        >
-          {isSaving ? 'Saving...' : 'Save Rate Schedule'}
-        </button>
-      </div>
+      {/* ── FOOTER ACTIONS ── */}
+      {selectedCharger && (
+        <div className="fixed bottom-0 left-0 right-0 sm:left-[280px] p-4 bg-white/80 backdrop-blur-xl border-t border-(--brand-border)/60 flex justify-end gap-3 z-40">
+          <button 
+            onClick={() => setWeeklyRates([])}
+            className="px-6 py-3 bg-white border border-(--brand-border)/80 text-(--brand-ink) font-bold text-[13px] rounded-xl hover:bg-(--surface-soft) transition-colors cursor-pointer shadow-sm"
+          >
+            Clear Overrides
+          </button>
+          <button 
+            onClick={saveRates}
+            disabled={isSaving}
+            className="px-8 py-3 bg-(--brand-blue) text-white font-bold text-[13px] rounded-xl hover:bg-(--brand-blue-deep) disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-sm"
+          >
+            {isSaving ? 'Syncing Rules...' : 'Sync Rate Schedule'}
+          </button>
+        </div>
+      )}
 
-      <Toast
-        message={toastMessage?.msg || null}
-        type={toastMessage?.type || 'error'}
-        onClose={() => setToastMessage(null)}
-      />
+      <Toast message={toastMessage?.msg || null} type={toastMessage?.type || 'error'} onClose={() => setToastMessage(null)} />
     </div>
   );
 }
@@ -363,48 +350,38 @@ function AddRateForm({ onSubmit, onCancel, initialRate }: { onSubmit: (rate: any
     rate: 150,
   });
 
+  const inputCls = "w-full px-3 py-2.5 bg-white border border-(--brand-border)/80 rounded-lg text-[12px] font-bold text-(--brand-ink) focus:outline-none focus:border-(--brand-blue) transition-colors shadow-sm cursor-pointer";
+
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-xs font-semibold text-(--brand-muted) block mb-1">Day</label>
+          <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-wider block mb-1.5">Target Day</label>
           <select 
             value={rate.dayOfWeek}
             onChange={(e) => setRate({ ...rate, dayOfWeek: Number(e.target.value) })}
-            className="w-full px-3 py-2 text-sm border border-(--brand-border) rounded-lg bg-white outline-none focus:border-(--accent-blue)"
+            className={inputCls}
           >
-            {DAYS.map((day, idx) => (
-              <option key={idx} value={idx}>{day}</option>
-            ))}
+            {DAYS.map((day, idx) => <option key={idx} value={idx}>{day}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-xs font-semibold text-(--brand-muted) block mb-1">Rate (LKR/kWh)</label>
+          <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-wider block mb-1.5">Override Rate (LKR/kWh)</label>
           <input 
             type="number"
             value={rate.rate}
             onChange={(e) => setRate({ ...rate, rate: Number(e.target.value) })}
-            step="0.01"
-            className="w-full px-3 py-2 text-sm border border-(--brand-border) rounded-lg outline-none focus:border-(--accent-blue)"
+            step="1"
+            className={`${inputCls} cursor-text`}
           />
         </div>
       </div>
-      <div className="flex gap-2">
-        <button 
-          type="button"
-          onClick={() => {
-            onSubmit(rate);
-          }}
-          className="flex-1 px-4 py-2 bg-(--ui-success) text-white font-semibold text-sm rounded-lg hover:bg-(--brand-green-deep) transition-colors"
-        >
-          Save Rate
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={onCancel} className="px-5 py-2.5 bg-white border border-(--brand-border)/80 text-(--brand-ink) font-bold text-[12px] rounded-lg hover:bg-(--surface-soft) transition-colors cursor-pointer">
+          Discard
         </button>
-        <button 
-          type="button"
-          onClick={onCancel}
-          className="flex-1 px-4 py-2 bg-(--brand-border)/50 text-(--brand-ink) font-semibold text-sm rounded-lg hover:bg-(--brand-border) transition-colors"
-        >
-          Cancel
+        <button type="button" onClick={() => onSubmit(rate)} className="flex-1 px-5 py-2.5 bg-(--brand-ink) text-white font-bold text-[12px] rounded-lg hover:bg-black transition-colors cursor-pointer">
+          Apply Rule
         </button>
       </div>
     </div>

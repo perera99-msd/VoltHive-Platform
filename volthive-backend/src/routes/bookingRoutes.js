@@ -8,6 +8,33 @@ const User = require('../models/User');
 const verifyToken = require('../middleware/authMiddleware');
 
 /**
+ * POST /api/bookings/test-postman
+ * Dedicated route for Postman testing (Bypasses Auth & DB Checks)
+ */
+router.post('/test-postman', (req, res) => {
+  const { driverId, stationId, chargerType, startTime, endTime, energyRequestedKwh, aiPredictedPricePerKwh } = req.body;
+
+  res.status(201).json({
+    success: true,
+    message: 'Booking created successfully (Postman Test Mode)',
+    data: {
+      _id: new mongoose.Types.ObjectId(),
+      driver: driverId || new mongoose.Types.ObjectId(),
+      station: stationId || new mongoose.Types.ObjectId(),
+      chargerType: chargerType || 'DC_CCS2',
+      date: startTime ? startTime.split('T')[0] : '2026-08-01',
+      startTime: startTime,
+      endTime: endTime,
+      energyRequestedKwh: energyRequestedKwh || 45,
+      lockedPricePerKwh: aiPredictedPricePerKwh || 65.50,
+      status: 'Pending',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  });
+});
+
+/**
  * Validate booking input
  */
 const validateBookingInput = (req, res) => {

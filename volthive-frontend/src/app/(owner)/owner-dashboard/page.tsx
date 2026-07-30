@@ -49,7 +49,7 @@ export default function OwnerDashboardPage() {
         <OwnerSidebar activeTab={activeTab} setActiveTab={setActiveTab} onLogout={handleLogout} />
         
         <main className="flex-1 h-full relative z-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-          <div className="p-6 md:p-10 max-w-7xl mx-auto min-h-full flex flex-col">
+          <div className="p-6 md:p-10 w-full min-h-full flex flex-col">
             <AiForecastCard />
             {renderContent()}
           </div>

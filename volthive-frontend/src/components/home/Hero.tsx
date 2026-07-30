@@ -5,213 +5,187 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const sliderImages = [
+const HERO_SLIDES = [
   {
-    url: 'https://i.pinimg.com/1200x/d9/de/b4/d9deb480c415baec5cff409061f8991c.jpg',
-    fallback: '/brand/banner.jpg',
-    tag: 'SYSTEM TELEMETRY v2.1',
-    title: 'Intuitive Cockpit Control'
+    id: 'grid-sync',
+    badge: 'VOLTHIVE INTELLIGENT GRID v2.4',
+    title: 'Engineered for Speed, Intelligence & Direct Sync.',
+    subtitle: 'Get your time back with AI-driven charging.',
+    description: 'VoltHive balances grid loads in real-time, predicting station availability and guaranteeing your ultra-fast charging slot before you arrive.',
+    bgImage: '/hero/hero_perfect_1.png',
+    primaryCta: { text: 'Reserve a Charger', href: '/driver-login' },
+    secondaryCta: { text: 'Explore Capabilities', href: '#services' },
+    stats: [
+      { value: '350 kW', label: 'Max Charge Speed' },
+      { value: '99.9%', label: 'Guaranteed Uptime' },
+      { value: '2,450+', label: 'Active Connectors' },
+      { value: '4.2 Min', label: 'Queue Time Saved' }
+    ]
   },
   {
-    url: 'https://i.pinimg.com/1200x/9a/2a/d8/9a2ad8a1a7a5af3471cdbfd276327d4a.jpg',
-    fallback: '/owner login/owner login.jpg',
-    tag: '800V HARDWARE ARCHITECTURE',
-    title: 'High-Speed Supercharging'
-  },
-  {
-    url: 'https://i.pinimg.com/736x/2f/2f/26/2f2f267289bad90757d7c16c00c101d8.jpg',
-    fallback: '/brand/banner.jpg',
-    tag: 'DIRECT SETTLEMENT POS',
-    title: 'Zero-Fee Direct Checkouts'
-  },
-  {
-    url: '/brand/banner.jpg',
-    fallback: '/owner login/owner login.jpg',
-    tag: 'PREDICTIVE AI ENGINE',
-    title: 'Hourly Surge Optimization'
+    id: 'predictive-yield',
+    badge: 'PREDICTIVE AI & DYNAMIC TARIFFS',
+    title: 'Energy That Keeps You Moving Forward.',
+    subtitle: 'Automated peak shaving & instant surge discounts.',
+    description: 'Our digital city grid synchronizes solar, wind, and battery storage. Charge at automated discounted rates during peak renewable generation windows.',
+    bgImage: '/hero/hero_perfect_2.png',
+    primaryCta: { text: 'Driver Portal', href: '/driver-login' },
+    secondaryCta: { text: 'Admin Center', href: '/owner-login' },
+    stats: [
+      { value: '0%', label: 'Gateway Cut' },
+      { value: '-24%', label: 'Peak Tariff Saved' },
+      { value: '< 1 Sec', label: 'Telemetry Sync' },
+      { value: 'FIDO2', label: 'Biometric Auth' }
+    ]
   }
-];
-
-const brandLogos = [
-  { name: 'TOYOTA', spec: 'CCS2 COMPATIBLE' },
-  { name: 'TATA MOTORS', spec: 'DIRECT POS' },
-  { name: 'PORSCHE', spec: '800V HYPER' },
-  { name: 'TESLA', spec: 'NACS ADAPTER' },
-  { name: 'MERCEDES-EQ', spec: 'INTELLIGENT LOAD' },
 ];
 
 export default function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [imageErrors, setImageErrors] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    if (isPaused) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % sliderImages.length);
-    }, 6000);
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 12000); // 12 seconds slow, serene rotation
     return () => clearInterval(timer);
-  }, [isPaused]);
+  }, []);
 
-  const activeSlide = sliderImages[currentSlide];
+  const slide = HERO_SLIDES[currentSlide];
 
   return (
-    <section id="about-us" className="relative pt-28 sm:pt-36 pb-16 lg:pt-44 lg:pb-24 px-6 sm:px-10 max-w-[1500px] mx-auto z-10 overflow-hidden font-sans">
+    <section id="hero" className="relative w-full h-[100dvh] overflow-hidden bg-(--background) flex items-center font-sans">
       
-      {/* Background Soft Gradients - Official Site Brand Palette */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-full max-w-6xl h-[450px] bg-linear-to-tr from-(--surface-soft) via-(--brand-card) to-(--surface-tint) blur-3xl -z-10 rounded-full pointer-events-none opacity-80" />
+      {/* Full-bleed Crisp AI Background Image (100% Text-Free & Photorealistic) */}
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          key={slide.id}
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98 }}
+          transition={{ duration: 2.8, ease: 'easeInOut' }}
+          className="absolute inset-0 z-0"
+        >
+          <Image
+            src={slide.bgImage}
+            alt={slide.title}
+            fill
+            className="object-cover opacity-100"
+            priority
+          />
+          {/* Subtle Mask Overlay - Positioned purely to ensure text legibility while keeping 90% of image crystal clear */}
+          <div className="absolute inset-0 bg-linear-to-r from-(--background)/90 via-(--background)/45 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-b from-(--background)/50 via-transparent to-(--background)/60 pointer-events-none" />
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Flagship Widescreen Widescope Hero Frame (Inspired by Volté Hyper & Tesla Model S interfaces) */}
-      <div className="rounded-3xl sm:rounded-[3rem] border border-(--brand-border) bg-(--brand-card) p-8 sm:p-14 lg:p-18 shadow-[0_35px_100px_-30px_rgba(74,144,164,0.25)] relative overflow-hidden">
+      {/* Floating Content Layout - Clean Floating Typography */}
+      <div className="relative z-10 w-full max-w-[1500px] mx-auto px-6 sm:px-10 h-full flex flex-col justify-center pt-16 pb-20">
         
-        <div className="grid lg:grid-cols-12 gap-10 lg:gap-16 items-center">
-          
-          {/* Left Text Column */}
-          <div className="lg:col-span-6 text-center lg:text-left z-20 flex flex-col justify-center">
-            
-            {/* Minimalist Tech Badge */}
-            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-(--surface-soft) border border-(--brand-border) text-(--brand-blue-deep) text-[11px] font-black uppercase tracking-[0.2em] self-center lg:self-start mb-8 shadow-2xs">
-              <span className="w-2 h-2 rounded-full bg-(--brand-green) animate-pulse" />
-              <span>{activeSlide.tag}</span>
-            </div>
-
-            {/* Widescreen Automotive Flagship Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-[4.35rem] font-black tracking-tight text-(--brand-ink) leading-[1.03] mb-6 text-balance">
-              Power Forward. <br />
-              <span className="text-transparent bg-clip-text bg-linear-to-r from-(--brand-blue) via-(--brand-blue-deep) to-(--brand-green)">
-                Intelligent EV Network.
-              </span>
-            </h1>
-
-            <p className="text-base sm:text-xl text-(--brand-muted) font-medium leading-relaxed mb-10 text-balance max-w-xl mx-auto lg:mx-0">
-              Discover active connectors, reserve guaranteed 1-hour charging intervals, and stream instant hardware settlements directly via station POS kiosks.
-            </p>
-
-            {/* Flagship CTA Suite (Clean Typographic Buttons - No Emojis) */}
-            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-center lg:justify-start max-w-md mx-auto lg:mx-0 w-full">
-              <Link
-                href="/driver-login"
-                className="px-9 py-4.5 rounded-full bg-(--brand-ink) text-white font-extrabold text-xs sm:text-sm uppercase tracking-[0.18em] hover:bg-(--brand-blue) active:scale-95 transition-all shadow-[0_12px_30px_-10px_rgba(26,26,26,0.5)] flex items-center justify-center gap-2"
+        <div className="max-w-3xl space-y-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`content-${slide.id}`}
+              initial={{ opacity: 0, y: 28 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+              transition={{ duration: 1.4, ease: 'easeOut' }}
+              className="space-y-6"
+            >
+              {/* Floating Badge */}
+              <motion.div 
+                initial={{ opacity: 0, x: -16 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 1.2, delay: 0.2 }}
+                className="inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-white/95 backdrop-blur-md border border-(--brand-border) font-mono text-xs font-black tracking-[0.2em] uppercase text-(--brand-blue-deep) shadow-2xs"
               >
-                <span>DRIVER PORTAL →</span>
-              </Link>
+                <span className="w-2.5 h-2.5 rounded-full bg-(--brand-green) animate-pulse" />
+                <span>{slide.badge}</span>
+              </motion.div>
 
-              <Link
-                href="/owner-login"
-                className="px-9 py-4.5 rounded-full bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) font-extrabold text-xs sm:text-sm uppercase tracking-[0.18em] hover:bg-(--surface-tint) active:scale-95 transition-all flex items-center justify-center"
+              {/* Floating Main Title */}
+              <motion.h1 
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.4, delay: 0.3 }}
+                className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-(--brand-ink) leading-[1.05]"
               >
-                <span>ADMIN CENTER</span>
-              </Link>
-            </div>
+                {slide.title}
+              </motion.h1>
 
-            {/* Slide Title Indicator */}
-            <div className="mt-10 pt-7 border-t border-(--brand-border) flex items-center justify-between text-xs font-black tracking-wider uppercase text-(--brand-muted)">
-              <span className="text-(--brand-ink)">Active View: {activeSlide.title}</span>
-              <span className="font-mono text-(--brand-blue)">0{currentSlide + 1} / 0{sliderImages.length}</span>
-            </div>
-          </div>
+              {/* Subtitle & Description */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.4, delay: 0.5 }}
+                className="space-y-3"
+              >
+                <p className="text-xl sm:text-2xl font-extrabold text-(--brand-blue-deep) tracking-tight">
+                  {slide.subtitle}
+                </p>
+                <p className="text-base sm:text-xl text-(--brand-muted) font-medium leading-relaxed max-w-2xl text-balance">
+                  {slide.description}
+                </p>
+              </motion.div>
 
-          {/* Right Widescreen Showcase Box */}
-          <div 
-            className="lg:col-span-6 relative z-10 w-full"
-            onMouseEnter={() => setIsPaused(true)}
-            onMouseLeave={() => setIsPaused(false)}
-          >
-            <div className="relative rounded-3xl sm:rounded-[2.4rem] overflow-hidden border border-(--brand-border) bg-(--surface-soft) aspect-16/10 sm:aspect-4/3 shadow-2xl group">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentSlide}
-                  initial={{ opacity: 0, scale: 1.04 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="absolute inset-0"
+              {/* Floating Action Buttons */}
+              <motion.div 
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1.4, delay: 0.7 }}
+                className="flex flex-col sm:flex-row gap-4 pt-4"
+              >
+                <Link
+                  href={slide.primaryCta.href}
+                  className="px-10 py-5 rounded-full text-xs font-black uppercase tracking-[0.2em] bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white shadow-xl shadow-(--brand-blue)/20 hover:brightness-105 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
                 >
-                  <Image
-                    src={imageErrors[currentSlide] ? activeSlide.fallback : activeSlide.url}
-                    alt={activeSlide.title}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-102"
-                    priority
-                    unoptimized
-                    onError={() => setImageErrors(prev => ({ ...prev, [currentSlide]: true }))}
-                  />
-                  <div className="absolute inset-0 bg-linear-to-t from-(--brand-ink)/50 via-transparent to-transparent opacity-70" />
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Minimalist Cockpit Overlay Card */}
-              <div className="absolute bottom-5 left-5 right-5 sm:bottom-7 sm:left-7 sm:right-7 bg-(--brand-card)/92 backdrop-blur-xl rounded-2xl border border-(--brand-border) p-5 shadow-xl flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-(--brand-ink) text-white flex items-center justify-center font-mono font-bold text-xs">
-                    0{currentSlide + 1}
-                  </div>
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-wider text-(--brand-ink)">Guaranteed Hourly Slot Grid</p>
-                    <p className="text-[11px] font-semibold text-(--brand-muted) mt-0.5">00:00 - 24:00 Absolute Sync Windows</p>
-                  </div>
-                </div>
-                <Link href="/download-app" className="hidden sm:inline-flex px-4 py-2 rounded-xl bg-(--surface-soft) text-(--brand-blue-deep) font-black text-[11px] uppercase tracking-widest hover:bg-(--surface-tint) transition-colors border border-(--brand-border)">
-                  ● NATIVE PWA
+                  <span>{slide.primaryCta.text}</span>
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                  </svg>
                 </Link>
-              </div>
-
-              {/* Minimalist Directional Navigation Controls */}
-              <div className="absolute top-5 right-5 flex gap-2 z-20">
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev - 1 + sliderImages.length) % sliderImages.length)}
-                  className="w-10 h-10 rounded-xl bg-(--brand-card)/85 hover:bg-(--brand-card) backdrop-blur-xl border border-(--brand-border) flex items-center justify-center text-(--brand-ink) font-bold text-base transition-all active:scale-95 cursor-pointer shadow-md"
-                  aria-label="Previous image"
+                <Link
+                  href={slide.secondaryCta.href}
+                  className="px-10 py-5 rounded-full text-xs font-black uppercase tracking-[0.2em] bg-white/90 backdrop-blur-md border border-(--brand-border) text-(--brand-ink) hover:bg-white active:scale-95 transition-all text-center flex items-center justify-center shadow-2xs"
                 >
-                  ←
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentSlide((prev) => (prev + 1) % sliderImages.length)}
-                  className="w-10 h-10 rounded-xl bg-(--brand-card)/85 hover:bg-(--brand-card) backdrop-blur-xl border border-(--brand-border) flex items-center justify-center text-(--brand-ink) font-bold text-base transition-all active:scale-95 cursor-pointer shadow-md"
-                  aria-label="Next image"
-                >
-                  →
-                </button>
-              </div>
-            </div>
+                  <span>{slide.secondaryCta.text}</span>
+                </Link>
+              </motion.div>
 
-            {/* Minimalist Horizontal Track Bar Indicators */}
-            <div className="flex justify-center gap-2.5 mt-6">
-              {sliderImages.map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`h-1.5 rounded-full transition-all duration-400 cursor-pointer ${
-                    idx === currentSlide ? 'w-10 bg-(--brand-blue)' : 'w-2 bg-(--brand-border) hover:bg-(--brand-muted)'
-                  }`}
-                  aria-label={`Go to slide ${idx + 1}`}
-                />
-              ))}
-            </div>
-          </div>
-
-        </div>
-
-        {/* Brand Ecosystem Specifications Footer Bar (No Emojis - Typographic Automotive Flagship Aesthetic) */}
-        <div className="mt-16 pt-9 border-t border-(--brand-border)">
-          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-(--brand-muted) text-center mb-8">
-            Hardware & Automotive Ecosystem Compatibility Standard
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-6 sm:gap-8 opacity-80 grayscale hover:grayscale-0 transition-all duration-500">
-            {brandLogos.map((brand) => (
-              <div key={brand.name} className="rounded-2xl bg-(--surface-soft)/50 border border-(--brand-border)/80 p-4 text-center">
-                <p className="font-black text-xs sm:text-sm text-(--brand-ink) tracking-wider uppercase mb-1">{brand.name}</p>
-                <p className="text-[10px] font-bold text-(--brand-blue) tracking-widest uppercase">{brand.spec}</p>
-              </div>
-            ))}
-          </div>
+              {/* Floating Stat Pills */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1.4, delay: 0.9 }}
+                className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl"
+              >
+                {slide.stats.map((st, i) => (
+                  <div key={i} className="p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-(--brand-border) shadow-2xs">
+                    <div className="text-xl sm:text-2xl font-black text-(--brand-ink)">{st.value}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-(--brand-muted) mt-0.5">{st.label}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
       </div>
 
+      {/* Slider Controls */}
+      <div className="absolute bottom-10 left-6 sm:left-10 z-20 flex gap-3 items-center">
+        {HERO_SLIDES.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentSlide(idx)}
+            className={`h-2 rounded-full transition-all duration-1000 cursor-pointer ${
+              idx === currentSlide 
+                ? 'w-12 bg-linear-to-r from-(--brand-blue) to-(--brand-green)' 
+                : 'w-4 bg-(--brand-border) hover:bg-(--brand-muted)/40'
+            }`}
+            aria-label={`Go to slide ${idx + 1}`}
+          />
+        ))}
+      </div>
     </section>
   );
 }

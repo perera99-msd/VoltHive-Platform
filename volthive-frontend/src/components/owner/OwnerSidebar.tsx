@@ -38,9 +38,8 @@ export default function OwnerSidebar({ activeTab, setActiveTab, onLogout }: Owne
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-all relative overflow-hidden group ${
-                isActive ? 'text-white shadow-md' : 'text-(--brand-ink) hover:bg-(--surface-soft)'
-              }`}
+              className={`w-full flex items-center gap-3.5 px-4 py-3.5 rounded-2xl text-[14px] font-semibold transition-all relative overflow-hidden group ${isActive ? 'text-white shadow-md' : 'text-(--brand-ink) hover:bg-(--surface-soft)'
+                }`}
             >
               {isActive && (
                 <motion.div layoutId="owner-sidebar-active" className="absolute inset-0 bg-gradient-to-r from-(--brand-blue) to-(--accent-blue) rounded-2xl z-0" />

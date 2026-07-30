@@ -5,77 +5,112 @@ import Image from 'next/image';
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 border-t border-(--brand-border) bg-(--brand-card) pt-16 pb-12 text-(--brand-ink) font-sans">
-      <div className="max-w-[1500px] mx-auto px-6 sm:px-10">
+    <footer id="footer" className="relative z-10 bg-(--brand-card) text-(--brand-ink) font-sans border-t border-(--brand-border) overflow-hidden">
+      
+      {/* Brand Gradient Top CTA Banner */}
+      <div className="relative py-24 px-6 sm:px-10 bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-12 pb-16 border-b border-(--brand-border)">
+        <div className="max-w-[1500px] mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
+          <div className="max-w-2xl">
+            <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
+              Ready to electrify your fleet?
+            </h2>
+            <p className="text-base sm:text-xl text-white/90 font-medium leading-relaxed">
+              Join the largest decentralized AI-powered EV charging network. Stream direct hardware settlements with zero gateway fees.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-4 shrink-0">
+            <Link 
+              href="/driver-login" 
+              className="px-9 py-4.5 rounded-full text-xs font-black uppercase tracking-[0.18em] bg-white text-(--brand-ink) hover:bg-white/90 transition-all shadow-xl flex items-center justify-center"
+            >
+              Driver Portal →
+            </Link>
+            <Link 
+              href="/owner-login" 
+              className="px-9 py-4.5 rounded-full text-xs font-black uppercase tracking-[0.18em] bg-white/20 backdrop-blur-md text-white hover:bg-white/30 border border-white/30 transition-all flex items-center justify-center"
+            >
+              Admin Center
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Footer Links */}
+      <div className="max-w-[1500px] mx-auto px-6 sm:px-10 pt-20 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8">
           
           {/* BRAND COLUMN */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-5 space-y-6 pr-6">
             <Link href="/" className="inline-block">
               <Image
                 src="/brand/logo-with-slogan.png"
                 alt="VoltHive Platform"
-                width={190}
-                height={55}
+                width={200}
+                height={60}
                 className="h-10 w-auto object-contain"
               />
             </Link>
-            <p className="text-sm text-(--brand-muted) max-w-sm leading-relaxed font-medium">
-              Enterprise Aggregator EV Network & Station Controller Platform. Stream active connectors, reserve 1-hour windows, and settle checkouts instantly via POS kiosks.
+            <p className="text-sm sm:text-base text-(--brand-muted) leading-relaxed font-medium max-w-sm">
+              The enterprise aggregator EV network and station controller platform. AI-powered dynamic pricing, zero gateway fees, and instant reservations.
             </p>
-            <div className="flex items-center gap-2 font-mono text-xs font-bold text-(--brand-blue)">
-              <span>PROTOCOL v2.1 STANDARD</span>
-              <span>● FIDO2 NATIVE</span>
+            <div className="flex items-center gap-3">
+              <span className="w-2.5 h-2.5 rounded-full bg-(--brand-green) animate-pulse" />
+              <span className="font-mono text-xs font-bold text-(--brand-blue-deep) tracking-widest uppercase">
+                SYSTEMS OPERATIONAL ● PROTOCOL v2.4
+              </span>
             </div>
           </div>
 
-          {/* COL 1: ARCHITECTURE */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black tracking-[0.2em] uppercase text-(--brand-ink)">System</h4>
-            <ul className="space-y-2.5 text-sm font-medium text-(--brand-muted)">
-              <li><Link href="/#about-us" className="hover:text-(--brand-blue) transition-colors">Grid Architecture</Link></li>
-              <li><Link href="/#services" className="hover:text-(--brand-blue) transition-colors">Core Capabilities</Link></li>
-              <li><Link href="/#news" className="hover:text-(--brand-blue) transition-colors">Live Telemetry</Link></li>
-              <li><Link href="/#partners" className="hover:text-(--brand-blue) transition-colors">Hardware Handshake</Link></li>
+          {/* COL 1: PRODUCT */}
+          <div className="lg:col-span-2 space-y-4">
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Product</h4>
+            <ul className="space-y-3 text-sm font-semibold text-(--brand-muted)">
+              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Driver App (PWA)</Link></li>
+              <li><Link href="/owner-login" className="hover:text-(--brand-blue) transition-colors">Station Admin Center</Link></li>
+              <li><Link href="#services" className="hover:text-(--brand-blue) transition-colors">Dynamic Pricing AI</Link></li>
+              <li><Link href="#hero" className="hover:text-(--brand-blue) transition-colors">Live Telemetry</Link></li>
             </ul>
           </div>
 
-          {/* COL 2: SURFACES */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black tracking-[0.2em] uppercase text-(--brand-ink)">Portals</h4>
-            <ul className="space-y-2.5 text-sm font-medium text-(--brand-muted)">
-              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Driver Dashboard</Link></li>
-              <li><Link href="/owner-login" className="hover:text-(--brand-blue) transition-colors">Admin Center</Link></li>
-              <li><Link href="/download-app" className="hover:text-(--brand-blue) transition-colors">Standalone PWA</Link></li>
-              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">WebAuthn Biometrics</Link></li>
+          {/* COL 2: RESOURCES */}
+          <div className="lg:col-span-2 space-y-4">
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Resources</h4>
+            <ul className="space-y-3 text-sm font-semibold text-(--brand-muted)">
+              <li><Link href="#pwa-guide" className="hover:text-(--brand-blue) transition-colors">PWA Installation</Link></li>
+              <li><Link href="#services" className="hover:text-(--brand-blue) transition-colors">Hardware Handshake</Link></li>
+              <li><Link href="#hero" className="hover:text-(--brand-blue) transition-colors">Grid Architecture</Link></li>
+              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Biometric FIDO2</Link></li>
             </ul>
           </div>
 
           {/* COL 3: SPECIFICATIONS */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-black tracking-[0.2em] uppercase text-(--brand-ink)">Compliance</h4>
-            <ul className="space-y-2.5 text-sm font-medium text-(--brand-muted)">
-              <li><span className="text-(--brand-ink)">0% Gateway Fee</span></li>
-              <li><span className="text-(--brand-ink)">99.8% Network Uptime</span></li>
-              <li><span className="text-(--brand-ink)">Hourly AI Cycle Sync</span></li>
-              <li><span className="text-(--brand-ink)">ISO 15118 Ready</span></li>
+          <div className="lg:col-span-3 space-y-4">
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Compliance & Specs</h4>
+            <ul className="space-y-3 text-sm font-medium text-(--brand-muted)">
+              <li><span className="text-(--brand-ink) font-bold">0% Gateway Fee</span> — Direct Settlements</li>
+              <li><span className="text-(--brand-ink) font-bold">99.9% Telemetry Uptime</span></li>
+              <li><span className="text-(--brand-ink) font-bold">ISO 15118</span> Plug & Charge Ready</li>
+              <li><span className="text-(--brand-ink) font-bold">Python Predictor</span> Engine v2.4</li>
             </ul>
           </div>
 
         </div>
+      </div>
 
-        {/* BOTTOM COPYRIGHT ROW */}
-        <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-(--brand-muted)">
+      {/* BOTTOM COPYRIGHT ROW */}
+      <div className="border-t border-(--brand-border) bg-(--surface-soft)/30">
+        <div className="max-w-[1500px] mx-auto px-6 sm:px-10 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-semibold text-(--brand-muted)">
           <p>© {new Date().getFullYear()} VoltHive Technologies Inc. All enterprise rights reserved.</p>
-          <div className="flex gap-8">
-            <Link href="/#about-us" className="hover:underline">Privacy Architecture</Link>
-            <Link href="/#services" className="hover:underline">Terms of Execution</Link>
-            <Link href="/#news" className="hover:underline">Telemetry Security</Link>
+          <div className="flex flex-wrap gap-6">
+            <Link href="#hero" className="hover:text-(--brand-ink) transition-colors">Privacy Architecture</Link>
+            <Link href="#services" className="hover:text-(--brand-ink) transition-colors">Terms of Execution</Link>
+            <Link href="#hero" className="hover:text-(--brand-ink) transition-colors">Telemetry Security</Link>
           </div>
         </div>
-
       </div>
+
     </footer>
   );
 }

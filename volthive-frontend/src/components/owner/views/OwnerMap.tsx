@@ -7,7 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { apiUrl } from '../../../lib/api';
 import { Station } from '../../StationMap';
 
-const containerStyle = { width: '100%', height: '100%', borderRadius: '1.5rem' };
+const containerStyle = { width: '100%', height: '100%', borderRadius: '1rem' };
 const defaultCenter = { lat: 6.9271, lng: 79.8612 }; 
 
 function AdvancedMapMarker({
@@ -73,7 +73,6 @@ export default function OwnerMap() {
   const mapRef = useRef<google.maps.Map | null>(null);
 
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   });
 
@@ -99,7 +98,6 @@ export default function OwnerMap() {
     mapRef.current = map;
     setMapInstance(map);
     
-    // Auto-fit bounds to show all stations if they exist
     if (stations.length > 0 && window.google) {
       const bounds = new window.google.maps.LatLngBounds();
       stations.forEach(s => {
@@ -109,68 +107,86 @@ export default function OwnerMap() {
     }
   };
 
-  if (!isLoaded) return <div className="w-full h-[600px] flex items-center justify-center font-bold text-(--brand-blue)">Loading Premium Map Engine...</div>;
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--brand-blue)"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full h-[calc(100vh-100px)] relative bg-(--brand-card) rounded-3xl border border-(--brand-border) shadow-sm overflow-hidden">
-      <GoogleMap
-        mapContainerStyle={containerStyle}
-        center={defaultCenter}
-        zoom={12}
-        options={{ disableDefaultUI: true, mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID' }}
-        onLoad={handleMapLoad}
-        onClick={() => setActiveStation(null)}
-      >
-        {stations.map((station) => (
-          <AdvancedMapMarker
-            key={station._id}
-            map={mapInstance}
-            position={{ lat: station.location.coordinates[1], lng: station.location.coordinates[0] }}
-            iconUrl="/icons/station.png"
-            iconSize={36}
-            onClick={() => {
-              setActiveStation(station);
-              mapRef.current?.panTo({ lat: station.location.coordinates[1], lng: station.location.coordinates[0] });
-            }}
-          />
-        ))}
-      </GoogleMap>
-
-      {/* Floating Header Overlay */}
-      <div className="absolute top-6 left-6 z-10 bg-(--brand-card)/90 backdrop-blur-md px-6 py-4 rounded-2xl border border-(--brand-border) shadow-lg pointer-events-none">
-        <h2 className="text-xl font-bold text-(--brand-ink)">Hardware Network</h2>
-        <p className="text-sm font-medium text-(--brand-muted)">Currently viewing your deployed nodes ({stations.length})</p>
+    <div className="w-full h-[calc(100vh-100px)] relative font-sans">
+      
+      {/* ── MAP CONTAINER ── */}
+      <div className="absolute inset-0 bg-white border border-(--brand-border)/80 rounded-2xl shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] overflow-hidden">
+        <GoogleMap
+          mapContainerStyle={containerStyle}
+          center={defaultCenter}
+          zoom={12}
+          options={{ disableDefaultUI: true, mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID' }}
+          onLoad={handleMapLoad}
+          onClick={() => setActiveStation(null)}
+        >
+          {stations.map((station) => (
+            <AdvancedMapMarker
+              key={station._id}
+              map={mapInstance}
+              position={{ lat: station.location.coordinates[1], lng: station.location.coordinates[0] }}
+              iconUrl="/icons/station.png"
+              iconSize={40}
+              onClick={() => {
+                setActiveStation(station);
+                mapRef.current?.panTo({ lat: station.location.coordinates[1], lng: station.location.coordinates[0] });
+              }}
+            />
+          ))}
+        </GoogleMap>
       </div>
 
+      {/* ── FLOATING OVERLAY ── */}
+      <div className="absolute top-5 left-5 z-10 bg-white/90 backdrop-blur-xl px-5 py-3.5 rounded-2xl border border-(--brand-border)/80 shadow-sm pointer-events-none flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-(--brand-blue)/10 flex items-center justify-center text-(--brand-blue)">
+          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </div>
+        <div>
+          <h2 className="text-[13px] font-extrabold text-(--brand-ink) tracking-tight">Geospatial Network</h2>
+          <p className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-wider mt-0.5">{stations.length} Active Nodes</p>
+        </div>
+      </div>
+
+      {/* ── STATION POPUP ── */}
       <AnimatePresence>
         {activeStation && (
           <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 30, scale: 0.95 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm bg-(--brand-card)/95 backdrop-blur-2xl rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(9,32,52,0.3)] border border-(--brand-border)"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-[90%] max-w-sm bg-white/95 backdrop-blur-2xl rounded-2xl p-5 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.12)] border border-(--brand-border)/80"
           >
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-(--surface-soft) text-(--brand-blue) rounded-xl border border-(--brand-border)">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#4a90a4] to-[#6cb567] opacity-80 rounded-t-2xl" />
+            
+            <div className="flex justify-between items-start mb-4 mt-1">
+              <div className="w-10 h-10 rounded-xl bg-(--surface-soft)/60 border border-(--brand-border)/60 flex items-center justify-center text-(--brand-blue)">
                 <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
               </div>
-              <button onClick={() => setActiveStation(null)} className="text-(--brand-muted) hover:text-(--ui-error) transition-colors bg-background p-1.5 rounded-full border border-(--brand-border)">
-                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => setActiveStation(null)} className="p-1.5 rounded-lg text-(--brand-muted) hover:bg-(--surface-soft) transition-colors cursor-pointer">
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             
-            <h3 className="text-2xl font-bold text-(--brand-ink) mb-1 truncate">{activeStation.stationName || 'Station Details'}</h3>
-            <p className="text-sm font-medium text-(--brand-muted) mb-5 truncate leading-relaxed">{activeStation.address}</p>
+            <h3 className="text-[15px] font-extrabold text-(--brand-ink) tracking-tight mb-1 truncate">{activeStation.stationName || 'Station Details'}</h3>
+            <p className="text-[11px] font-medium text-(--brand-muted) mb-5 truncate leading-relaxed">{activeStation.address}</p>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-background rounded-xl p-3 border border-(--brand-border)">
-                <p className="text-[10px] uppercase font-bold text-(--brand-muted) mb-1 tracking-widest">Base Rate</p>
-                <p className="text-lg font-black text-(--brand-ink)">Rs. {activeStation.pricePerKWh || 85}</p>
+              <div className="bg-(--surface-soft)/40 rounded-xl p-3 border border-(--brand-border)/50 flex flex-col justify-center">
+                <p className="text-[9px] uppercase font-extrabold text-(--brand-muted) tracking-wider mb-0.5">Base Rate</p>
+                <p className="text-[13px] font-black text-(--brand-ink)">LKR {activeStation.pricePerKWh || 85}</p>
               </div>
-              <div className="bg-background rounded-xl p-3 border border-(--brand-border)">
-                 <p className="text-[10px] uppercase font-bold text-(--brand-muted) mb-1 tracking-widest">Connectors</p>
-                 <p className="text-lg font-black text-(--brand-green)">{activeStation.chargers?.length || 0} Ready</p>
+              <div className="bg-(--surface-soft)/40 rounded-xl p-3 border border-(--brand-border)/50 flex flex-col justify-center">
+                 <p className="text-[9px] uppercase font-extrabold text-(--brand-muted) tracking-wider mb-0.5">Hardware</p>
+                 <p className="text-[13px] font-black text-(--brand-green-deep)">{activeStation.chargers?.length || 0} Ports</p>
               </div>
             </div>
           </motion.div>

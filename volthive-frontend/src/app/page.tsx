@@ -6,6 +6,7 @@ import Link from 'next/link';
 import HomeNavbar from '../components/home/HomeNavbar';
 import Hero from '../components/home/Hero';
 import Features from '../components/home/Features';
+import PWAGuide from '../components/home/PWAGuide';
 import Footer from '../components/home/Footer';
 import StationMap from '../components/StationMap';
 import BookingDrawer from '../components/driver/BookingDrawer';
@@ -20,143 +21,7 @@ interface Station {
   chargers: { _id: string; plugType: string; powerKW: number; status: string }[];
 }
 
-const joinSteps = [
-  {
-    title: 'Create your account',
-    description: 'Create your account once and keep your driver profile, vehicle details, and charging preferences in one place.',
-  },
-  {
-    title: 'Choose a station',
-    description: 'Use live availability, pricing, and location data to find the right stop before you arrive.',
-  },
-  {
-    title: 'Plug in and go',
-    description: 'Reserve a slot, start charging, and keep your trip moving without extra friction.',
-  },
-];
-
-const newsItems = [
-  {
-    badge: 'Platform update',
-    title: 'Faster station discovery on mobile',
-    description: 'The home map now opens with a cleaner, thumb-friendly action button on smaller screens.',
-  },
-  {
-    badge: 'Operations',
-    title: 'Better pricing visibility for owners',
-    description: 'Station partners can read demand signals faster and react with more confidence.',
-  },
-  {
-    badge: 'Travel insights',
-    title: 'More reliable trip planning',
-    description: 'Drivers can compare nearby chargers, capacity, and timing without losing context.',
-  },
-];
-
-const partnerGroups = [
-  'Fleet operators',
-  'Retail locations',
-  'Hospitality venues',
-  'Energy providers',
-];
-
-function HomeSections() {
-  return (
-    <>
-      {/* SECTION: AI NETWORK TELEMETRY GAZETTE */}
-      <section id="news" className="relative z-10 px-6 sm:px-10 py-12 sm:py-20 max-w-[1500px] mx-auto font-sans">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] items-stretch">
-          
-          {/* Main Gazette Flagship Card */}
-          <div className="rounded-3xl sm:rounded-[3rem] border border-(--brand-border) bg-linear-to-br from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white p-10 sm:p-14 lg:p-16 shadow-2xl relative overflow-hidden flex flex-col justify-between group">
-            <div className="absolute -top-16 -right-16 h-72 w-72 rounded-full bg-white/12 blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-700" />
-            <div className="space-y-6 relative z-10">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/25 font-mono text-xs font-black uppercase tracking-widest text-white">
-                <span>TELEMETRY ENGINE ● ARCHITECTURE</span>
-              </div>
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.05]">
-                Smart pricing decisions computed from live grid data.
-              </h2>
-              <p className="text-white/95 text-base sm:text-xl leading-relaxed max-w-2xl font-medium text-balance">
-                Our predictive Python tariff module continuously queries active hardware sensor streams and local weather APIs to balance station demand loads across peak 6-hour windows.
-              </p>
-            </div>
-            
-            <div className="pt-8 mt-10 border-t border-white/20 flex items-center justify-between font-mono text-xs font-black text-white/95 relative z-10">
-              <span>PROTOCOL v2.1 ACTIVE</span>
-              <span>● AUTONOMOUS YIELD SYNC</span>
-            </div>
-          </div>
-
-          {/* Side Telemetry Stack */}
-          <div className="grid gap-6">
-            {newsItems.map((item, idx) => (
-              <article key={item.title} className="rounded-3xl border border-(--brand-border) bg-(--brand-card) p-7 sm:p-9 shadow-sm hover:border-(--brand-blue) transition-all flex flex-col justify-center">
-                <div className="inline-flex items-center gap-2 font-mono text-xs font-black tracking-wider uppercase text-(--brand-blue) mb-3">
-                  <span>LOG ● 0{idx + 1}</span>
-                  <span>— {item.badge}</span>
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-(--brand-ink) mb-2.5 tracking-tight">{item.title}</h3>
-                <p className="text-sm sm:text-base text-(--brand-muted) leading-relaxed font-medium">{item.description}</p>
-              </article>
-            ))}
-          </div>
-
-        </div>
-      </section>
-
-      {/* SECTION: COMMERCIAL FLEETS & POS PORTALS */}
-      <section id="partners" className="relative z-10 px-6 sm:px-10 py-12 sm:py-20 max-w-[1500px] mx-auto font-sans">
-        <div className="rounded-3xl sm:rounded-[3rem] border border-(--brand-border) bg-(--brand-card) p-10 sm:p-14 lg:p-18 shadow-[0_30px_90px_-25px_rgba(74,144,164,0.22)]">
-          
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 mb-16">
-            <div className="max-w-3xl">
-              <p className="text-[11px] uppercase tracking-[0.28em] text-(--brand-green-deep) font-black mb-3">Commercial Operators</p>
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-(--brand-ink) mb-5">
-                Hardware checkouts without gateway fees.
-              </h2>
-              <p className="text-base sm:text-xl text-(--brand-muted) leading-relaxed font-medium text-balance">
-                Connect your physical charging station hardware to VoltHive's predictive Python surge engine and stream direct zero-cut hardware settlements.
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 shrink-0">
-              <Link 
-                href="/owner-login" 
-                className="px-9 py-4.5 rounded-full text-xs font-extrabold uppercase tracking-[0.18em] bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white shadow-lg hover:brightness-105 active:scale-95 transition-all text-center flex items-center justify-center"
-              >
-                <span>ADMIN CENTER</span>
-              </Link>
-              <Link 
-                href="/driver-login" 
-                className="px-9 py-4.5 rounded-full text-xs font-extrabold uppercase tracking-[0.18em] bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) transition-all text-center flex items-center justify-center"
-              >
-                <span>DRIVER PORTAL →</span>
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid gap-8 sm:grid-cols-2 xl:grid-cols-4">
-            {partnerGroups.map((group, gIdx) => (
-              <div key={group} className="rounded-3xl border border-(--brand-border) bg-(--surface-soft)/30 p-8 hover:border-(--brand-green) hover:bg-(--brand-card) transition-all group shadow-none hover:shadow-xl">
-                <div className="w-12 h-12 rounded-2xl bg-(--brand-card) border border-(--brand-border) shadow-xs text-(--brand-green-deep) flex items-center justify-center font-mono font-black text-sm mb-6 group-hover:scale-110 transition-transform">
-                  0{gIdx + 1}
-                </div>
-                <h3 className="text-xl sm:text-2xl font-black text-(--brand-ink) mb-3 tracking-tight">{group}</h3>
-                <p className="text-sm sm:text-base text-(--brand-muted) leading-relaxed font-medium">
-                  Zero-fee POS hardware checkouts, custom AI surge threshold parameters, and real-time dashboard auditing.
-                </p>
-              </div>
-            ))}
-          </div>
-
-        </div>
-      </section>
-    </>
-  );
-}
-
-// ============================================================================
+// Removed HomeSections in favor of dedicated components// ============================================================================
 // MAIN PAGE COMPONENT
 // ============================================================================
 export default function Home() {
@@ -180,7 +45,7 @@ export default function Home() {
     document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const showHome = (sectionId = 'about-us') => {
+  const showHome = (sectionId = 'hero') => {
     setIsMapView(false);
     setSelectedStation(null);
     window.setTimeout(() => scrollToSection(sectionId), 50);
@@ -234,7 +99,7 @@ export default function Home() {
       
       {/* 1. TOP NAVBAR */}
       <HomeNavbar
-        onLogoClick={() => showHome('about-us')}
+        onLogoClick={() => showHome('hero')}
         onNavigateSection={navigateToSection}
       />
 
@@ -243,7 +108,7 @@ export default function Home() {
         
         {/* MAP VIEW */}
         <div className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-            <div className="w-full h-full pt-22 sm:pt-26 overflow-x-hidden">
+            <div className="w-full h-full overflow-hidden">
              <StationMap
                stations={stations}
                isGuest={true}
@@ -270,10 +135,10 @@ export default function Home() {
         </div>
 
         {/* HOME / MARKETING VIEW */}
-        <div className={`absolute inset-0 overflow-y-auto overflow-x-hidden custom-scrollbar pb-32 transition-opacity duration-500 ease-in-out ${!isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+        <div className={`absolute inset-0 overflow-y-auto overflow-x-hidden custom-scrollbar transition-opacity duration-500 ease-in-out ${!isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
           <Hero />
           <Features />
-          <HomeSections />
+          <PWAGuide />
           <Footer />
         </div>
       </div>
@@ -283,7 +148,7 @@ export default function Home() {
         <button
           onClick={() => {
             if (isMapView) {
-              showHome('about-us');
+              showHome('hero');
               return;
             }
 
