@@ -60,7 +60,7 @@ export default function Features() {
   };
 
   return (
-    <section id="services" className="relative z-10 w-full min-h-[90dvh] bg-(--background) flex flex-col justify-center py-24 px-6 sm:px-10 overflow-hidden font-sans border-t border-(--brand-border)">
+    <section id="services" className="relative z-10 w-full min-h-[90dvh] bg-(--background) flex flex-col justify-center py-16 sm:py-24 px-5 sm:px-10 overflow-hidden font-sans border-t border-(--brand-border)">
       
       {/* Background Soft Glows */}
       <div className="absolute top-1/3 right-0 w-[40vw] h-[40vw] max-w-[500px] bg-(--brand-blue)/10 blur-[130px] rounded-full pointer-events-none" />
@@ -74,36 +74,36 @@ export default function Features() {
         viewport={{ once: true, margin: "-80px" }}
       >
         {/* Header */}
-        <motion.div variants={cardVariants} className="max-w-3xl mb-16 sm:mb-20">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-(--surface-soft) border border-(--brand-border) font-mono text-xs font-black tracking-[0.18em] uppercase text-(--brand-blue-deep) mb-4 shadow-2xs">
+        <motion.div variants={cardVariants} className="max-w-3xl mb-12 sm:mb-20">
+          <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-(--surface-soft) border border-(--brand-border) font-mono text-[11px] sm:text-xs font-black tracking-[0.16em] sm:tracking-[0.18em] uppercase text-(--brand-blue-deep) mb-3.5 sm:mb-4 shadow-2xs">
             <span>CORE ARCHITECTURE</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-(--brand-ink) leading-[1.06] mb-5">
+          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-(--brand-ink) leading-[1.06] mb-4 sm:mb-5">
             Intelligent Infrastructure.
           </h2>
-          <p className="text-base sm:text-xl text-(--brand-muted) font-medium leading-relaxed">
+          <p className="text-sm sm:text-xl text-(--brand-muted) font-medium leading-relaxed">
             The most advanced EV aggregator protocol. Designed for station owners, optimized for drivers, powered by AI.
           </p>
         </motion.div>
 
-        {/* Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-3 gap-6 auto-rows-[340px]">
+        {/* Bento Grid - Mobile Dynamic Auto-Rows */}
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-3 gap-5 sm:gap-6 auto-rows-auto md:auto-rows-[340px]">
           {CORE_FEATURES.map((feature) => (
             <motion.div 
               key={feature.id}
               variants={cardVariants}
-              className={`${feature.span} relative rounded-[2.5rem] p-8 sm:p-12 overflow-hidden group border border-(--brand-border) bg-linear-to-br ${feature.accentBg} shadow-sm hover:shadow-xl hover:border-(--brand-blue)/40 transition-all duration-500 flex flex-col justify-between`}
+              className={`${feature.span} relative rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-12 overflow-hidden group border border-(--brand-border) bg-linear-to-br ${feature.accentBg} shadow-sm hover:shadow-xl hover:border-(--brand-blue)/40 transition-all duration-500 flex flex-col justify-between min-h-[240px] md:min-h-0`}
             >
               <div className="relative z-10">
-                <span className={`inline-block px-3.5 py-1 rounded-full border font-mono text-[11px] font-black tracking-[0.16em] uppercase mb-6 ${feature.badgeColor}`}>
+                <span className={`inline-block px-3 py-1 rounded-full border font-mono text-[10px] sm:text-[11px] font-black tracking-[0.14em] sm:tracking-[0.16em] uppercase mb-4 sm:mb-6 ${feature.badgeColor}`}>
                   {feature.subtitle}
                 </span>
-                <h3 className="text-2xl sm:text-4xl font-black text-(--brand-ink) tracking-tight mb-4">
+                <h3 className="text-xl sm:text-4xl font-black text-(--brand-ink) tracking-tight mb-3 sm:mb-4">
                   {feature.title}
                 </h3>
               </div>
               
-              <p className="relative z-10 text-(--brand-muted) text-sm sm:text-base font-medium leading-relaxed max-w-lg mt-auto">
+              <p className="relative z-10 text-(--brand-muted) text-sm sm:text-base font-medium leading-relaxed max-w-lg mt-auto pt-4 md:pt-0">
                 {feature.description}
               </p>
             </motion.div>

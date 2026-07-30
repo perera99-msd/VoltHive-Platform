@@ -53,9 +53,9 @@ export default function Hero() {
   const slide = HERO_SLIDES[currentSlide];
 
   return (
-    <section id="hero" className="relative w-full h-[100dvh] overflow-hidden bg-(--background) flex items-center font-sans">
+    <section id="hero" className="relative w-full min-h-[100dvh] md:h-[100dvh] overflow-hidden bg-(--background) flex items-center font-sans">
       
-      {/* Full-bleed Crisp AI Background Image (100% Text-Free & Photorealistic) */}
+      {/* Full-bleed Crisp AI Background Image */}
       <AnimatePresence mode="popLayout">
         <motion.div
           key={slide.id}
@@ -72,16 +72,16 @@ export default function Hero() {
             className="object-cover opacity-100"
             priority
           />
-          {/* Subtle Mask Overlay - Positioned purely to ensure text legibility while keeping 90% of image crystal clear */}
-          <div className="absolute inset-0 bg-linear-to-r from-(--background)/90 via-(--background)/45 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-linear-to-b from-(--background)/50 via-transparent to-(--background)/60 pointer-events-none" />
+          {/* Responsive Soft Mask Overlay */}
+          <div className="absolute inset-0 bg-linear-to-r from-(--background)/90 via-(--background)/60 md:via-(--background)/45 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-linear-to-b from-(--background)/60 via-transparent to-(--background)/70 pointer-events-none" />
         </motion.div>
       </AnimatePresence>
 
-      {/* Floating Content Layout - Clean Floating Typography */}
-      <div className="relative z-10 w-full max-w-[1500px] mx-auto px-6 sm:px-10 h-full flex flex-col justify-center pt-16 pb-20">
+      {/* Floating Content Layout - Responsive Padding */}
+      <div className="relative z-10 w-full max-w-[1500px] mx-auto px-5 sm:px-10 h-full flex flex-col justify-center py-20 md:py-0 md:pt-16 md:pb-20">
         
-        <div className="max-w-3xl space-y-8">
+        <div className="max-w-3xl space-y-6 sm:space-y-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={`content-${slide.id}`}
@@ -89,16 +89,16 @@ export default function Hero() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 1.4, ease: 'easeOut' }}
-              className="space-y-6"
+              className="space-y-4 sm:space-y-6"
             >
               {/* Floating Badge */}
               <motion.div 
                 initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 1.2, delay: 0.2 }}
-                className="inline-flex items-center gap-2.5 px-4.5 py-2 rounded-full bg-white/95 backdrop-blur-md border border-(--brand-border) font-mono text-xs font-black tracking-[0.2em] uppercase text-(--brand-blue-deep) shadow-2xs"
+                className="inline-flex items-center gap-2 px-3.5 sm:px-4.5 py-1.5 sm:py-2 rounded-full bg-white/95 backdrop-blur-md border border-(--brand-border) font-mono text-[10px] sm:text-xs font-black tracking-[0.16em] sm:tracking-[0.2em] uppercase text-(--brand-blue-deep) shadow-2xs"
               >
-                <span className="w-2.5 h-2.5 rounded-full bg-(--brand-green) animate-pulse" />
+                <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-(--brand-green) animate-pulse" />
                 <span>{slide.badge}</span>
               </motion.div>
 
@@ -107,7 +107,7 @@ export default function Hero() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.4, delay: 0.3 }}
-                className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-(--brand-ink) leading-[1.05]"
+                className="text-3xl sm:text-6xl lg:text-7xl font-black tracking-tight text-(--brand-ink) leading-[1.08] sm:leading-[1.05]"
               >
                 {slide.title}
               </motion.h1>
@@ -117,12 +117,12 @@ export default function Hero() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1.4, delay: 0.5 }}
-                className="space-y-3"
+                className="space-y-2 sm:space-y-3"
               >
-                <p className="text-xl sm:text-2xl font-extrabold text-(--brand-blue-deep) tracking-tight">
+                <p className="text-lg sm:text-2xl font-extrabold text-(--brand-blue-deep) tracking-tight">
                   {slide.subtitle}
                 </p>
-                <p className="text-base sm:text-xl text-(--brand-muted) font-medium leading-relaxed max-w-2xl text-balance">
+                <p className="text-sm sm:text-xl text-(--brand-muted) font-medium leading-relaxed max-w-2xl text-balance">
                   {slide.description}
                 </p>
               </motion.div>
@@ -132,11 +132,11 @@ export default function Hero() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1.4, delay: 0.7 }}
-                className="flex flex-col sm:flex-row gap-4 pt-4"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-2 sm:pt-4"
               >
                 <Link
                   href={slide.primaryCta.href}
-                  className="px-10 py-5 rounded-full text-xs font-black uppercase tracking-[0.2em] bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white shadow-xl shadow-(--brand-blue)/20 hover:brightness-105 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-3.5 sm:px-10 sm:py-5 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white shadow-xl shadow-(--brand-blue)/20 hover:brightness-105 active:scale-95 transition-all text-center flex items-center justify-center gap-2"
                 >
                   <span>{slide.primaryCta.text}</span>
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-4 h-4">
@@ -145,7 +145,7 @@ export default function Hero() {
                 </Link>
                 <Link
                   href={slide.secondaryCta.href}
-                  className="px-10 py-5 rounded-full text-xs font-black uppercase tracking-[0.2em] bg-white/90 backdrop-blur-md border border-(--brand-border) text-(--brand-ink) hover:bg-white active:scale-95 transition-all text-center flex items-center justify-center shadow-2xs"
+                  className="w-full sm:w-auto px-6 py-3.5 sm:px-10 sm:py-5 rounded-full text-[11px] sm:text-xs font-black uppercase tracking-[0.18em] sm:tracking-[0.2em] bg-white/90 backdrop-blur-md border border-(--brand-border) text-(--brand-ink) hover:bg-white active:scale-95 transition-all text-center flex items-center justify-center shadow-2xs"
                 >
                   <span>{slide.secondaryCta.text}</span>
                 </Link>
@@ -156,12 +156,12 @@ export default function Hero() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 1.4, delay: 0.9 }}
-                className="pt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl"
+                className="pt-4 sm:pt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 max-w-2xl"
               >
                 {slide.stats.map((st, i) => (
-                  <div key={i} className="p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-(--brand-border) shadow-2xs">
-                    <div className="text-xl sm:text-2xl font-black text-(--brand-ink)">{st.value}</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-(--brand-muted) mt-0.5">{st.label}</div>
+                  <div key={i} className="p-2.5 sm:p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-(--brand-border) shadow-2xs">
+                    <div className="text-lg sm:text-2xl font-black text-(--brand-ink)">{st.value}</div>
+                    <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-(--brand-muted) mt-0.5">{st.label}</div>
                   </div>
                 ))}
               </motion.div>
@@ -172,15 +172,15 @@ export default function Hero() {
       </div>
 
       {/* Slider Controls */}
-      <div className="absolute bottom-10 left-6 sm:left-10 z-20 flex gap-3 items-center">
+      <div className="absolute bottom-6 left-5 sm:bottom-10 sm:left-10 z-20 flex gap-2.5 sm:gap-3 items-center">
         {HERO_SLIDES.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentSlide(idx)}
-            className={`h-2 rounded-full transition-all duration-1000 cursor-pointer ${
+            className={`h-1.5 sm:h-2 rounded-full transition-all duration-1000 cursor-pointer ${
               idx === currentSlide 
-                ? 'w-12 bg-linear-to-r from-(--brand-blue) to-(--brand-green)' 
-                : 'w-4 bg-(--brand-border) hover:bg-(--brand-muted)/40'
+                ? 'w-10 sm:w-12 bg-linear-to-r from-(--brand-blue) to-(--brand-green)' 
+                : 'w-3 sm:w-4 bg-(--brand-border) hover:bg-(--brand-muted)/40'
             }`}
             aria-label={`Go to slide ${idx + 1}`}
           />
