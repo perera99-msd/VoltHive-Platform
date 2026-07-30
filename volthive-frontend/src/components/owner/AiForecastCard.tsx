@@ -165,290 +165,318 @@ export default function AiForecastCard() {
   const nextPeak = data?.hourly.find(h => h.multiplier > 1.0) || data?.hourly[0];
   const stationNameDisplay = data?.station?.name || stations.find(s => s._id === selectedStationId)?.stationName || 'Network Hub';
 
+  /* ─── Weather icon helper ─── */
+  const weatherIcon = (condition: string) => {
+    const c = condition?.toLowerCase() || '';
+    if (c.includes('cloud') || c.includes('overcast')) return '☁️';
+    if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+    if (c.includes('thunder') || c.includes('storm')) return '⛈️';
+    return '☀️';
+  };
+
   return (
-    <div className="w-full mb-8 relative z-30 font-sans">
-      {/* COLLAPSED TOP COCKPIT CARD */}
+    <div className="w-full mb-6 relative z-30 font-sans">
+
+      {/* ══════════ COLLAPSED BAR ══════════ */}
       <motion.div
         onClick={() => setIsOpen(true)}
-        whileHover={{ scale: 1.003 }}
-        whileTap={{ scale: 0.997 }}
-        className="cursor-pointer bg-(--brand-card) border border-(--brand-border) rounded-3xl p-5 shadow-sm hover:shadow-md transition-all text-(--brand-ink) flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden group"
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.998 }}
+        className="cursor-pointer bg-white border border-(--brand-border)/80 rounded-2xl px-5 py-3.5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] hover:shadow-md transition-all flex items-center justify-between gap-4 group"
       >
-        <div className="absolute top-0 right-0 w-80 h-full bg-linear-to-l from-(--surface-soft) to-transparent pointer-events-none -z-0" />
-        
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="w-12 h-12 rounded-2xl bg-(--brand-blue)/10 border border-(--brand-blue)/20 flex items-center justify-center text-(--brand-blue) shrink-0 shadow-xs">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+        {/* Left section */}
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4a90a4] to-[#6cb567] flex items-center justify-center shrink-0">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="white" className="w-[18px] h-[18px]">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+            </svg>
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-(--brand-blue) text-white shadow-xs">📍 {stationNameDisplay}</span>
-              <span className="text-xs text-(--brand-muted) font-semibold">• {data?.weather.source || 'Open-Meteo Live API'}</span>
+              <span className="text-[11px] font-bold text-(--brand-blue) truncate">{stationNameDisplay}</span>
+              <span className="text-[10px] text-(--brand-muted) font-medium hidden sm:inline">· {data?.weather.source || 'Open-Meteo API'}</span>
               {data?.activeEvent && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/15 text-amber-600 border border-amber-500/30">🏏 Rush: {data.activeEvent.title}</span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#f4b740]/12 text-[#d09d2e] border border-[#f4b740]/25">
+                  🏏 {data.activeEvent.title}
+                </span>
               )}
             </div>
-            <h3 className="text-base sm:text-lg font-bold text-(--brand-ink) mt-1 tracking-tight">
-              {loading ? 'Evaluating Station Location & Calendar...' : `AI Dynamic Surge: ${nextPeak?.recommendation || 'Normal Demand'} (${nextPeak?.multiplier || 1.0}x)`}
-            </h3>
+            <p className="text-[13px] font-bold text-(--brand-ink) tracking-tight truncate mt-0.5">
+              {loading ? 'Evaluating...' : `AI Surge: ${nextPeak?.recommendation || 'Normal Demand'} (${nextPeak?.multiplier || 1.0}x)`}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end relative z-10">
-          <div className="px-4 py-2 rounded-xl bg-(--surface-soft) border border-(--brand-border) text-xs font-bold text-(--brand-ink) flex items-center gap-2">
-            <span>☀️ {data?.weather.condition || 'Clear'} ({data?.weather.temp || 30}°C)</span>
+        {/* Right section */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--surface-soft) border border-(--brand-border)/60 text-[11px] font-semibold text-(--brand-ink)">
+            {weatherIcon(data?.weather.condition || 'Clear')} {data?.weather.condition || 'Clear'} · {data?.weather.temp || 30}°C
+          </span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--brand-blue) text-white text-[11px] font-bold group-hover:bg-(--brand-blue-deep) transition-colors">
+            <span className="hidden sm:inline">Cockpit</span>
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
           </div>
-          <button className="px-5 py-2.5 bg-(--brand-blue) hover:bg-(--brand-blue-deep) text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 shrink-0 cursor-pointer">
-            <span>Cockpit & Calendar</span>
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-          </button>
         </div>
       </motion.div>
 
-      {/* EXPANDED FULL STATION COCKPIT & CALENDAR MODAL */}
+      {/* ══════════ EXPANDED COCKPIT MODAL ══════════ */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-(--brand-ink)/60 backdrop-blur-md overflow-y-auto"
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-(--brand-ink)/50 backdrop-blur-sm overflow-y-auto"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20 }}
+              initial={{ scale: 0.97, y: 12 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="bg-(--brand-card) border border-(--brand-border) rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden text-(--brand-ink) my-auto"
+              exit={{ scale: 0.97, y: 12 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white border border-(--brand-border)/80 rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden my-auto"
             >
-              {/* Modal Header */}
-              <div className="p-6 md:p-8 bg-(--surface-soft) border-b border-(--brand-border) flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-(--brand-blue)/15 border border-(--brand-blue)/25 flex items-center justify-center text-(--brand-blue)">
-                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-7 h-7"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+
+              {/* ── Modal Header ── */}
+              <div className="flex items-center justify-between gap-4 px-6 py-5 border-b border-(--brand-border)/60">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4a90a4] to-[#6cb567] flex items-center justify-center shrink-0">
+                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                    </svg>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-xl sm:text-2xl font-bold text-(--brand-ink)">Neural Grid Station Command Cockpit</h2>
-                      <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 border border-emerald-500/30">⚡ 1 Production Engine Active</span>
-                    </div>
-                    <p className="text-xs text-(--brand-muted) font-medium mt-0.5">Evaluating 6 causal input variables per station location coordinates and calendar.</p>
+                  <div className="min-w-0">
+                    <h2 className="text-[17px] font-extrabold text-(--brand-ink) tracking-tight truncate">AI Surge Command Cockpit</h2>
+                    <p className="text-[11px] text-(--brand-muted) font-medium mt-0.5">6 causal input variables · per-station forecast</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 self-end sm:self-center flex-wrap">
+                <div className="flex items-center gap-2 shrink-0">
                   {stations.length > 1 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-(--brand-muted)">Station:</span>
-                      <select
-                        value={selectedStationId}
-                        onChange={e => setSelectedStationId(e.target.value)}
-                        className="px-3 py-2 rounded-xl bg-white border border-(--brand-border) text-xs font-bold text-(--brand-ink) shadow-xs cursor-pointer focus:outline-none focus:border-(--brand-blue)"
-                      >
-                        {stations.map(st => (
-                          <option key={st._id} value={st._id}>{st.stationName}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <select
+                      value={selectedStationId}
+                      onChange={e => setSelectedStationId(e.target.value)}
+                      className="px-3 py-2 rounded-lg bg-(--surface-soft) border border-(--brand-border)/60 text-[11px] font-bold text-(--brand-ink) focus:outline-none focus:border-(--brand-blue) cursor-pointer"
+                    >
+                      {stations.map(st => (
+                        <option key={st._id} value={st._id}>{st.stationName}</option>
+                      ))}
+                    </select>
                   )}
 
                   <button
                     type="button"
                     onClick={handleForceRefresh}
                     disabled={refreshing}
-                    className="px-4 py-2 bg-white hover:bg-(--surface-tint) text-(--brand-blue) text-xs font-bold rounded-xl border border-(--brand-border) shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+                    className="p-2 rounded-lg bg-(--surface-soft) border border-(--brand-border)/60 text-(--brand-blue) hover:bg-(--surface-tint) transition-colors cursor-pointer"
+                    title="Run Prediction"
                   >
-                    <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>
-                    <span>Run Prediction</span>
+                    <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="p-2.5 hover:bg-(--brand-border)/40 rounded-xl transition-colors cursor-pointer text-(--brand-muted)"
+                    className="p-2 rounded-lg hover:bg-(--surface-soft) transition-colors cursor-pointer text-(--brand-muted)"
                   >
-                    ✕
+                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
                 </div>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-6 md:p-8 overflow-y-auto space-y-8 max-h-[calc(90vh-100px)]">
-                
-                {/* SECTION 1: PER-STATION SPECIAL EVENTS CALENDAR MANAGER */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  
-                  {/* LEFT 2 COLS: EVENTS LIST & PREDICTION IMPACT */}
-                  <div className="lg:col-span-2 p-6 rounded-3xl bg-(--surface-tint)/40 border border-(--brand-border) space-y-4">
-                    <div className="flex items-center justify-between border-b border-(--brand-border)/80 pb-4">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">🗓️</span>
-                        <div>
-                          <h4 className="font-bold text-base text-(--brand-ink)">Manual Special Events Calendar ({stationNameDisplay})</h4>
-                          <p className="text-xs text-(--brand-muted)">Scheduled upcoming matches or concerts trigger dynamic crowd surge pricing up to 1 week ahead.</p>
-                        </div>
+              {/* ── Modal Body ── */}
+              <div className="p-6 overflow-y-auto space-y-6 max-h-[calc(90vh-80px)]">
+
+                {/* SECTION 1: Special Events Calendar */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                  {/* Left: Events List */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-[14px] font-extrabold text-(--brand-ink) tracking-tight">Special Events Calendar</h3>
+                        <p className="text-[11px] text-(--brand-muted) font-medium mt-0.5">{stationNameDisplay} · Scheduled events trigger surge pricing</p>
                       </div>
-                      <span className="px-3 py-1 rounded-lg bg-(--brand-blue)/10 text-(--brand-blue) font-bold text-xs shrink-0">
-                        {data?.specialEvents?.length || 0} Events Logged
+                      <span className="text-[10px] font-bold text-(--brand-blue) bg-(--brand-blue)/8 px-2.5 py-1 rounded-lg border border-(--brand-blue)/15">
+                        {data?.specialEvents?.length || 0} events
                       </span>
                     </div>
 
-                    <div className="space-y-3 pt-2">
-                      {!data?.specialEvents || data.specialEvents.length === 0 ? (
-                        <div className="p-8 text-center rounded-2xl bg-white border border-dashed border-(--brand-border) text-xs text-(--brand-muted) font-semibold">
-                          No upcoming special events scheduled for this station. Add a cricket match or festival date below!
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {data.specialEvents.map((ev, idx) => {
-                            const evDate = new Date(ev.date);
-                            const now = new Date();
-                            const diffDays = Math.ceil((evDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
-                            const isWithinWeek = diffDays >= 0 && diffDays <= 7;
+                    {!data?.specialEvents || data.specialEvents.length === 0 ? (
+                      <div className="py-10 text-center rounded-xl border-2 border-dashed border-(--brand-border)/80 bg-(--surface-soft)/20">
+                        <p className="text-[12px] text-(--brand-muted) font-medium">No upcoming events scheduled. Add a match or festival below.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {data.specialEvents.map((ev, idx) => {
+                          const evDate = new Date(ev.date);
+                          const now = new Date();
+                          const diffDays = Math.ceil((evDate.getTime() - now.getTime()) / (1000 * 3600 * 24));
+                          const isWithinWeek = diffDays >= 0 && diffDays <= 7;
 
-                            return (
-                              <div key={ev._id || idx} className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-3 ${isWithinWeek ? 'bg-amber-500/10 border-amber-500/30 text-(--brand-ink)' : 'bg-white border-(--brand-border) opacity-70'}`}>
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-white text-(--brand-ink) shadow-2xs border border-(--brand-border)">{ev.date}</span>
-                                    {isWithinWeek && <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500 text-white shadow-2xs">ACTIVE SURGE RUSH</span>}
-                                  </div>
-                                  <h5 className="font-bold text-sm text-(--brand-ink) pt-1">🏏 {ev.title}</h5>
-                                  <p className="text-[11px] text-(--brand-muted) font-medium">{ev.category}</p>
+                          return (
+                            <div
+                              key={ev._id || idx}
+                              className={`p-4 rounded-xl border flex items-start justify-between gap-3 transition-all ${
+                                isWithinWeek
+                                  ? 'bg-[#f4b740]/6 border-[#f4b740]/30'
+                                  : 'bg-(--surface-soft)/40 border-(--brand-border)/60'
+                              }`}
+                            >
+                              <div className="space-y-1.5 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] font-bold text-(--brand-ink) bg-white px-2 py-0.5 rounded-md border border-(--brand-border)/60">{ev.date}</span>
+                                  {isWithinWeek && (
+                                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#f4b740] text-white uppercase tracking-wider">Active</span>
+                                  )}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => ev._id && handleDeleteEvent(ev._id)}
-                                  className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors cursor-pointer text-xs font-bold shrink-0"
-                                  title="Remove event"
-                                >
-                                  🗑️
-                                </button>
+                                <p className="text-[13px] font-bold text-(--brand-ink) truncate">{ev.title}</p>
+                                <p className="text-[10px] text-(--brand-muted) font-medium">{ev.category}</p>
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
+                              <button
+                                type="button"
+                                onClick={() => ev._id && handleDeleteEvent(ev._id)}
+                                className="p-1.5 text-(--ui-error) hover:bg-(--ui-error)/8 rounded-lg transition-colors cursor-pointer shrink-0"
+                                title="Remove event"
+                              >
+                                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  {/* RIGHT 1 COL: ADD NEW EVENT FORM */}
-                  <div className="p-6 rounded-3xl bg-(--surface-soft) border border-(--brand-border) flex flex-col justify-between">
+                  {/* Right: Add Event Form */}
+                  <div className="p-5 rounded-xl bg-(--surface-soft)/40 border border-(--brand-border)/60 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xl">➕</span>
-                        <h4 className="font-bold text-sm text-(--brand-ink)">Schedule Station Event</h4>
-                      </div>
+                      <h4 className="text-[13px] font-extrabold text-(--brand-ink) tracking-tight mb-4">Schedule Event</h4>
 
-                      <form onSubmit={handleAddEvent} className="space-y-4">
+                      <form onSubmit={handleAddEvent} className="space-y-3.5">
                         <div>
-                          <label className="text-[11px] font-bold text-(--brand-muted) uppercase tracking-wider block mb-1">Event Title</label>
+                          <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.12em] block mb-1.5">Event Title</label>
                           <input
                             type="text"
                             required
                             value={newTitle}
                             onChange={e => setNewTitle(e.target.value)}
                             placeholder="e.g. Asia Cup Final ODI"
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-(--brand-border) text-xs font-semibold text-(--brand-ink) focus:outline-none focus:border-(--brand-blue)"
+                            className="w-full px-3 py-2.5 rounded-lg bg-white border border-(--brand-border)/80 text-[12px] font-medium text-(--brand-ink) placeholder:text-(--brand-muted)/50 focus:outline-none focus:border-(--brand-blue) transition-colors"
                           />
                         </div>
 
                         <div>
-                          <label className="text-[11px] font-bold text-(--brand-muted) uppercase tracking-wider block mb-1">Event Date (YYYY-MM-DD)</label>
+                          <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.12em] block mb-1.5">Event Date</label>
                           <input
                             type="date"
                             required
                             value={newDate}
                             onChange={e => setNewDate(e.target.value)}
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-(--brand-border) text-xs font-semibold text-(--brand-ink) focus:outline-none focus:border-(--brand-blue)"
+                            className="w-full px-3 py-2.5 rounded-lg bg-white border border-(--brand-border)/80 text-[12px] font-medium text-(--brand-ink) focus:outline-none focus:border-(--brand-blue) transition-colors"
                           />
                         </div>
 
-                        <div className="pt-2">
-                          <button
-                            type="submit"
-                            disabled={addingEvent}
-                            className="w-full py-3 rounded-xl bg-(--brand-blue) hover:bg-(--brand-blue-deep) text-white font-bold text-xs transition-all shadow-md cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <span>{addingEvent ? 'Scheduling...' : 'Add Event to Station'}</span>
-                          </button>
-                        </div>
+                        <button
+                          type="submit"
+                          disabled={addingEvent}
+                          className="w-full py-2.5 rounded-lg bg-(--brand-blue) hover:bg-(--brand-blue-deep) text-white font-bold text-[11px] transition-all shadow-sm cursor-pointer"
+                        >
+                          {addingEvent ? 'Scheduling...' : 'Add Event'}
+                        </button>
                       </form>
                     </div>
 
-                    <div className="mt-6 p-3 rounded-xl bg-white/60 border border-(--brand-border)/60 text-[11px] text-(--brand-muted) space-y-1">
-                      <p>📍 <b>Weather Source:</b> {data?.weather.source || 'Open-Meteo API'}</p>
-                      <p>⚡ <b>Current Ambient:</b> {data?.weather.condition || 'Clear'}, {data?.weather.temp || 30}°C</p>
+                    <div className="mt-5 pt-4 border-t border-(--brand-border)/50 space-y-1 text-[10px] text-(--brand-muted) font-medium">
+                      <p>📍 Source: {data?.weather.source || 'Open-Meteo API'}</p>
+                      <p>{weatherIcon(data?.weather.condition || 'Clear')} {data?.weather.condition || 'Clear'}, {data?.weather.temp || 30}°C</p>
                     </div>
                   </div>
-
                 </div>
 
-                {/* SECTION 2: CHARTS */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pt-6 border-t border-(--brand-border)">
-                  
-                  {/* Left 2 Cols: 6 Hour Hourly Forecast */}
-                  <div className="lg:col-span-2 space-y-4">
-                    <div className="flex items-center justify-between">
+                {/* SECTION 2: Charts */}
+                <div className="pt-5 border-t border-(--brand-border)/50">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+                    {/* Left: Hourly Forecast Chart */}
+                    <div className="lg:col-span-2 space-y-3">
                       <div>
-                        <h3 className="text-base font-bold text-(--brand-ink)">6-Hour Capacity & Dynamic Tariff Curve</h3>
-                        <p className="text-xs text-(--brand-muted) font-medium mt-0.5">Driven by 6 causal variables: Time, Day, Weekend, Grid Peak, Weather, and Station Events.</p>
+                        <h3 className="text-[14px] font-extrabold text-(--brand-ink) tracking-tight">6-Hour Capacity Curve</h3>
+                        <p className="text-[11px] text-(--brand-muted) font-medium mt-0.5">Predicted occupancy driven by time, weather, grid load, and events</p>
+                      </div>
+
+                      <div className="h-56 w-full">
+                        {loading ? (
+                          <div className="w-full h-full flex items-center justify-center bg-(--surface-soft)/30 rounded-xl border border-(--brand-border)/60 animate-pulse">
+                            <span className="text-[11px] font-bold text-(--brand-muted)">Calculating forecast...</span>
+                          </div>
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={data?.hourly || []} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="occGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#4a90a4" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="#4a90a4" stopOpacity={0.0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e5e3" />
+                              <XAxis dataKey="time" stroke="#6b6f72" fontSize={10} tickLine={false} axisLine={false} />
+                              <YAxis stroke="#6b6f72" fontSize={10} tickLine={false} axisLine={false} unit="%" domain={[0, 100]} />
+                              <Tooltip
+                                contentStyle={{
+                                  backgroundColor: 'white',
+                                  borderRadius: '12px',
+                                  border: '1px solid #e0e5e3',
+                                  fontSize: '11px',
+                                  boxShadow: '0 8px 24px -6px rgba(0,0,0,0.1)',
+                                }}
+                                formatter={(val: any) => [`${val}%`, 'Occupancy']}
+                              />
+                              <Area type="monotone" dataKey="occupancy" stroke="#4a90a4" strokeWidth={2.5} fillOpacity={1} fill="url(#occGrad)" dot={false} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        )}
                       </div>
                     </div>
 
-                    <div className="h-64 w-full pt-4">
-                      {loading ? (
-                        <div className="w-full h-full flex items-center justify-center bg-(--surface-tint)/20 rounded-2xl border border-(--brand-border) animate-pulse text-xs font-bold text-(--brand-muted)">
-                          Recalculating Neural Grid Forecast...
-                        </div>
-                      ) : (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={data?.hourly || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <defs>
-                              <linearGradient id="occGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35}/>
-                                <stop offset="95%" stopColor="#2563eb" stopOpacity={0.0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.06)" />
-                            <XAxis dataKey="time" stroke="#94a3b8" fontSize={11} tickLine={false} />
-                            <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} unit="%" domain={[0, 100]} />
-                            <Tooltip
-                              contentStyle={{ backgroundColor: '#1e293b', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
-                              formatter={(val: any, name: any) => [val + '%', 'Predicted Occupancy']}
-                            />
-                            <Area type="monotone" dataKey="occupancy" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#occGrad)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      )}
-                    </div>
-                  </div>
+                    {/* Right: 7-Day Outlook */}
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-[14px] font-extrabold text-(--brand-ink) tracking-tight">7-Day Outlook</h3>
+                        <p className="text-[11px] text-(--brand-muted) font-medium mt-0.5">Daily occupancy expectations</p>
+                      </div>
 
-                  {/* Right 1 Col: 7 Day Macro Outlook */}
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-base font-bold text-(--brand-ink)">7-Day Station Event Outlook</h3>
-                      <p className="text-xs text-(--brand-muted) font-medium mt-0.5">Daily occupancy expectations highlighting scheduled event days.</p>
-                    </div>
-
-                    <div className="space-y-2.5 pt-2">
-                      {(data?.daily || []).map((d, i) => {
-                        const isEventDay = d.avgMultiplier > 1.15;
-                        return (
-                          <div key={i} className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs transition-all ${isEventDay ? 'bg-amber-500/10 border-amber-500/40 shadow-xs font-bold' : 'bg-(--surface-soft) border-(--brand-border)'}`}>
-                            <div className="flex items-center gap-3">
-                              <span className="font-extrabold w-8 text-(--brand-muted)">{d.day}</span>
-                              <span className="text-(--brand-ink)">{d.status}</span>
+                      <div className="space-y-2">
+                        {(data?.daily || []).map((d, i) => {
+                          const isEventDay = d.avgMultiplier > 1.15;
+                          return (
+                            <div
+                              key={i}
+                              className={`px-3.5 py-2.5 rounded-xl border flex items-center justify-between text-[11px] transition-all ${
+                                isEventDay
+                                  ? 'bg-[#f4b740]/6 border-[#f4b740]/30'
+                                  : 'bg-(--surface-soft)/30 border-(--brand-border)/50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <span className="font-extrabold text-(--brand-muted) w-7">{d.day}</span>
+                                <span className="font-medium text-(--brand-ink)">{d.status}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-(--brand-blue)">{d.avgMultiplier.toFixed(2)}x</span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white border border-(--brand-border)/50 text-(--brand-ink)">{Math.round(d.occupancy)}%</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-extrabold text-(--brand-blue)">{d.avgMultiplier.toFixed(2)}x</span>
-                              <span className="text-[11px] px-2 py-0.5 rounded bg-white text-(--brand-ink) font-bold border border-(--brand-border)/60">{Math.round(d.occupancy)}%</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
 
+                  </div>
                 </div>
 
               </div>

@@ -9,6 +9,7 @@ import ConfirmModal from '../../common/ConfirmModal';
 import Toast from '../../common/Toast';
 
 type Charger = {
+  _id: string;
   plugType?: string;
   powerKW?: number;
   basePricePerKwh?: number;
@@ -22,8 +23,6 @@ type Station = {
   address?: string;
   chargers?: Charger[];
 };
-
-type ChargerWithStation = Charger & { stationName: string };
 
 export default function ChargersView() {
   const { user } = useAuth();
@@ -98,198 +97,213 @@ export default function ChargersView() {
       if (!station) return;
 
       const plug = connectorType === 'Other' ? customConnector : connectorType;
-      
-      // If "Double", we practically generate 2 hardware records for the booking engine.
-      const newChargers = [];
-      const numToCreate = connectorCount === 'double' ? 2 : 1;
-      
-      for (let i = 0; i < numToCreate; i++) {
-        newChargers.push({
-          plugType: plug,
-          powerKW: Number(powerKW),
-          basePricePerKwh: Number(baseRate),
-          status: 'AVAILABLE'
-        });
-      }
+      const payload = {
+        stationId: selectedStationId,
+        stationName: station.stationName,
+        plugType: plug,
+        powerKW: Number(powerKW),
+        basePricePerKwh: Number(baseRate),
+        features: connectorCount === 'double' ? ['Dual Connectors', 'LCD Display'] : ['LCD Display'],
+        statusDisplay: 'Online'
+      };
 
-      const updatedChargers = [...(station.chargers || []), ...newChargers];
-
-      const res = await fetch(apiUrl(`/api/stations/${selectedStationId}`), {
-        method: 'PUT',
+      const res = await fetch(apiUrl('/api/chargers'), {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ chargers: updatedChargers })
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
         await fetchStations();
         setViewState('list');
-        setConnectorType('CCS2'); setPowerKW('50'); setBaseRate('85'); setConnectorCount('single');
-        setToastMessage({ msg: 'Hardware installed successfully!', type: 'success' });
+        setConnectorType('CCS2'); setCustomConnector(''); setPowerKW('50'); setConnectorCount('single'); setBaseRate('85');
+        setToastMessage({ msg: 'Hardware unit added successfully.', type: 'success' });
       } else {
-        setToastMessage({ msg: 'Failed to install hardware.', type: 'error' });
+        setToastMessage({ msg: 'Failed to provision hardware.', type: 'error' });
       }
     } catch (err) {
       console.error(err);
-      setToastMessage({ msg: 'Network failure installing hardware.', type: 'error' });
+      setToastMessage({ msg: 'Network failure provisioning hardware.', type: 'error' });
     }
   };
 
-  const inputCls = "w-full px-4 py-3.5 bg-background border border-(--brand-border) rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-(--brand-blue)/20 focus:border-(--brand-blue) text-(--brand-ink)";
+  const inputCls = "w-full px-4 py-3 bg-white border border-(--brand-border)/80 rounded-xl text-[13px] font-medium text-(--brand-ink) placeholder:text-(--brand-muted)/50 focus:outline-none focus:border-(--brand-blue) transition-colors shadow-sm";
 
-  if (loading) return <div className="p-10 font-bold text-(--brand-blue)">Loading Hardware Data...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-(--brand-blue)"></div>
+      </div>
+    );
+  }
 
-  // Flatten all chargers from all stations for the list view
-  const allChargers = (stations as Station[]).flatMap((s) =>
-    (s.chargers || []).map((c) => ({ ...c, stationName: s.stationName }))
-  );
+  // Flatten chargers for list view
+  const allChargers = stations.flatMap(s => (s.chargers || []).map(c => ({ ...c, stationName: s.stationName })));
 
   return (
-    <div className="max-w-6xl mx-auto">
-      <div className="flex justify-between items-end mb-8">
+    <div className="w-full relative font-sans pb-16">
+      
+      {/* ── HEADER ── */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-(--brand-ink) mb-1">My Chargers</h1>
-          <p className="text-(--brand-muted) text-[15px] font-medium">Install and manage hardware capabilities at your stations.</p>
+          <div className="flex items-center gap-3 mb-1.5">
+            <h1 className="text-[24px] font-extrabold tracking-tight text-(--brand-ink)">Hardware Fleet</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-(--brand-blue)/10 text-(--brand-blue) text-[9px] font-extrabold uppercase tracking-[0.12em] border border-(--brand-blue)/20">
+              {allChargers.length} Active Ports
+            </span>
+          </div>
+          <p className="text-[12px] text-(--brand-muted) font-medium">Manage charging hardware, set base rates, and monitor statuses.</p>
         </div>
-        {viewState === 'list' && stations.length > 0 && (
-          <button onClick={() => setViewState('add')} className="flex items-center gap-2 bg-gradient-to-r from-(--brand-blue) to-(--brand-green) text-white px-6 py-3.5 rounded-xl text-[15px] font-bold shadow-lg shadow-(--brand-blue)/25 hover:brightness-105 active:scale-95 transition-all">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
-            Install Charger
+
+        {viewState === 'list' && (
+          <button
+            onClick={() => {
+              if (stations.length > 0) setSelectedStationId(stations[0]._id);
+              setViewState('add');
+            }}
+            className="flex items-center gap-2 bg-(--brand-blue) text-white px-5 py-2.5 rounded-xl text-[12px] font-bold shadow-sm hover:bg-(--brand-blue-deep) hover:shadow-md transition-all cursor-pointer"
+          >
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+            Add Hardware
           </button>
         )}
       </div>
 
+      {/* ── VIEWS ── */}
       <AnimatePresence mode="wait">
         {viewState === 'list' && (
-          <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-            {stations.length === 0 ? (
-              <div className="py-20 bg-(--brand-card)/50 border border-dashed border-(--brand-border) rounded-3xl text-center">
-                <h3 className="text-lg font-bold text-(--brand-ink)">No Stations Available</h3>
-                <p className="text-sm text-(--brand-muted) mt-1 max-w-sm mx-auto">You must create a Station Premise before you can install chargers.</p>
-              </div>
-            ) : allChargers.length === 0 ? (
-              <div className="py-20 bg-(--brand-card)/50 border border-dashed border-(--brand-border) rounded-3xl text-center">
-                <div className="w-16 h-16 bg-(--surface-soft) rounded-full flex items-center justify-center mx-auto mb-4 text-(--brand-blue)">
-                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+          <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            {allChargers.length === 0 ? (
+              <div className="py-16 bg-(--surface-soft)/30 border-2 border-dashed border-(--brand-border)/80 rounded-2xl text-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4a90a4] to-[#6cb567] flex items-center justify-center mx-auto mb-4">
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
                 </div>
-                <h3 className="text-lg font-bold text-(--brand-ink)">No Hardware Installed</h3>
-                <p className="text-sm text-(--brand-muted) mt-1 max-w-sm mx-auto">Your network is empty. Install your first charging unit to start operations.</p>
+                <h3 className="text-[14px] font-extrabold text-(--brand-ink)">No Hardware Configured</h3>
+                <p className="text-[12px] text-(--brand-muted) mt-1 max-w-sm mx-auto font-medium">Add charging units to your stations to begin accepting drivers.</p>
               </div>
             ) : (
-              <div className="bg-(--brand-card) rounded-[2rem] border border-(--brand-border) shadow-sm overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-(--surface-soft) border-b border-(--brand-border)">
-                    <tr>
-                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Hardware / Type</th>
-                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Location</th>
-                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Power & Rate</th>
-                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest">Status</th>
-                      <th className="px-6 py-4 text-[11px] font-bold text-(--brand-muted) uppercase tracking-widest text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-(--brand-border)/60">
-                    {allChargers.map((c: ChargerWithStation, i: number) => (
-                      <tr key={i} className="hover:bg-(--surface-soft)/50 transition-colors">
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-(--background) border border-(--brand-border) flex items-center justify-center font-black text-(--brand-blue) text-sm">
-                              {String(i + 1).padStart(2, '0')}
-                            </div>
-                            <span className="font-bold text-(--brand-ink) text-[15px]">{c.plugType}</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-5 text-sm font-medium text-(--brand-muted)">{c.stationName}</td>
-                        <td className="px-6 py-5">
-                          <div className="text-[15px] font-bold text-(--brand-green)">{c.powerKW} kW</div>
-                          <div className="text-[12px] font-semibold text-(--brand-muted)">Rs. {c.basePricePerKwh || 85}/kWh</div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className="px-3 py-1 bg-(--brand-green)/10 text-(--brand-green) text-[10px] font-bold uppercase tracking-widest rounded-md border border-(--brand-green)/20">
-                            {c.statusDisplay || c.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button onClick={() => setEditingCharger(c)} className="px-3 py-1 rounded-lg bg-(--surface-soft) text-(--brand-blue) hover:bg-(--brand-blue) hover:text-white font-bold text-xs cursor-pointer">Edit</button>
-                            <button onClick={() => setDeletingChargerId((c as unknown as { _id?: string })._id || null)} className="px-3 py-1 rounded-lg bg-(--ui-error)/10 text-(--ui-error) hover:bg-(--ui-error) hover:text-white font-bold text-xs cursor-pointer">Delete</button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {allChargers.map((charger, i) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    key={charger._id}
+                    className="bg-white border border-(--brand-border)/80 rounded-2xl p-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] hover:shadow-md transition-all flex flex-col group relative overflow-hidden"
+                  >
+                    <div className={`absolute top-0 left-0 right-0 h-[3px] opacity-80 ${charger.statusDisplay === 'Online' ? 'bg-gradient-to-r from-(--brand-blue) to-(--brand-green)' : 'bg-gradient-to-r from-[#f4b740] to-[#f4b740]/80'}`} />
+                    
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 rounded-xl bg-(--surface-soft)/60 border border-(--brand-border)/60 flex items-center justify-center text-(--brand-blue) group-hover:scale-105 transition-transform">
+                          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[9px] font-extrabold uppercase tracking-wider border ${charger.statusDisplay === 'Online' ? 'bg-(--brand-green)/10 text-(--brand-green-deep) border-(--brand-green)/20' : 'bg-[#f4b740]/10 text-[#d09d2e] border-[#f4b740]/20'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${charger.statusDisplay === 'Online' ? 'bg-(--brand-green)' : 'bg-[#f4b740]'}`} />
+                          {charger.statusDisplay || 'Offline'}
+                        </span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <button onClick={() => setEditingCharger(charger)} className="p-1.5 rounded-lg text-(--brand-muted) hover:bg-(--surface-soft) hover:text-(--brand-blue) transition-colors cursor-pointer" title="Edit Configuration">
+                          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" /></svg>
+                        </button>
+                        <button onClick={() => setDeletingChargerId(charger._id)} className="p-1.5 rounded-lg text-(--brand-muted) hover:bg-(--ui-error)/10 hover:text-(--ui-error) transition-colors cursor-pointer" title="Delete Hardware">
+                          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <h3 className="text-[16px] font-bold text-(--brand-ink) mb-1 truncate">{charger.plugType} Port</h3>
+                    <p className="text-[10px] font-extrabold text-(--brand-muted) uppercase tracking-[0.14em] mb-4 truncate">{charger.stationName}</p>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      <div className="p-2.5 rounded-xl bg-(--surface-soft)/40 border border-(--brand-border)/50 flex flex-col items-center text-center">
+                        <span className="text-[9px] font-bold text-(--brand-muted) uppercase tracking-wider mb-0.5">Capacity</span>
+                        <span className="text-[14px] font-black text-(--brand-ink)">{charger.powerKW}<span className="text-[10px] opacity-80">kW</span></span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-(--surface-soft)/40 border border-(--brand-border)/50 flex flex-col items-center text-center">
+                        <span className="text-[9px] font-bold text-(--brand-muted) uppercase tracking-wider mb-0.5">Base Rate</span>
+                        <span className="text-[14px] font-black text-(--brand-ink)">Rs.{charger.basePricePerKwh}</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             )}
           </motion.div>
         )}
 
         {viewState === 'add' && (
-          <motion.div key="add" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="max-w-3xl bg-(--brand-card) rounded-[2rem] p-8 border border-(--brand-border) shadow-[0_20px_60px_-15px_rgba(9,32,52,0.1)] relative">
-            <button onClick={() => setViewState('list')} className="absolute top-8 right-8 text-(--brand-muted) hover:text-(--brand-ink) cursor-pointer"><svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg></button>
-            <h2 className="text-2xl font-bold text-(--brand-ink) mb-6">Install Hardware Unit</h2>
+          <motion.div key="add" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-2xl mx-auto bg-white rounded-2xl p-6 md:p-8 border border-(--brand-border)/80 shadow-xl relative">
+            <button onClick={() => setViewState('list')} className="absolute top-6 right-6 p-2 rounded-lg text-(--brand-muted) hover:bg-(--surface-soft) transition-colors cursor-pointer">
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
             
-            <form onSubmit={handleAddCharger} className="space-y-5">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-(--brand-blue)/10 border border-(--brand-blue)/20 flex items-center justify-center text-(--brand-blue)">
+                <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              </div>
               <div>
-                <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Assign to Station Premise</label>
-                <select value={selectedStationId} onChange={(e) => setSelectedStationId(e.target.value)} className={inputCls}>
-                  <option value="">-- Choose Station --</option>
-                  {stations.map((s) => <option key={s._id} value={s._id}>{s.stationName}</option>)}
-                </select>
+                <h2 className="text-[18px] font-extrabold text-(--brand-ink) tracking-tight">Provision Hardware Unit</h2>
+                <p className="text-[11px] text-(--brand-muted) font-medium">Add a new charging port to an existing premise.</p>
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div>
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Connector Standard</label>
-                  <select value={connectorType} onChange={(e) => setConnectorType(e.target.value)} className={inputCls}>
+            <form onSubmit={handleAddCharger} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Select Target Premise</label>
+                  <select required value={selectedStationId} onChange={e => setSelectedStationId(e.target.value)} className={`${inputCls} cursor-pointer`}>
+                    <option value="" disabled>Select Premise...</option>
+                    {stations.map(s => <option key={s._id} value={s._id}>{s.stationName}</option>)}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Plug / Connector Type</label>
+                  <select required value={connectorType} onChange={e => setConnectorType(e.target.value)} className={`${inputCls} cursor-pointer`}>
                     <option value="CCS2">CCS2 (DC Fast)</option>
-                    <option value="Type 2">Type 2 (AC Mennekes)</option>
-                    <option value="CHAdeMO">CHAdeMO (DC)</option>
-                    <option value="GB/T">GB/T Standard</option>
-                    <option value="Other">Custom Standard</option>
+                    <option value="CHAdeMO">CHAdeMO (DC Fast)</option>
+                    <option value="Type2">Type 2 (AC)</option>
+                    <option value="GB/T">GB/T</option>
+                    <option value="Other">Other...</option>
                   </select>
                 </div>
 
-                {connectorType === 'Other' && (
-                  <div>
-                    <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Custom Plug Name</label>
-                    <input type="text" required value={customConnector} onChange={(e) => setCustomConnector(e.target.value)} placeholder="e.g. Tesla NACS" className={inputCls} />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Custom Identifier</label>
+                  <input type="text" placeholder="e.g. NACS" disabled={connectorType !== 'Other'} value={customConnector} onChange={e => setCustomConnector(e.target.value)} className={`${inputCls} ${connectorType !== 'Other' ? 'bg-(--surface-soft)/40 opacity-50 cursor-not-allowed' : ''}`} />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Power Output (kW)</label>
+                  <div className="relative">
+                    <input required type="number" min="1" step="0.1" value={powerKW} onChange={e => setPowerKW(e.target.value)} className={inputCls} />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-bold text-(--brand-muted)">kW</span>
                   </div>
-                )}
-
-                <div>
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Max Power Output (kW)</label>
-                  <input type="number" required min="3" max="400" value={powerKW} onChange={(e) => setPowerKW(e.target.value)} className={inputCls} />
                 </div>
 
-                <div>
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Base Tariff (Rs/kWh)</label>
-                  <input type="number" required min="0" value={baseRate} onChange={(e) => setBaseRate(e.target.value)} className={inputCls} />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-2">Port Configuration</label>
-                  <select value={connectorCount} onChange={(e) => setConnectorCount(e.target.value)} className={inputCls}>
-                    <option value="single">Single Gun (1 Booking Port)</option>
-                    <option value="double">Dual Gun (2 Sim Booking Ports)</option>
-                  </select>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Base Energy Rate (LKR)</label>
+                  <div className="relative">
+                    <input required type="number" min="0" step="0.5" value={baseRate} onChange={e => setBaseRate(e.target.value)} className={inputCls} />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[12px] font-bold text-(--brand-muted)">/kWh</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 p-4 bg-(--ui-info)/10 border border-(--ui-info)/20 rounded-xl">
-                <p className="text-[13px] text-(--brand-blue-deep) font-medium">
-                  <strong>Note:</strong> Installing a &quot;Double&quot; connector setup will automatically generate 2 separate hardware records in your inventory, enabling dual simultaneous bookings for this physical unit.
-                </p>
+              <div className="pt-2">
+                <button type="submit" className="w-full py-3.5 bg-(--brand-blue) text-white rounded-xl text-[13px] font-bold shadow-sm hover:bg-(--brand-blue-deep) hover:shadow-md transition-all cursor-pointer">
+                  Provision Hardware
+                </button>
               </div>
-
-              <button type="submit" className="w-full py-4 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white rounded-xl font-bold shadow-lg shadow-(--brand-blue)/30 hover:brightness-105 active:scale-[0.98] transition-all cursor-pointer">
-                Finalize Installation
-              </button>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
 
       <EditChargerModal
-        charger={editingCharger as unknown as null}
+        charger={editingCharger as any}
         isOpen={!!editingCharger}
         onClose={() => setEditingCharger(null)}
         onSaved={fetchStations}
@@ -297,9 +311,9 @@ export default function ChargersView() {
 
       <ConfirmModal
         isOpen={Boolean(deletingChargerId)}
-        title="Permanently Remove Hardware"
-        message="Are you sure you want to permanently remove this charging unit from your network? All linked rate tariffs and connector booking slots will be purged."
-        confirmText="Remove Hardware"
+        title="Permanently Delete Hardware"
+        message="Are you sure you want to delete this hardware unit? This cannot be undone."
+        confirmText="Delete Hardware"
         isDanger={true}
         onClose={() => setDeletingChargerId(null)}
         onConfirm={() => deletingChargerId && executeDeleteCharger(deletingChargerId)}
