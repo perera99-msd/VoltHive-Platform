@@ -17,6 +17,7 @@ def get_live_weather(lat=6.9271, lon=79.8612):
             current = data.get('current', {})
             temp_c = current.get('temperature_2m', 30.0)
             code = current.get('weather_code', 0)
+            precipitation = current.get('precipitation', 0.0)
             
             # WMO Weather interpretation codes
             condition = "Clear"
@@ -32,6 +33,7 @@ def get_live_weather(lat=6.9271, lon=79.8612):
             return {
                 "condition": condition,
                 "temperature_c": temp_c,
+                "precipitation_mm": precipitation,
                 "source": "Open-Meteo Free API Feed"
             }
     except Exception as e:
@@ -39,6 +41,7 @@ def get_live_weather(lat=6.9271, lon=79.8612):
         return {
             "condition": "Clear",
             "temperature_c": 31.0,
+            "precipitation_mm": 0.0,
             "source": "Simulated Fallback Feed"
         }
 

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { toLocalYMD } from '../../lib/api';
 
 interface DatePickerProps {
   selectedDate: string;
@@ -15,7 +16,7 @@ export default function DatePicker({ selectedDate, onDateChange }: DatePickerPro
       const date = new Date(today);
       date.setDate(date.getDate() + i);
       result.push({
-        date: date.toISOString().split('T')[0],
+        date: toLocalYMD(date),
         displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
         isToday: i === 0
@@ -27,26 +28,35 @@ export default function DatePicker({ selectedDate, onDateChange }: DatePickerPro
 
   return (
     <div>
-      <label className="text-xs font-bold text-(--brand-muted) uppercase tracking-wider block mb-4">
+      <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-widest block mb-2.5 ml-0.5">
         Select Date
       </label>
-      <div className="flex gap-2.5 overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-(--brand-border) [&::-webkit-scrollbar-track]:bg-transparent">
-        {dates.map((d) => (
-          <button
-            key={d.date}
-            type="button"
-            onClick={() => onDateChange(d.date)}
-            className={`flex flex-col items-center px-4 py-3 rounded-xl font-bold text-sm transition-all whitespace-nowrap border ${
-              selectedDate === d.date
-                ? 'bg-linear-to-br from-(--brand-blue)/15 to-(--brand-green)/10 text-(--brand-blue) border-(--brand-blue) shadow-[0_4px_20px_rgba(74,144,164,0.15)]'
-                : 'bg-white border-(--brand-border) text-(--brand-ink) hover:border-(--brand-blue)/40 hover:bg-(--background)/50'
-            }`}
-          >
-            <span className="text-xs opacity-70 font-semibold">{d.dayName}</span>
-            <span className="font-bold mt-0.5">{d.displayDate}</span>
-            {d.isToday && <span className="text-[10px] text-(--brand-green) font-bold mt-1">Today</span>}
-          </button>
-        ))}
+      <div className="flex gap-2 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+        {dates.map((d) => {
+          const isSelected = selectedDate === d.date;
+          return (
+            <button
+              key={d.date}
+              type="button"
+              onClick={() => onDateChange(d.date)}
+              className={`flex flex-col items-center min-w-[72px] px-3 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap border cursor-pointer ${
+                isSelected
+                  ? 'bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white border-transparent shadow-md shadow-(--brand-blue)/20 scale-[1.02]'
+                  : 'bg-(--surface-soft) hover:bg-(--surface-tint) text-(--brand-ink) border-(--brand-border) hover:border-(--brand-blue)/40'
+              }`}
+            >
+              <span className={`text-[10px] font-semibold uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-(--brand-muted)'}`}>
+                {d.dayName}
+              </span>
+              <span className="font-bold text-sm mt-0.5">{d.displayDate}</span>
+              {d.isToday && (
+                <span className={`text-[9px] font-extrabold mt-1 uppercase tracking-widest ${isSelected ? 'text-white bg-white/20 px-1.5 py-0.2 rounded-full' : 'text-(--brand-green-deep)'}`}>
+                  Today
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

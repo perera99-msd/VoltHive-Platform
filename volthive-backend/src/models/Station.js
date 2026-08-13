@@ -46,6 +46,19 @@ const StationSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Real location category used by the AI (matches training categories).
+  // Owner-set; normalized to a training category by the AI mapping layer.
+  locationType: {
+    type: String,
+    default: 'Urban Center',
+  },
+  // Continuous-pricing aggressiveness profile used by the AI demand curve.
+  // conservative: gentle surges/discounts · balanced: default · aggressive: deeper swings.
+  pricingProfile: {
+    type: String,
+    enum: ['conservative', 'balanced', 'aggressive'],
+    default: 'balanced',
+  },
   address: {
     type: String,
     default: '',
@@ -91,9 +104,34 @@ const StationSchema = new mongoose.Schema({
     {
       title: { type: String, required: true },
       date: { type: String, required: true }, // YYYY-MM-DD
+      time: { type: String, default: '12:00' },
+      locationName: { type: String, default: '' },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
       category: { type: String, default: 'Sports Event / Cricket Match' }
     }
-  ]
+  ],
+  activePriceOverride: {
+    effectiveRate: { type: Number, default: null },
+    originalRate: { type: Number, default: null },
+    hourSlot: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
+    multiplier: { type: Number, default: null },
+    appliedAt: { type: Date, default: null }
+  },
+  // Scheduled AI price plan: an owner can apply AI-recommended rates for
+  // MULTIPLE upcoming hour slots (station-wise). Each entry auto-reverts to
+  // the station's normal base rate when its hour passes.
+  pricePlan: [
+    {
+      hourSlot: { type: String, default: null },      // "HH:00"
+      effectiveRate: { type: Number, default: null },
+      originalRate: { type: Number, default: null },
+      multiplier: { type: Number, default: null },
+      expiresAt: { type: Date, default: null },
+      appliedAt: { type: Date, default: null }
+    }
+  ],
 }, { timestamps: true });
 
 StationSchema.index({ location: '2dsphere' });

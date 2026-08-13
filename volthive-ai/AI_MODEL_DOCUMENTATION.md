@@ -27,9 +27,9 @@ Sandbox notebook kernels are notorious for out-of-order execution bugs, hidden g
 
 ---
 
-## 3. The Secret to Lightweight & High-Speed Training (45 Seconds vs 12 Hours)
+## 3. Training Efficiency (Histogram-Based Gradient Boosting)
 
-Many academic peers report spending **12 to 24 hours** training neural network models on cloud GPUs. In stark contrast, the VoltHive multi-model benchmarking pipeline completes locally on a standard CPU in **approximately 45 seconds**. This ultra-lightweight performance is achieved through three architectural pillars:
+Many academic peers report spending **12 to 24 hours** training neural network models on cloud GPUs. In contrast, the VoltHive pipeline trains the final champion **HistGradientBoosting** model efficiently on a standard CPU — the full two-phase grid-search + final training run over **1,317,750 records** completed in **1 hour, 50 minutes and 21 seconds**. This efficiency is achieved through three architectural pillars:
 
 ### Pillar I: Algorithm-Problem Alignment (Tabular vs Deep Learning)
 Peers frequently commit the architectural error of applying Deep Learning (Convolutional Networks, LSTMs, Transformers) to structured tabular spreadsheet data. Neural networks require millions of recursive matrix floating-point operations over hundreds of training epochs to establish basic mathematical boundaries. Structured tabular regression (predicting demand from time and weather) is mathematically proven to be solved most accurately and rapidly by **Gradient Boosted Decision Trees**.
@@ -38,7 +38,7 @@ Peers frequently commit the architectural error of applying Deep Learning (Convo
 Traditional Random Forest algorithms evaluate every exact continuous float value across hundreds of thousands of rows to calculate split thresholds ($O(N \log N)$ complexity). Our engine utilizes **Histogram-Based Gradient Boosting**. This approach discretizes continuous input features into **256 fixed integer bins** before constructing trees. Searching 256 integer bins instead of 300,000 exact floating-point numbers reduces memory bandwidth consumption by 85% and accelerates CPU fitting speed by over **250 times**.
 
 ### Pillar III: Statistical Law of Large Numbers (Sampling Optimization)
-Rather than forcing the processor to iterate over redundant historical records, our pipeline applies **Stratified Random Sampling capped at 60,000 records**. In mathematical statistics, the *Law of Large Numbers* dictates that a randomized 60,000 sample captures 99.99% of the underlying probability distribution variance of a 1-million row dataset without sacrificing predictive precision.
+Rather than forcing the processor to iterate over every record during the hyperparameter search, Phase 1 (The Search) runs the Grid Search on a **300,000-row sample**, then Phase 2 (The Final Train) fits the winning configurations on the full training set. This keeps the search tractable while the final model is trained on all **1,317,750 records**.
 
 ---
 
@@ -48,16 +48,16 @@ To ensure academic and scientific integrity, we did not arbitrarily select an al
 
 ### Candidate 1: Random Forest Regressor (Bagging Ensemble)
 * **Mathematical Paradigm**: Constructs 60 independent decision trees in parallel on bootstrapped data subsets and averages their final predictions.
-* **Observed Performance**: Achieved **94.2% Estimated Accuracy** ($R^2: 0.9120$). Highly stable, but exhibits slight dampening when predicting extreme, unprecedented peak surges.
+* **Observed Performance**: **MAE 0.0567**, $R^2: 0.9245$. Highly stable, but exhibits slight dampening when predicting extreme, unprecedented peak surges.
 
 ### Candidate 2: HistGradientBoosting Regressor (Selected Winner ⭐)
 * **Mathematical Paradigm**: Builds decision trees **sequentially**. Each successive tree is mathematically weighted to specifically minimize the residual errors made by the preceding trees.
-* **Observed Performance**: Achieved **94.8% Estimated Accuracy** ($R^2: 0.9380$). Masterfully captures complex non-linear combinations (such as *Heavy Rain + Friday Evening Rush Hour = Severe Congestion*) with near-zero mathematical bias.
+* **Observed Performance**: Champion — **MAE 0.0565**, $R^2: 0.9276$, with **59.38% of test predictions within ±5 percentage points** (79.87% within ±10). Masterfully captures complex non-linear combinations (such as *Heavy Rain + Friday Evening Rush Hour = Severe Congestion*) with near-zero mathematical bias.
 
 ### Candidate 3: Ridge Linear Baseline ($L_2$ Regularized Math)
 * **Mathematical Paradigm**: Traditional linear regression penalized against extreme coefficient weights.
-* **Observed Performance**: Achieved **85.8% Estimated Accuracy** ($R^2: 0.6510$).
-* **Scientific Purpose**: Serves as our experimental **Scientific Control**. By proving that standard linear math only explains 65% of station variance, we mathematically justify to evaluators that advanced machine learning was mandatory to achieve our 94.8% accuracy.
+* **Observed Performance**: **MAE 0.2005**, $R^2: 0.3190$.
+* **Scientific Purpose**: Serves as our experimental **Scientific Control**. By proving that standard linear math only explains ~32% of station variance, we mathematically justify to evaluators that advanced machine learning was mandatory ($R^2: 0.9276$).
 
 ---
 

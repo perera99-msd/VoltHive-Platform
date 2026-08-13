@@ -1,3 +1,5 @@
+const { getStationEffectiveRate, isOverrideActive, getActivePlanEntry } = require('./rateEngine');
+
 const toNumber = (value, fallback = 0) => {
   const next = Number(value);
   return Number.isFinite(next) ? next : fallback;
@@ -31,10 +33,19 @@ const serializeStationForClient = (stationDoc) => {
       }))
     : [];
 
+  // Real current price a driver would pay: live plan entry -> legacy override -> base.
+  const effectivePrice = getStationEffectiveRate(station);
+  const activePlan = getActivePlanEntry(station);
+
   return {
     ...station,
     name: station.stationName,
-    pricePerKWh: toNumber(station.basePricePerKwh, 0),
+    pricePerKWh: effectivePrice,
+    basePricePerKwh: toNumber(station.basePricePerKwh, 0), // the normal (non-override) rate
+    hasActiveOverride: !!(activePlan || isOverrideActive(station.activePriceOverride)),
+    overrideExpiresAt: activePlan?.expiresAt || station.activePriceOverride?.expiresAt || null,
+    activeOverride: activePlan || (isOverrideActive(station.activePriceOverride) ? station.activePriceOverride : null) || null,
+    pricePlan: Array.isArray(station.pricePlan) ? station.pricePlan : [],
     chargers,
   };
 };

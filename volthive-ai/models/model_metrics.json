@@ -1,0 +1,38 @@
+{
+  "winner": "HistGradientBoosting",
+  "winning_accuracy_pct": 59.38,
+  "trained_records": 1317750,
+  "total_training_time": "1h 50m 21s",
+  "comparison_table": [
+    {
+      "model": "Random Forest Regressor",
+      "mae": 0.0567,
+      "rmse": 0.0823,
+      "r2_score": 0.9245,
+      "accuracy_pct": 94.33
+    },
+    {
+      "model": "HistGradientBoosting",
+      "mae": 0.0565,
+      "rmse": 0.0806,
+      "r2_score": 0.9276,
+      "accuracy_pct": 59.38,
+      "within_5pct_accuracy": 59.38,
+      "within_10pct_accuracy": 79.87
+    },
+    {
+      "model": "Ridge Linear Baseline",
+      "mae": 0.2005,
+      "rmse": 0.2472,
+      "r2_score": 0.319,
+      "accuracy_pct": 79.95
+    }
+  ],
+  "winning_mae": 0.0565,
+  "winning_rmse": 0.0806,
+  "winning_r2_score": 0.9276,
+  "winning_within_5pct_accuracy": 59.38,
+  "winning_within_10pct_accuracy": 79.87,
+  "test_records": 263550,
+  "metric_note": "within_5pct_accuracy = % of test predictions within +/-5 percentage points of actual utilization (replaces the misleading (1-MAE)*100 label). Computed on the real held-out test set."
+}

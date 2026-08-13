@@ -11,6 +11,7 @@ const stationRoutes = require('./routes/stationRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const chargerRoutes = require('./routes/chargerRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -45,7 +46,7 @@ const corsOptions = {
     callback(new Error('CORS policy: origin not allowed'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
@@ -98,6 +99,7 @@ app.use('/api/stations', stationRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/chargers', chargerRoutes);
+app.use('/api/chat', chatRoutes);
 
 // ============================================
 // 404 HANDLER
@@ -141,6 +143,84 @@ const server = app.listen(PORT, () => {
   console.log(`✅ VoltHive Backend running on http://0.0.0.0:${PORT}`);
   console.log(`📍 Environment: ${NODE_ENV}`);
   console.log(`🛡️  CORS Origins: ${allowedOrigins.join(', ')}`);
+
+  // ============================================
+  // BACKGROUND TASK: 15-MIN UNCONFIRMED -> EXPIRED
+  // (Booking record is KEPT in DB, never deleted)
+  // ============================================
+  const Booking = require('./models/Booking');
+  const Station = require('./models/Station');
+
+  setInterval(async () => {
+    try {
+      const now = Date.now();
+      const pending = await Booking.find({ status: 'Pending' });
+
+      for (const booking of pending) {
+        const slotStart = new Date(`${booking.date}T${booking.startTime}:00`).getTime();
+        const createdLimit = new Date(booking.createdAt).getTime() + 15 * 60 * 1000;
+
+        // Expire if the slot already started, OR the 15-min approval window
+        // passed AND the slot is imminent (starts within the next 15 min).
+        // Advance bookings (e.g. tomorrow) are NOT auto-expired prematurely.
+        const slotImminent = Number.isFinite(slotStart) && slotStart <= now + 15 * 60 * 1000;
+        const shouldExpire = (Number.isFinite(slotStart) && slotStart <= now) || (now >= createdLimit && slotImminent);
+        if (!shouldExpire) continue;
+
+        booking.status = 'Expired';
+        await booking.save();
+
+        // Release the charger ONLY if it still points at THIS booking.
+        const station = await Station.findById(booking.station);
+        if (station && station.chargers) {
+          const charger = station.chargers.id(booking.chargerId);
+          if (charger && charger.activeBookingId && String(charger.activeBookingId) === String(booking._id)) {
+            if (charger.status === 'PENDING_APPROVAL' || charger.status === 'RESERVED') {
+              charger.status = 'AVAILABLE';
+              charger.activeBookingId = null;
+              await station.save();
+            }
+          }
+        }
+        console.log(`⏳ Expired unconfirmed booking ${booking._id} (Exceeded 15 min approval window or slot passed).`);
+      }
+    } catch (err) {
+      console.error('Error in 15-min expiry job:', err.message);
+    }
+  }, 60 * 1000); // Check every 60 seconds
+
+  // ============================================
+  // BACKGROUND TASK: REVERT EXPIRED AI PRICES
+  // When a scheduled AI price's hour passes (single override OR any slot in
+  // the station's price plan), clear it so drivers automatically see the
+  // previous (base) rate again.
+  // ============================================
+  setInterval(async () => {
+    try {
+      const now = new Date();
+
+      // 1. Legacy single override
+      const stale = await Station.find({
+        'activePriceOverride': { $ne: null },
+        'activePriceOverride.expiresAt': { $lt: now }
+      });
+      for (const st of stale) {
+        st.activePriceOverride = null;
+        await st.save();
+        console.log(`↩️  Reverted expired AI price override for station ${st._id}.`);
+      }
+
+      // 2. Scheduled price plan — remove any expired hour slots
+      const planStale = await Station.find({ 'pricePlan.expiresAt': { $lt: now } });
+      for (const st of planStale) {
+        st.pricePlan = (st.pricePlan || []).filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now.getTime());
+        await st.save();
+        console.log(`↩️  Cleaned expired AI price-plan slots for station ${st._id}.`);
+      }
+    } catch (err) {
+      console.error('Error in price-override revert job:', err.message);
+    }
+  }, 60 * 1000); // Check every 60 seconds
 });
 
 // ============================================

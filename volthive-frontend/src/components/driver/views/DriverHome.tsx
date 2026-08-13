@@ -51,10 +51,28 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
   
   const totalCost = completedBookings.reduce((acc, b) => acc + (b.totalCostLKR || 0), 0);
   const totalKWh = completedBookings.reduce((acc, b) => acc + (b.energyConsumedKWh || 0), 0);
-  const avgCostPerKWh = totalKWh > 0 ? Math.round(totalCost / totalKWh) : 82;
+  const avgCostPerKWh = totalKWh > 0 ? Math.round(totalCost / totalKWh) : null;
 
   const totalSessions = bookings.filter(b => ['Completed', 'Cancelled', 'No_Show'].includes(b.status));
-  const completionRate = totalSessions.length > 0 ? Math.round((completedBookings.length / totalSessions.length) * 100) : 100;
+  const completionRate = totalSessions.length > 0 ? Math.round((completedBookings.length / totalSessions.length) * 100) : null;
+
+  // Real AI demand signal (occupancy + recommendation from the live AI service)
+  const [aiSuggestion, setAiSuggestion] = useState<{ predicted_occupancy?: string; suggested_multiplier?: number; ai_recommendation?: string } | null>(null);
+  useEffect(() => {
+    const fetchAi = async () => {
+      if (!user) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(apiUrl('/api/ai/pricing-suggestion'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) setAiSuggestion(await res.json());
+      } catch (err) {
+        console.warn('AI suggestion unavailable:', err);
+      }
+    };
+    fetchAi();
+  }, [user]);
 
   return (
     <section className="space-y-6 relative overflow-hidden">
@@ -103,12 +121,12 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
         </article>
         <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Average Tariff</p>
-          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">LKR {avgCostPerKWh}</p>
-          <p className="text-xs text-(--brand-muted) mt-1">Per kWh calculated across completed sessions</p>
+          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">{avgCostPerKWh != null ? `LKR ${avgCostPerKWh}` : '—'}</p>
+          <p className="text-xs text-(--brand-muted) mt-1">Per kWh across completed sessions</p>
         </article>
         <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Reliability Rate</p>
-          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">{completionRate}%</p>
+          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">{completionRate != null ? `${completionRate}%` : '—'}</p>
           <p className="text-xs text-(--brand-muted) mt-1">Successful completion history</p>
         </article>
       </motion.div>
@@ -160,12 +178,14 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
           className="rounded-4xl border border-(--brand-card)/65 bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white p-6 relative overflow-hidden shadow-xl"
         >
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-white/10 rounded-full blur-2xl" />
-          <h3 className="text-xl font-bold mb-2">Smart Surge Optimization Tip</h3>
+          <h3 className="text-xl font-bold mb-2">AI Demand Signal</h3>
           <p className="text-sm font-medium text-white/90 leading-relaxed mb-6">
-            Our AI forecasting engine detects a 15% rate discount between 11:00 AM and 03:00 PM today due to excess solar generation.
+            {aiSuggestion
+              ? `AI predicts ${aiSuggestion.predicted_occupancy || '—'} occupancy right now — ${aiSuggestion.ai_recommendation || 'normal demand'}.`
+              : 'Live AI demand signal will appear here when the AI engine responds.'}
           </p>
           <button onClick={onBookNow} className="w-full py-3 bg-(--brand-card) text-(--brand-ink) font-bold rounded-xl text-sm shadow-md hover:bg-(--surface-tint) transition-all cursor-pointer">
-            Schedule Solar Window
+            Open Live Map
           </button>
         </motion.article>
       </div>

@@ -1,4 +1,19 @@
+# Large training data (never commit)
 data/
-models/
+Data Set/
+
+# Model artifacts: KEEP the trained model + columns + metrics in version control
+# so production/Docker builds have them. Remove the override below if you
+# prefer to re-train in CI instead.
+!models/
+models/*
+!models/surge_model.pkl
+!models/model_columns.pkl
+!models/model_metrics.json
+!models/tuning_records.json
+!models/surge_rules.json
+
 venv/
 __pycache__/
+*.pyc
+.env

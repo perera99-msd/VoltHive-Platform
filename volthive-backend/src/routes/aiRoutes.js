@@ -1,13 +1,46 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const mongoose = require('mongoose');
 const verifyToken = require('../middleware/authMiddleware');
 const Station = require('../models/Station');
+const User = require('../models/User');
 let EventConfig = null;
 try {
   EventConfig = require('../models/EventConfig');
 } catch (e) {
   console.warn('EventConfig model not loaded');
+}
+
+/**
+ * Verify the authenticated user owns the given station.
+ * Returns the owner User doc on success, otherwise responds + returns null.
+ */
+const requireStationOwner = async (req, res, station) => {
+  const owner = await User.findOne({ firebaseUid: req.user.uid });
+  if (!owner || owner.role !== 'owner') {
+    res.status(403).json({ error: 'Only station owners can access this station.' });
+    return null;
+  }
+  if (String(station.ownerId) !== String(owner._id)) {
+    res.status(403).json({ error: 'You can only manage your own stations.' });
+    return null;
+  }
+  return owner;
+};
+
+// Haversine formula distance calculation in kilometers
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 // In-Memory Fallback Cockpit State
@@ -36,7 +69,7 @@ router.get('/health', async (req, res) => {
     const response = await axios.get(`${aiServiceUrl}/api/ai/health`, { timeout: 3000 });
     res.status(200).json({ status: 'ok', aiService: response.data });
   } catch (error) {
-    res.status(200).json({ status: 'ok', aiService: { status: 'mocked', model_loaded: true, winning_model: 'HistGradientBoosting (XGBoost Fast)' } });
+    res.status(503).json({ status: 'error', aiService: { status: 'offline', model_loaded: false } });
   }
 });
 
@@ -50,18 +83,7 @@ router.get('/metrics', verifyToken, async (req, res) => {
     const response = await axios.get(`${aiServiceUrl}/api/ai/metrics`, { timeout: 3000 });
     return res.status(200).json(response.data);
   } catch (error) {
-    // Fallback metrics
-    return res.status(200).json({
-      winner: "HistGradientBoosting (XGBoost Fast)",
-      winning_accuracy_pct: 94.8,
-      trained_records: 60000,
-      benchmark_date: new Date().toISOString(),
-      comparison_table: [
-        { model: "Random Forest Regressor", mae: 0.0582, rmse: 0.0812, r2_score: 0.912, accuracy_pct: 94.2, training_time_sec: 4.12 },
-        { model: "HistGradientBoosting (XGBoost Fast)", mae: 0.0521, rmse: 0.0745, r2_score: 0.938, accuracy_pct: 94.8, training_time_sec: 1.85 },
-        { model: "Ridge Linear Baseline", mae: 0.1420, rmse: 0.1890, r2_score: 0.651, accuracy_pct: 85.8, training_time_sec: 0.42 }
-      ]
-    });
+    return res.status(503).json({ error: 'AI Service Offline' });
   }
 });
 
@@ -124,23 +146,27 @@ router.get('/pricing-suggestion', verifyToken, async (req, res) => {
       day_of_week: day,
       is_weekend: isWeekend ? 1 : 0,
       is_peak_hour: isPeakHour ? 1 : 0,
-      weather_condition: memoryCockpitState.autoFeedEnabled ? 'Clear' : memoryCockpitState.manualOverrides.weather,
-      local_event: memoryCockpitState.activeCricketMatch.isActive ? 'Sports Event' : 'None',
-      traffic_congestion_index: memoryCockpitState.autoFeedEnabled ? 5 : memoryCockpitState.manualOverrides.trafficIndex
+      // Weather/temperature/precipitation/month are resolved by the AI service
+      // itself (live per-location Open-Meteo) — no fabricated values sent.
+      local_event: memoryCockpitState.activeCricketMatch.isActive ? 'Sports Event' : 'None'
     };
+
+    // Optional real location -> Flask fetches live weather for that lat/lng
+    const qLat = Number(req.query.lat);
+    const qLng = Number(req.query.lng);
+    if (Number.isFinite(qLat) && Number.isFinite(qLng)) {
+      environmentalData.latitude = qLat;
+      environmentalData.longitude = qLng;
+    }
+    if (req.query.locationType) environmentalData.location_type = req.query.locationType;
+    if (req.query.chargerType) environmentalData.charger_type = req.query.chargerType;
+    if (req.query.pricingProfile) environmentalData.pricing_profile = req.query.pricingProfile;
 
     const aiServiceUrl = process.env.FLASK_API_URL || 'http://localhost:5001';
     const aiResponse = await axios.post(`${aiServiceUrl}/api/ai/suggest-price`, environmentalData, { timeout: 3000 });
     return res.status(200).json({ ...aiResponse.data, timestamp: now.toISOString(), context: environmentalData });
   } catch (error) {
-    let occ = 65.0;
-    if (memoryCockpitState.activeCricketMatch.isActive) occ += 18.0;
-    return res.status(200).json({
-      predicted_occupancy: `${occ}%`,
-      suggested_multiplier: occ > 75 ? 1.25 : 1.10,
-      ai_recommendation: memoryCockpitState.activeCricketMatch.isActive ? `🔥 Match Surge Active (${memoryCockpitState.activeCricketMatch.eventName})` : "Moderate Demand",
-      timestamp: new Date().toISOString()
-    });
+    return res.status(503).json({ error: 'AI Service Offline' });
   }
 });
 
@@ -154,45 +180,38 @@ router.get('/forecast', verifyToken, async (req, res) => {
     return res.status(200).json(response.data);
   } catch (error) {
     const now = new Date();
-    const matchActive = memoryCockpitState.activeCricketMatch.isActive;
-    const hourly = [];
-    for (let i = 0; i < 6; i++) {
-      const t = new Date(now.getTime() + i * 3600000);
-      const h = t.getHours();
-      const peak = (17 <= h && h <= 21) || (7 <= h && h <= 9);
-      let occ = peak ? 85.0 : 45.0;
-      if (matchActive && h >= 16 && h <= 23) occ = 92.0;
-      hourly.push({
-        time: `${String(h).padStart(2, '0')}:00`,
-        hour: h,
-        occupancy: occ,
-        multiplier: occ >= 80 ? 1.25 : 1.05,
-        recommendation: (matchActive && h >= 16 && h <= 23) ? `🔥 Extreme Match Surge (${memoryCockpitState.activeCricketMatch.eventName})` : (peak ? "High Surge Demand" : "Normal Demand")
-      });
-    }
-
-    const daily = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].slice(0, 5).map((day, idx) => ({
-      day,
-      date: `06/${26 + idx}`,
-      occupancy: idx === 1 && matchActive ? 94.0 : (68 + idx * 4),
-      avgMultiplier: idx === 1 && matchActive ? 1.30 : (idx > 2 ? 1.15 : 1.05),
-      status: idx === 1 && matchActive ? "🏟️ Match Day Hub Surge" : (idx > 2 ? "High Peak Hub" : "Steady Demand")
-    }));
-
+    // Honest offline state — no fabricated weather or "live" labels.
     return res.status(200).json({
       status: "success",
-      weather: { 
-        condition: memoryCockpitState.autoFeedEnabled ? "Clear" : memoryCockpitState.manualOverrides.weather, 
-        temp: 30, 
-        source: memoryCockpitState.autoFeedEnabled ? "Open-Meteo Live API Feed" : "Admin Manual Cockpit Override" 
+      aiConnected: false,
+      weatherConnected: false,
+      weather: {
+        condition: "Unavailable",
+        temp: null,
+        source: "AI service offline — no live data"
       },
       cockpit: memoryCockpitState,
-      hourly,
-      daily,
+      hourly: [],
+      daily: [],
       lastUpdated: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     });
   }
 });
+
+/**
+ * GET /api/ai/station-forecast/:stationId
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return 0;
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 /**
  * GET /api/ai/station-forecast/:stationId
@@ -203,6 +222,9 @@ router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
     const st = await Station.findById(req.params.stationId);
     if (!st) return res.status(404).json({ error: 'Station not found' });
 
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
     const coords = st.location?.coordinates || [79.8612, 6.9271]; // [lon, lat]
     const lon = coords[0];
     const lat = coords[1];
@@ -210,6 +232,7 @@ router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
     // Fetch Open-Meteo live weather specifically for this lat/lon
     let weatherCond = "Clear";
     let tempC = 30.0;
+    let weatherConnected = true;
     try {
       const meteoUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code`;
       const mRes = await axios.get(meteoUrl, { timeout: 3000 });
@@ -220,20 +243,46 @@ router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
       else if (code >= 51 && code <= 82) weatherCond = "Rain";
       else if (code >= 95) weatherCond = "Storm";
     } catch (e) {
+      weatherConnected = false;
       console.warn('Open-Meteo per-station fetch error, using fallback weather');
     }
 
-    // Check station's manual special events calendar within next 7 days
+    // Check station's manual special events calendar within next 7 days & within 10km radius
     const now = new Date();
     const nextWeek = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
     const activeEvents = (st.specialEvents || []).filter(ev => {
+      if (!ev.date) return false;
       const evDate = new Date(ev.date);
-      return evDate >= new Date(now.toISOString().split('T')[0]) && evDate <= nextWeek;
+      if (isNaN(evDate.getTime())) return false;
+
+      const todayStr = now.toISOString().split('T')[0];
+      const todayDate = new Date(todayStr);
+      const isWithinDate = evDate >= todayDate && evDate <= nextWeek;
+      if (!isWithinDate) return false;
+
+      // Distance radius check (10km)
+      if (ev.latitude != null && ev.longitude != null) {
+        const dist = getDistanceFromLatLonInKm(lat, lon, ev.latitude, ev.longitude);
+        return dist <= 10;
+      }
+      return true;
     });
     const hasSpecialEvent = activeEvents.length > 0;
     const eventTitle = hasSpecialEvent ? activeEvents[0].title : "None";
 
-    // Call Flask AI Microservice with lat, lon, and event
+    // Calculate station power capacity from chargers if available
+    const maxPowerKW = (st.chargers && st.chargers.length > 0)
+      ? Math.max(...st.chargers.map(c => c.powerKW || 50))
+      : 120;
+
+    // Representative charger type from the station's REAL hardware
+    // (highest-power plug) so the forecast isn't stuck on the default.
+    const repCharger = st.chargers && st.chargers.length > 0
+      ? st.chargers.reduce((a, b) => ((b.powerKW || 0) > (a.powerKW || 0) ? b : a))
+      : null;
+    const chargerType = repCharger ? repCharger.plugType : 'Dc Fast Charge';
+
+    // Call Flask AI Microservice with lat, lon, power, and event
     const aiServiceUrl = process.env.FLASK_API_URL || 'http://localhost:5001';
     let aiResData = null;
     try {
@@ -241,54 +290,199 @@ router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
         latitude: lat,
         longitude: lon,
         weather_condition: weatherCond,
-        local_event: hasSpecialEvent ? "Sports Event / Cricket Match" : "None"
+        power_output_kw: maxPowerKW,
+        charger_type: chargerType,
+        location_type: st.locationType || 'Urban Center',
+        pricing_profile: st.pricingProfile || 'balanced',
+        local_event: hasSpecialEvent ? (activeEvents[0]?.title || "Special Event") : "None"
       }, { timeout: 3000 });
       aiResData = pRes.data;
     } catch (err) {
-      // Fallback calculation
+      aiResData = null;
     }
 
-    const hourly = [];
-    for (let i = 0; i < 6; i++) {
-      const t = new Date(now.getTime() + i * 3600000);
-      const h = t.getHours();
-      const peak = (17 <= h && h <= 21) || (7 <= h && h <= 9);
-      let occ = peak ? 84.0 : 42.0;
-      if (hasSpecialEvent && h >= 16 && h <= 23) occ = 91.0;
-      if (weatherCond === 'Rain' || weatherCond === 'Storm') occ += 8.0;
-      occ = Math.min(98.0, Math.max(12.0, occ));
-      hourly.push({
-        time: `${String(h).padStart(2, '0')}:00`,
-        hour: h,
-        occupancy: occ,
-        multiplier: occ >= 80 ? 1.25 : 1.0,
-        recommendation: (hasSpecialEvent && h >= 16 && h <= 23) ? `🔥 Special Event Surge (${eventTitle})` : (peak ? "High Grid Peak" : "Normal Demand")
-      });
+    // Auto-reversion: clear expired legacy override + expired price-plan slots.
+    // (The plan model never mutates the station's base rate — each scheduled
+    // slot simply stops applying once its hour passes.)
+    if (st.activePriceOverride && st.activePriceOverride.expiresAt && new Date() > new Date(st.activePriceOverride.expiresAt)) {
+      st.activePriceOverride = null;
+    }
+    if (Array.isArray(st.pricePlan) && st.pricePlan.length) {
+      const before = st.pricePlan.length;
+      st.pricePlan = st.pricePlan.filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > Date.now());
+      if (st.pricePlan.length !== before) await st.save();
     }
 
-    const daily = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].slice(0, 7).map((day, idx) => {
-      const targetDate = new Date(now.getTime() + idx * 86400000).toISOString().split('T')[0];
-      const evOnDay = (st.specialEvents || []).find(e => e.date === targetDate);
-      return {
-        day,
-        date: targetDate.slice(5).replace('-', '/'),
-        fullDate: targetDate,
-        occupancy: evOnDay ? 93.0 : (65 + idx * 3),
-        avgMultiplier: evOnDay ? 1.25 : 1.05,
-        status: evOnDay ? `🏟️ Event Day: ${evOnDay.title}` : "Normal Operations"
-      };
-    });
+    // Currently-live plan entry (matches the current hour slot)
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const liveSlot = `${pad2(new Date().getHours())}:00`;
+    const livePlanEntry = (st.pricePlan || []).find(
+      p => p.hourSlot === liveSlot && p.expiresAt && new Date() < new Date(p.expiresAt)
+    ) || null;
+
+    const hourly = aiResData?.hourly || [];
+    const daily = aiResData?.daily || [];
 
     return res.status(200).json({
       status: "success",
-      station: { id: st._id, name: st.stationName, city: st.address || 'Network Hub', coordinates: [lat, lon] },
-      weather: { condition: weatherCond, temp: tempC, source: `Open-Meteo Live API (${lat.toFixed(2)}, ${lon.toFixed(2)})` },
+      aiConnected: !!aiResData,
+      weatherConnected: weatherConnected,
+      station: { 
+        id: st._id, 
+        name: st.stationName, 
+        city: st.address || 'Network Hub', 
+        coordinates: [lat, lon],
+        basePricePerKwh: st.basePricePerKwh || 85,
+        pricingProfile: st.pricingProfile || 'balanced',
+        pricePlan: st.pricePlan || [],
+        activePriceOverride: livePlanEntry || (st.activePriceOverride && new Date() < new Date(st.activePriceOverride.expiresAt) ? st.activePriceOverride : null)
+      },
+      weather: { condition: weatherCond, temp: tempC, source: weatherConnected ? `Open-Meteo Live API (${lat.toFixed(2)}, ${lon.toFixed(2)})` : "Fallback Weather Feed" },
       specialEvents: st.specialEvents || [],
       activeEvent: hasSpecialEvent ? activeEvents[0] : null,
-      hourly: aiResData?.hourly || hourly,
-      daily: aiResData?.daily || daily,
+      hourly: hourly,
+      daily: daily,
       lastUpdated: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/ai/apply-price-override/:stationId
+ * Adds (or updates) an AI-recommended rate for a single hour slot in the
+ * station's SCHEDULED PRICE PLAN. Multiple hours can be scheduled at once.
+ * Each slot expires at the end of its hour and auto-reverts to the station's
+ * normal base rate — the station's base price is NEVER permanently changed.
+ * Drivers only see the AI rate during the scheduled hour.
+ */
+router.post('/apply-price-override/:stationId', verifyToken, async (req, res) => {
+  try {
+    const { hourSlot, multiplier, calculatedRate } = req.body;
+    const st = await Station.findById(req.params.stationId);
+    if (!st) return res.status(404).json({ error: 'Station not found' });
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
+    const baseRate = Number(st.basePricePerKwh) || 85;
+    const effectiveRate = Number(calculatedRate) || baseRate;
+    const mult = Number(multiplier) || 1.0;
+
+    // Resolve the slot label ("HH:00") from the request, defaulting to the
+    // current hour if none given. Accepts both "18" and "18:00".
+    const now = new Date();
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const hourStr = String(hourSlot || '').trim();
+    let slotHour = null;
+    if (/^\d{1,2}$/.test(hourStr)) {
+      slotHour = Number(hourStr);
+    } else {
+      const m = hourStr.match(/^(\d{1,2}):00$/);
+      if (m) slotHour = Number(m[1]);
+    }
+    const slotLabel = (slotHour !== null && slotHour >= 0 && slotHour <= 23)
+      ? `${pad2(slotHour)}:00`
+      : `${pad2(now.getHours())}:00`;
+
+    // Expiry: 23:59:59 of the chosen hour slot (e.g. "18:00" -> 18:59:59).
+    // If that hour already started, keep the slot for the next occurrence.
+    let expiresAt = new Date(now);
+    expiresAt.setMinutes(0, 0, 0);
+    if (slotHour !== null && slotHour >= 0 && slotHour <= 23) {
+      expiresAt.setHours(slotHour);
+      if (expiresAt.getTime() <= now.getTime()) expiresAt.setDate(expiresAt.getDate() + 1);
+    }
+    expiresAt.setMinutes(59, 59, 999);
+
+    // Drop stale slots first so the plan stays clean.
+    st.pricePlan = (st.pricePlan || []).filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now.getTime());
+
+    const entry = {
+      hourSlot: slotLabel,
+      effectiveRate,
+      originalRate: baseRate,
+      multiplier: mult,
+      expiresAt,
+      appliedAt: new Date()
+    };
+
+    const existingIdx = st.pricePlan.findIndex(p => p.hourSlot === slotLabel);
+    if (existingIdx >= 0) st.pricePlan[existingIdx] = entry;
+    else st.pricePlan.push(entry);
+
+    await st.save();
+
+    // Currently-live entry (only if the scheduled slot is the current hour)
+    const liveSlot = `${pad2(now.getHours())}:00`;
+    const live = st.pricePlan.find(p => p.hourSlot === liveSlot && p.expiresAt && new Date() < new Date(p.expiresAt)) || null;
+
+    return res.status(200).json({
+      status: 'success',
+      pricePlan: st.pricePlan,
+      activePriceOverride: live,
+      basePricePerKwh: baseRate,
+      effectiveRate
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/ai/price-plan/:stationId/:hourSlot
+ * Reverts a scheduled AI price back to normal for one hour slot.
+ */
+router.delete('/price-plan/:stationId/:hourSlot', verifyToken, async (req, res) => {
+  try {
+    const st = await Station.findById(req.params.stationId);
+    if (!st) return res.status(404).json({ error: 'Station not found' });
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
+    const hourSlot = decodeURIComponent(req.params.hourSlot);
+    st.pricePlan = (st.pricePlan || []).filter(p => p.hourSlot !== hourSlot);
+
+    // If the live slot's entry was removed, also clear the legacy override
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const liveSlot = `${pad2(new Date().getHours())}:00`;
+    if (hourSlot === liveSlot && st.activePriceOverride && st.activePriceOverride.hourSlot === liveSlot) {
+      st.activePriceOverride = null;
+    }
+
+    await st.save();
+
+    const live = st.pricePlan.find(p => p.hourSlot === liveSlot && p.expiresAt && new Date() < new Date(p.expiresAt)) || null;
+    return res.status(200).json({ status: 'success', pricePlan: st.pricePlan || [], activePriceOverride: live });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/ai/price-plan/:stationId
+ * Clears the ENTIRE scheduled AI price plan (revert all).
+ */
+router.delete('/price-plan/:stationId', verifyToken, async (req, res) => {
+  try {
+    const st = await Station.findById(req.params.stationId);
+    if (!st) return res.status(404).json({ error: 'Station not found' });
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
+    st.pricePlan = [];
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const liveSlot = `${pad2(new Date().getHours())}:00`;
+    if (st.activePriceOverride && st.activePriceOverride.hourSlot === liveSlot) {
+      st.activePriceOverride = null;
+    }
+
+    await st.save();
+    return res.status(200).json({ status: 'success', pricePlan: [], activePriceOverride: null });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -299,12 +493,23 @@ router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
  */
 router.post('/station-events/:stationId', verifyToken, async (req, res) => {
   try {
-    const { title, date, category } = req.body;
+    const { title, date, time, locationName, latitude, longitude, category } = req.body;
     if (!title || !date) return res.status(400).json({ error: 'Title and Date are required' });
     const st = await Station.findById(req.params.stationId);
     if (!st) return res.status(404).json({ error: 'Station not found' });
-    
-    st.specialEvents.push({ title, date, category: category || 'Sports Event / Cricket Match' });
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
+    st.specialEvents.push({ 
+      title, 
+      date, 
+      time: time || '12:00',
+      locationName: locationName || '',
+      latitude: latitude != null ? Number(latitude) : null,
+      longitude: longitude != null ? Number(longitude) : null,
+      category: category || 'Sports Event / Cricket Match' 
+    });
     await st.save();
     return res.status(200).json({ status: 'success', specialEvents: st.specialEvents });
   } catch (err) {
@@ -319,7 +524,10 @@ router.delete('/station-events/:stationId/:eventId', verifyToken, async (req, re
   try {
     const st = await Station.findById(req.params.stationId);
     if (!st) return res.status(404).json({ error: 'Station not found' });
-    
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
     st.specialEvents = st.specialEvents.filter(e => e._id.toString() !== req.params.eventId);
     await st.save();
     return res.status(200).json({ status: 'success', specialEvents: st.specialEvents });

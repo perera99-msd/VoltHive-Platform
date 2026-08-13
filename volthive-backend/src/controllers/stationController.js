@@ -4,13 +4,60 @@ const User = require('../models/User');
 const { getDynamicPriceMultiplier } = require('../services/aiService');
 const { calculateBestValue } = require('../services/rankingService');
 const { serializeStationForClient } = require('../utils/stationSerializer');
+const { getStationEffectiveRate, isOverrideActive, getActivePlanEntry } = require('../utils/rateEngine');
+
+// Find the station's active special event (next 7 days, within 10km) — real data.
+const getActiveStationEvent = (station) => {
+  if (!station || !Array.isArray(station.specialEvents) || station.specialEvents.length === 0) return null;
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const nextWeek = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+  const [lon, lat] = (station.location && station.location.coordinates) || [null, null];
+
+  const active = station.specialEvents.find((ev) => {
+    if (!ev.date) return false;
+    const evDate = new Date(ev.date);
+    if (Number.isNaN(evDate.getTime())) return false;
+    if (evDate < new Date(todayStr) || evDate > nextWeek) return false;
+    if (ev.latitude != null && ev.longitude != null && lon != null && lat != null) {
+      const dist = getDistanceKm(lat, lon, ev.latitude, ev.longitude);
+      return dist <= 10;
+    }
+    return true;
+  });
+  return active || null;
+};
+
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 exports.getAllStations = async (req, res) => {
   try {
-    const stations = await Station.find();
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const skip = (page - 1) * limit;
+
+    const total = await Station.countDocuments();
+    const stations = await Station.find().skip(skip).limit(limit);
     const normalizedStations = stations.map(serializeStationForClient);
 
-    res.status(200).json({ success: true, count: normalizedStations.length, data: normalizedStations });
+    res.status(200).json({ 
+      success: true, 
+      count: normalizedStations.length, 
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: normalizedStations 
+    });
   } catch (error) {
     console.error('Get All Stations Error:', error);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
@@ -24,10 +71,26 @@ exports.getOwnerStations = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only owners can access their stations.' });
     }
 
-    const stations = await Station.find({ ownerId: owner._id }).sort({ createdAt: -1 });
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+    const skip = (page - 1) * limit;
+
+    const total = await Station.countDocuments({ ownerId: owner._id });
+    const stations = await Station.find({ ownerId: owner._id })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+      
     const normalizedStations = stations.map(serializeStationForClient);
 
-    return res.status(200).json({ success: true, count: normalizedStations.length, data: normalizedStations });
+    return res.status(200).json({ 
+      success: true, 
+      count: normalizedStations.length, 
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      data: normalizedStations 
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
@@ -195,7 +258,7 @@ exports.updateStationRates = async (req, res) => {
 
 exports.getSmartMatchStations = async (req, res) => {
   try {
-    const { userLat, userLng, plugType, currentBatteryLevel } = req.body;
+    const { userLat, userLng, plugType, plugTypes, currentBatteryLevel } = req.body;
     const latitude = Number(userLat);
     const longitude = Number(userLng);
 
@@ -203,39 +266,101 @@ exports.getSmartMatchStations = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid coordinates. userLat and userLng are required numbers.' });
     }
 
-    if (!plugType || typeof plugType !== 'string') {
-      return res.status(400).json({ success: false, message: 'Invalid plugType. A string plugType is required.' });
+    // Support both a single plugType and a multi-select plugTypes array
+    const requestedPlugs = Array.isArray(plugTypes) && plugTypes.length > 0
+      ? plugTypes.map(p => String(p))
+      : (typeof plugType === 'string' && plugType ? [plugType] : []);
+
+    if (requestedPlugs.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid plugType. At least one plug type is required.' });
     }
 
     const stationsNearby = await Station.find({
       location: {
         $near: {
           $geometry: { type: 'Point', coordinates: [longitude, latitude] },
-          $maxDistance: 15000 
+          $maxDistance: 10000 // Strict 10 KM Radius
         }
       }
     });
 
-    const currentContext = {
-      hour: new Date().getHours(),
-      dayOfWeek: new Date().getDay(),
-      isWeekend: new Date().getDay() === 0 || new Date().getDay() === 6 ? 1 : 0,
-      isPeakHour: (new Date().getHours() >= 17 && new Date().getHours() <= 20) ? 1 : 0,
-      weather: 'Clear', 
-      event: 'None',
-      trafficScore: 4 
+    // ── PER-STATION AI: every station gets its OWN prediction ─────────────
+    // Each station uses its own real coordinates (→ live Open-Meteo weather),
+    // its own active special event, its own charger type and power output.
+    const hour = new Date().getHours();
+    const day = new Date().getDay();
+    const isWeekend = day === 0 || day === 6 ? 1 : 0;
+    const isPeakHour = hour >= 17 && hour <= 20 ? 1 : 0;
+
+    const MAX_AI_CALLS = 10; // latency cap; beyond this, reuse the nearest signal
+    const topStations = stationsNearby.slice(0, MAX_AI_CALLS);
+    const restStations = stationsNearby.slice(MAX_AI_CALLS);
+
+    const enrichStation = (station) => {
+      const stationObj = station.toObject();
+      const effectivePrice = getStationEffectiveRate(stationObj);
+      stationObj.currentDynamicPrice = effectivePrice;
+      stationObj.basePricePerKwh = stationObj.basePricePerKwh || effectivePrice;
+      stationObj.hasActiveOverride = !!(getActivePlanEntry(stationObj) || isOverrideActive(stationObj.activePriceOverride));
+      return stationObj;
     };
 
-    const aiPricing = await getDynamicPriceMultiplier({}, currentContext);
-
-    const stationsWithPrices = stationsNearby.map(station => {
-      const stationObj = station.toObject(); 
-      stationObj.currentDynamicPrice = stationObj.basePricePerKwh * aiPricing.suggested_multiplier;
+    const enrichedNearby = await Promise.all(topStations.map(async (station) => {
+      const activeEvent = getActiveStationEvent(station);
+      const context = {
+        hour,
+        dayOfWeek: day,
+        isWeekend,
+        isPeakHour,
+        weather: 'Clear', // AI service resolves LIVE weather for this station's coords
+        event: activeEvent ? activeEvent.title : 'None',
+        trafficScore: 4,
+        lat: station.location.coordinates[1],
+        lng: station.location.coordinates[0]
+      };
+      const stationData = {
+        location: station.location,
+        locationType: station.locationType || 'Urban Center',
+        pricingProfile: station.pricingProfile || 'balanced',
+        chargerType: station.chargers?.length
+          ? station.chargers.reduce((a, b) => ((b.powerKW || 0) > (a.powerKW || 0) ? b : a)).plugType
+          : 'Dc Fast Charge',
+        maxPowerKW: station.chargers?.length ? Math.max(...station.chargers.map(c => c.powerKW || 50)) : 120
+      };
+      const aiPricing = await getDynamicPriceMultiplier(stationData, context);
+      const stationObj = enrichStation(station);
       stationObj.demandStatus = aiPricing.ai_recommendation;
+      stationObj.predictedOccupancy = aiPricing.predicted_occupancy;
+      stationObj.aiMultiplier = aiPricing.suggested_multiplier;
+      return stationObj;
+    }));
+
+    // Stations beyond the cap reuse the nearest station's AI signal (fallback)
+    const fallback = enrichedNearby[0]
+      ? {
+          demandStatus: enrichedNearby[0].demandStatus,
+          predictedOccupancy: enrichedNearby[0].predictedOccupancy,
+          aiMultiplier: enrichedNearby[0].aiMultiplier
+        }
+      : { demandStatus: 'Normal Demand', predictedOccupancy: 'Unknown', aiMultiplier: 1.0 };
+
+    const fallbackStations = restStations.map((station) => {
+      const stationObj = enrichStation(station);
+      stationObj.demandStatus = fallback.demandStatus;
+      stationObj.predictedOccupancy = fallback.predictedOccupancy;
+      stationObj.aiMultiplier = fallback.aiMultiplier;
       return stationObj;
     });
+
+    const stationsWithPrices = [...enrichedNearby, ...fallbackStations];
     
-    const top3Stations = await calculateBestValue({ lat: latitude, lng: longitude }, { plugType, currentBatteryLevel }, stationsWithPrices);
+    const batteryPercent = Number.isFinite(Number(currentBatteryLevel)) ? Number(currentBatteryLevel) : 50;
+    const top3Stations = await calculateBestValue(
+      { lat: latitude, lng: longitude }, 
+      { plugTypes: requestedPlugs, currentBatteryLevel: batteryPercent }, 
+      stationsWithPrices, 
+      batteryPercent
+    );
     const normalizedTop3 = top3Stations.map(serializeStationForClient);
 
     res.status(200).json({ success: true, count: normalizedTop3.length, data: normalizedTop3 });

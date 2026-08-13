@@ -34,7 +34,14 @@ const getDynamicPriceMultiplier = async (stationData, currentContext) => {
       is_peak_hour: currentContext.isPeakHour ? 1 : 0,
       weather_condition: String(currentContext.weather || 'Clear'),
       local_event: String(currentContext.event || 'None'),
-      traffic_congestion_index: Math.min(10, Math.max(1, Number(currentContext.trafficScore) || 5))
+      // Pass station location so Flask can fetch per-station live weather
+      latitude: stationData?.location?.coordinates?.[1] ?? currentContext.lat ?? 6.9271,
+      longitude: stationData?.location?.coordinates?.[0] ?? currentContext.lng ?? 79.8612,
+      // Pass station specs for better inference alignment
+      location_type: stationData?.locationType || currentContext.locationType || 'Urban Center',
+      charger_type: stationData?.chargerType || currentContext.chargerType || 'Dc Fast Charge',
+      power_output_kw: stationData?.maxPowerKW || currentContext.powerKW || 120,
+      pricing_profile: stationData?.pricingProfile || currentContext.pricingProfile || 'balanced'
     };
 
     const response = await axios.post(

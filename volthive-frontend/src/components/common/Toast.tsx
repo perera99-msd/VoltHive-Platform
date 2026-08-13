@@ -1,23 +1,32 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ToastProps {
   message: string | null;
   type?: 'error' | 'success' | 'info';
   onClose: () => void;
+  durationMs?: number;
 }
 
-export default function Toast({ message, type = 'error', onClose }: ToastProps) {
+export default function Toast({ message, type = 'error', onClose, durationMs = 2000 }: ToastProps) {
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => {
+      onClose();
+    }, durationMs);
+    return () => clearTimeout(timer);
+  }, [message, onClose, durationMs]);
+
   return (
     <AnimatePresence>
       {message && (
         <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.95 }}
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="fixed bottom-8 right-8 z-50 max-w-md"
+          className="fixed bottom-28 sm:bottom-8 left-4 right-4 sm:left-auto sm:right-8 sm:max-w-md z-[9999]"
         >
           <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-2xl shadow-2xl border flex items-center gap-3.5 text-sm font-bold ${
             type === 'error'

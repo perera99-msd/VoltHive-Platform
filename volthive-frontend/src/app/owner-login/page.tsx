@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../lib/firebase';
 import { apiUrl } from '../../lib/api';
 
@@ -25,6 +25,7 @@ export default function OwnerLoginPage() {
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const router = useRouter();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -115,6 +116,25 @@ export default function OwnerLoginPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setErrorMsg('Please enter your network email endpoint above to reset token.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMsg(`Password reset link sent to ${email}. Check your inbox.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send password reset email.';
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Reusable input class for cleaner JSX
   const inputClass = "w-full px-4 py-3.5 rounded-xl bg-(--brand-card) border border-(--brand-border) focus:bg-white focus:border-(--accent-blue) focus:ring-2 focus:ring-(--accent-blue)/20 transition-all outline-none text-(--brand-ink) placeholder:text-(--brand-muted)/60 text-[14px] shadow-[0_2px_10px_rgba(0,0,0,0.02)]";
 
@@ -172,6 +192,20 @@ export default function OwnerLoginPage() {
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                 </div>
                 <span>{errorMsg}</span>
+              </motion.div>
+            )}
+
+            {successMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mb-6 p-3.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[13px] text-emerald-600 font-semibold flex items-center gap-3"
+              >
+                <div className="w-7 h-7 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                </div>
+                <span>{successMsg}</span>
               </motion.div>
             )}
           </AnimatePresence>
@@ -246,7 +280,7 @@ export default function OwnerLoginPage() {
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
                     <label className="text-[12px] font-bold text-(--brand-muted) uppercase tracking-wider ml-1">Security Token</label>
-                    <button type="button" className="text-[12px] font-semibold text-(--brand-blue-deep) hover:text-(--brand-blue) transition-colors">Forgot token?</button>
+                    <button type="button" onClick={handleForgotPassword} className="text-[12px] font-semibold text-(--brand-blue-deep) hover:text-(--brand-blue) transition-colors">Forgot token?</button>
                   </div>
                   <input type="password" required placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClass} focus:border-(--accent-green) focus:ring-(--accent-green)/20 tracking-widest`} />
                 </div>

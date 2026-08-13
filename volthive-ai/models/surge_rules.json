@@ -1,0 +1,24 @@
+{
+  "business_rule_layer": "Human-defined pricing policy layered on top of the ML occupancy prediction. These are NOT learned by the model.",
+  "multiplier_thresholds": [
+    {"prediction_pct": ">= 82", "multiplier": 1.25, "label": "High Surge Demand"},
+    {"prediction_pct": ">= 58", "multiplier": 1.15, "label": "Moderate Demand"},
+    {"prediction_pct": "<= 30", "multiplier": 0.90, "label": "Low Demand (Discount)"},
+    {"prediction_pct": "else", "multiplier": 1.0, "label": "Normal Demand"}
+  ],
+  "event_surge_bonus": {
+    "suggest_price": 15.0,
+    "forecast_hourly": 18.0,
+    "forecast_daily": 15.0,
+    "note": "Percentage points added to ML prediction when an active event is detected"
+  },
+  "hard_clamps": {
+    "suggest_price_min": 10.0,
+    "suggest_price_max": 98.5,
+    "forecast_hourly_min": 12.0,
+    "forecast_hourly_max": 98.0,
+    "forecast_daily_min": 15.0,
+    "forecast_daily_max": 95.0
+  },
+  "version": "1.0.0"
+}

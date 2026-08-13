@@ -12,6 +12,15 @@ const BookingSchema = new mongoose.Schema({
     ref: 'Station',
     required: true
   },
+  // Mandatory Customer Contact Details for App & POS Walk-in Bookings
+  customerName: {
+    type: String,
+    default: ''
+  },
+  customerPhone: {
+    type: String,
+    default: ''
+  },
   // We must track EXACTLY which charger the driver is plugged into
   chargerId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -31,7 +40,7 @@ const BookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Pending', 'Confirmed', 'Active_Charging', 'Completed', 'Cancelled', 'No_Show'],
+    enum: ['Pending', 'Confirmed', 'Active_Charging', 'Completed', 'Cancelled', 'No_Show', 'Expired'],
     default: 'Pending'
   },
   
@@ -61,6 +70,11 @@ const BookingSchema = new mongoose.Schema({
   totalCostLKR: {
     type: Number,
     default: 0
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['Pending', 'Done', 'Not Done'],
+    default: 'Pending'
   }
 }, { timestamps: true });
 

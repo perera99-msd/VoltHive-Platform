@@ -2,23 +2,35 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'VoltHive EV Charging Network',
+    id: '/',
+    name: 'VoltHive',
     short_name: 'VoltHive',
-    description: 'Standalone PWA EV driver platform for instant charging discovery, biometrics authentication, and dynamic AI surge reservations.',
+    description: 'EV charging made simple — find stations, chat with them, and book smart.',
     start_url: '/driver-login',
     display: 'standalone',
-    background_color: '#092034',
-    theme_color: '#4a90a4',
+    orientation: 'portrait',
+    scope: '/',
+    background_color: '#f8fafc',
+    theme_color: '#ffffff',
+    categories: ['utilities', 'travel'],
     icons: [
       {
         src: '/icons/icon-192x192.png',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'any',
       },
       {
         src: '/icons/icon-512x512.png',
         sizes: '512x512',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icons/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   };

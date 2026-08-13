@@ -11,7 +11,8 @@ import ChargersView from '../../../components/owner/views/ChargersView';
 import LiveOperationsView from '../../../components/owner/views/LiveOperationsView';
 import RateCalendar from '../../../components/owner/RateCalendar';
 import OwnerMap from '../../../components/owner/views/OwnerMap'; 
-import AiForecastCard from '../../../components/owner/AiForecastCard';
+import AiPredictionView from '../../../components/owner/views/AiPredictionView';
+import OwnerChatView from '../../../components/owner/views/OwnerChatView';
 
 export default function OwnerDashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -29,10 +30,12 @@ export default function OwnerDashboardPage() {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'dashboard': return <OwnerHome />;
+      case 'dashboard': return <OwnerHome onNavigate={setActiveTab} />;
+      case 'ai': return <AiPredictionView />;
       case 'stations': return <StationsView />;
       case 'chargers': return <ChargersView />;
       case 'bookings': return <LiveOperationsView />;
+      case 'chat': return <OwnerChatView />;
       case 'rates': return <RateCalendar />;
       case 'map': return <OwnerMap />;
       default: return <OwnerHome />;
@@ -50,7 +53,6 @@ export default function OwnerDashboardPage() {
         
         <main className="flex-1 h-full relative z-10 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           <div className="p-6 md:p-10 w-full min-h-full flex flex-col">
-            <AiForecastCard />
             {renderContent()}
           </div>
         </main>
