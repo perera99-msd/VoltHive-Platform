@@ -9,6 +9,7 @@ import DriverHome from '../../../components/driver/views/DriverHome';
 import MyGarage from '../../../components/driver/views/MyGarage';
 import ReservationsView from '../../../components/driver/views/ReservationsView';
 import AccountView from '../../../components/driver/views/AccountView';
+import Toast from '../../../components/common/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiUrl } from '../../../lib/api';
 
@@ -18,6 +19,17 @@ export default function DriverDashboard() {
 
   // --- Navigation State ---
   const [activeTab, setActiveTab] = useState<'home' | 'garage' | 'map' | 'reservations' | 'account'>('map');
+
+  // --- Chat target: a station picked from the map/drawer to open a conversation ---
+  const [chatTargetStationId, setChatTargetStationId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' | 'info' } | null>(null);
+
+  // Open chat inside the Profile (Account) section with a specific station pre-selected
+  const handleMessageStation = (stationId: string) => {
+    setChatTargetStationId(stationId);
+    setActiveTab('account');
+    setSelectedStation(null);
+  };
 
   useEffect(() => {
     const fetchStations = async () => {
@@ -44,7 +56,7 @@ export default function DriverDashboard() {
       <main className="fixed inset-0 w-full h-full font-sans overflow-hidden">
         {/* Keep map mounted to avoid remount lag/glitches when switching tabs */}
         <div className="absolute inset-0 z-0">
-          <StationMap stations={stations} onBookClick={handleMarkerClick} />
+          <StationMap stations={stations} onBookClick={handleMarkerClick} onMessageClick={handleMessageStation} />
         </div>
 
         {/* Lightweight premium tab-switch shimmer */}
@@ -67,13 +79,19 @@ export default function DriverDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 z-20 bg-(--background)/94 backdrop-blur-2xl overflow-y-auto"
+              className="absolute inset-0 z-20 overflow-y-auto"
             >
-              <div className="w-full min-h-dvh md:pl-30 md:pr-12 pt-12 px-6 pb-36 md:pb-14 max-w-7xl mx-auto">
+              <div className="fixed inset-0 bg-(--background)/94 backdrop-blur-2xl pointer-events-none -z-10" />
+              <div className="w-full min-h-dvh md:pl-[120px] lg:pl-[140px] md:pr-12 pt-12 px-6 pb-36 md:pb-14">
                 {activeTab === 'home' && <DriverHome onBookNow={() => setActiveTab('map')} />}
                 {activeTab === 'garage' && <MyGarage />}
-                {activeTab === 'reservations' && <ReservationsView />}
-                {activeTab === 'account' && <AccountView />}
+                {activeTab === 'reservations' && <ReservationsView onMessageClick={handleMessageStation} />}
+                {activeTab === 'account' && (
+                  <AccountView
+                    initialChatStationId={chatTargetStationId}
+                    onChatConsumed={() => setChatTargetStationId(null)}
+                  />
+                )}
               </div>
             </motion.div>
           )}
@@ -83,7 +101,13 @@ export default function DriverDashboard() {
         <DriverSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
         {/* Booking Drawer */}
-        <BookingDrawer station={selectedStation} onClose={() => setSelectedStation(null)} />
+        <BookingDrawer station={selectedStation} onClose={() => setSelectedStation(null)} onMessageClick={handleMessageStation} />
+
+        <Toast
+          message={toastMessage?.msg || null}
+          type={toastMessage?.type || 'info'}
+          onClose={() => setToastMessage(null)}
+        />
       </main>
     </ProtectedRoute>
   );

@@ -11,6 +11,14 @@ export const apiUrl = (path: string) => {
   return `${BACKEND_BASE_URL}${normalizedPath}`;
 };
 
+// Local-timezone date helpers (avoid the UTC `toISOString().split('T')[0]`
+// bug where "today" shifts to yesterday near midnight in positive offsets).
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+export const toLocalYMD = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+export const todayYMD = () => toLocalYMD(new Date());
+
 export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(input, {
     ...init,

@@ -1,0 +1,32 @@
+{
+  "champion_model": "HistGradientBoosting",
+  "total_time": "1h 50m 21s",
+  "records": [
+    {
+      "model": "Random Forest Regressor",
+      "phase_1_best_params": {
+        "max_depth": 25,
+        "min_samples_split": 20,
+        "n_estimators": 300
+      },
+      "phase_2_test_mae": 0.0567
+    },
+    {
+      "model": "HistGradientBoosting",
+      "phase_1_best_params": {
+        "l2_regularization": 1.0,
+        "learning_rate": 0.1,
+        "max_depth": 20,
+        "max_iter": 500
+      },
+      "phase_2_test_mae": 0.0565
+    },
+    {
+      "model": "Ridge Linear Baseline",
+      "phase_1_best_params": {
+        "alpha": 0.01
+      },
+      "phase_2_test_mae": 0.2005
+    }
+  ]
+}

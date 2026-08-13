@@ -148,3 +148,8 @@ volthive-ai/Data Set/
 *.parquet
 *.h5
 *.model
+
+# ============================================
+# INTERNAL AUDIT REPORTS (NEVER COMMIT)
+# ============================================
+CODEBASE_AUDIT_*.md

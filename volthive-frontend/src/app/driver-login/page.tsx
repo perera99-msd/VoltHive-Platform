@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { auth } from '../../lib/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { motion } from 'framer-motion';
 import { apiUrl } from '../../lib/api';
 
@@ -29,6 +30,7 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
   const [biometricScanning, setBiometricScanning] = useState(false);
+  const [biometricRegistered, setBiometricRegistered] = useState(false);
   const [isAppOrMobile, setIsAppOrMobile] = useState(false);
 
   useEffect(() => {
@@ -36,54 +38,94 @@ export default function AuthPage() {
                          ('standalone' in navigator && (navigator as any).standalone === true);
     const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     setIsAppOrMobile(isStandalone || isMobileUA);
+
+    // A credential is considered "set up" only after a real WebAuthn registration.
+    const saved = localStorage.getItem('volthive_driver_biometrics');
+    try {
+      const parsed = saved ? JSON.parse(saved) : null;
+      setBiometricRegistered(!!(parsed && parsed.id));
+    } catch {
+      setBiometricRegistered(false);
+    }
   }, []);
+
+  const b64urlToBuffer = (b64: string) => {
+    const pad = b64.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(pad);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  };
 
   const handleBiometricAuth = async () => {
     setError('');
-    let targetEmail = localStorage.getItem('vh_bio_email');
-    let targetPass = localStorage.getItem('vh_bio_pass');
 
-    // If no saved account on this app instance yet, link current inputs if typed
-    if (!targetEmail || !targetPass) {
-      if (email && password) {
-        targetEmail = email;
-        targetPass = password;
-        localStorage.setItem('vh_bio_email', email);
-        localStorage.setItem('vh_bio_pass', password);
-      } else {
-        setError('No biometric profile registered on this app. Sign in with Email & Password once to link Fingerprint / Face ID.');
-        return;
-      }
+    // Real biometric unlock: verify this device's Face ID / fingerprint with
+    // the WebAuthn credential registered in Account, then use the persisted
+    // Firebase session.
+    const saved = localStorage.getItem('volthive_driver_biometrics');
+    let credId: string | null = null;
+    let storedEmail: string | null = null;
+    try {
+      const parsed = saved ? JSON.parse(saved) : null;
+      credId = parsed?.id || null;
+      storedEmail = parsed?.email || null;
+    } catch {
+      credId = null;
+    }
+
+    if (!credId || typeof window === 'undefined' || !window.PublicKeyCredential || !window.isSecureContext) {
+      setError('Biometric login is not set up on this device. Sign in once with email, then enable it in Account.');
+      return;
     }
 
     setBiometricScanning(true);
-
-    // Trigger native WebAuthn hardware sensor prompt if supported by device browser
-    if (window.PublicKeyCredential) {
-      try {
-        await navigator.credentials.get({
-          publicKey: {
-            challenge: new Uint8Array(32),
-            timeout: 60000,
-            userVerification: "required"
-          }
-        }).catch(() => {});
-      } catch (e) {}
+    try {
+      await navigator.credentials.get({
+        publicKey: {
+          challenge: new Uint8Array(32),
+          allowCredentials: [{ type: 'public-key', id: b64urlToBuffer(credId) }],
+          userVerification: 'required',
+          timeout: 60000,
+        }
+      });
+    } catch (e) {
+      setBiometricScanning(false);
+      setError('Biometric verification failed or was cancelled.');
+      return;
     }
 
-    setTimeout(async () => {
+    // Hardware WebAuthn verification succeeded!
+    const currentUser = auth.currentUser;
+    if (currentUser) {
       try {
-        await login(targetEmail!, targetPass!);
+        const token = await currentUser.getIdToken();
+        const res = await fetch(apiUrl('/api/users/profile'), { headers: { Authorization: `Bearer ${token}` } });
+        const userData = res.ok ? await res.json() : null;
         setBiometricScanning(false);
-        setSuccess(`✓ Biometrics verified for ${targetEmail}. Routing to dashboard...`);
+        setSuccess('✓ Face ID / Touch ID verified. Welcome back.');
         setTimeout(() => {
-          router.push('/driver-dashboard');
-        }, 800);
+          router.push(userData?.role === 'owner' ? '/owner-dashboard' : '/driver-dashboard');
+        }, 600);
+        return;
       } catch (err) {
-        setBiometricScanning(false);
-        setError('Saved biometric session expired or invalid. Please sign in with password.');
+        console.warn('Profile check error:', err);
       }
-    }, 1500);
+    }
+
+    // If Firebase auth is still restoring, wait 800ms and retry navigation
+    setTimeout(async () => {
+      const retryUser = auth.currentUser;
+      if (retryUser) {
+        setBiometricScanning(false);
+        setSuccess('✓ Identity verified. Welcome back.');
+        router.push('/driver-dashboard');
+      } else {
+        if (storedEmail) setEmail(storedEmail);
+        setBiometricScanning(false);
+        setSuccess('✓ Hardware biometric verified! Please enter your password to confirm session.');
+      }
+    }, 800);
   };
 
   const handleGoogleAuth = async () => {
@@ -160,8 +202,6 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         await login(email, password);
-        localStorage.setItem('vh_bio_email', email);
-        localStorage.setItem('vh_bio_pass', password);
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error('Could not verify your identity. Please sign in again.');
 
@@ -228,6 +268,25 @@ export default function AuthPage() {
       } else {
         setError(message);
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Please enter your email address above to reset password.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccess(`Password reset email sent to ${email}. Check your inbox.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to send password reset email.';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -323,24 +382,25 @@ export default function AuthPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* role selector removed - owner registration moved to separate pages */}
-
-            {/* 1. BIOMETRICS BUTTON (Only visible in standalone App or Mobile view) */}
-            {isLogin && isAppOrMobile && (
+            {/* 1. BIOMETRICS UNLOCK BUTTON (Only visible when enabled in Profile settings on this device) */}
+            {isLogin && biometricRegistered && (
               <button
                 type="button"
                 onClick={handleBiometricAuth}
                 disabled={biometricScanning || loading}
-                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-(--brand-ink) text-white hover:bg-(--brand-blue-deep) transition-all shadow-md text-sm font-bold relative overflow-hidden group"
+                className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-xl bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white hover:brightness-105 transition-all shadow-md text-sm font-bold cursor-pointer active:scale-98"
               >
                 {biometricScanning ? (
-                  <span className="flex items-center gap-2 text-(--brand-green)">
-                    <span className="animate-spin h-4 w-4 border-2 border-(--brand-green)/40 border-t-(--brand-green) rounded-full" />
-                    Scanning Face ID...
+                  <span className="flex items-center gap-2 text-white font-bold">
+                    <span className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full" />
+                    Scanning Face ID / Touch ID...
                   </span>
                 ) : (
                   <>
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-(--brand-green)"><path d="M7 3H5a2 2 0 0 0-2 2v2M17 3h2a2 2 0 0 1 2 2v2M16 8a4 4 0 0 0-8 0v1a4 4 0 0 0 8 0zM9 15v1a3 3 0 0 0 6 0v-1M3 17v2a2 2 0 0 0 2 2h2M21 17v2a2 2 0 0 1-2 2h-2" /></svg>
-                    <span>Instant Biometric Login</span>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="text-white">
+                      <path d="M7 3H5a2 2 0 0 0-2 2v2M17 3h2a2 2 0 0 1 2 2v2M16 8a4 4 0 0 0-8 0v1a4 4 0 0 0 8 0zM9 15v1a3 3 0 0 0 6 0v-1M3 17v2a2 2 0 0 2 2h2M21 17v2a2 2 0 0 1-2 2h-2" />
+                    </svg>
+                    <span>Unlock with Face ID / Touch ID</span>
                   </>
                 )}
               </button>
@@ -415,7 +475,7 @@ export default function AuthPage() {
               <div className={`space-y-1.5 ${isLogin ? 'col-span-1 sm:col-span-2' : 'col-span-1'}`}>
                 <div className="flex justify-between items-center">
                   <label className="text-[13px] font-semibold text-(--brand-muted)">Password</label>
-                  {isLogin && <button type="button" className="text-[12px] font-semibold text-(--brand-blue-deep) hover:text-(--brand-blue) transition-colors">Forgot password?</button>}
+                  {isLogin && <button type="button" onClick={handleForgotPassword} className="text-[12px] font-semibold text-(--brand-blue-deep) hover:text-(--brand-blue) transition-colors">Forgot password?</button>}
                 </div>
                 <input
                   type="password"

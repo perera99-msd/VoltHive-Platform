@@ -23,7 +23,7 @@ function AdvancedMapMarker({
   iconSize: number;
   onClick?: () => void;
 }) {
-  const markerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
+  const markerRef = useRef<google.maps.Marker | google.maps.marker.AdvancedMarkerElement | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -31,37 +31,62 @@ function AdvancedMapMarker({
 
     const setupMarker = async () => {
       if (!map || !window.google) return;
-      const markerLib = (await window.google.maps.importLibrary('marker')) as google.maps.MarkerLibrary;
-      if (!isMounted) return;
 
-      const el = document.createElement('img');
-      el.src = iconUrl;
-      el.alt = 'marker';
-      el.style.width = `${iconSize}px`;
-      el.style.height = `${iconSize}px`;
-      el.style.objectFit = 'contain';
+      // Advanced Markers REQUIRE a Map ID. Without one, fall back to the
+      // classic google.maps.Marker so the map works out of the box.
+      const hasMapId = !!process.env.NEXT_PUBLIC_GOOGLE_MAP_ID;
 
-      const marker = new markerLib.AdvancedMarkerElement({
-        map,
-        position,
-        content: el,
-      });
+      if (hasMapId) {
+        const markerLib = (await window.google.maps.importLibrary('marker')) as google.maps.MarkerLibrary;
+        if (!isMounted) return;
 
-      if (onClick) {
-        clickListener = marker.addListener('click', onClick);
+        const el = document.createElement('img');
+        el.src = iconUrl;
+        el.alt = 'marker';
+        el.style.width = `${iconSize}px`;
+        el.style.height = `${iconSize}px`;
+        el.style.objectFit = 'contain';
+
+        const marker = new markerLib.AdvancedMarkerElement({
+          map,
+          position,
+          content: el,
+        });
+
+        if (onClick) clickListener = marker.addListener('click', onClick);
+        markerRef.current = marker;
+      } else {
+        const marker = new window.google.maps.Marker({
+          map,
+          position,
+          icon: {
+            url: iconUrl,
+            scaledSize: new window.google.maps.Size(iconSize, iconSize),
+            anchor: new window.google.maps.Point(iconSize / 2, iconSize / 2),
+          },
+        });
+
+        if (onClick) clickListener = marker.addListener('click', onClick);
+        markerRef.current = marker;
       }
-      markerRef.current = marker;
     };
+
     setupMarker();
+
     return () => {
       isMounted = false;
       if (clickListener) clickListener.remove();
       if (markerRef.current) {
-        markerRef.current.map = null;
+        if (typeof (markerRef.current as any).setMap === 'function') {
+          (markerRef.current as any).setMap(null);
+        } else {
+          (markerRef.current as any).map = null;
+        }
         markerRef.current = null;
       }
     };
   }, [map, position, iconUrl, iconSize, onClick]);
+
   return null;
 }
 
@@ -124,7 +149,7 @@ export default function OwnerMap() {
           mapContainerStyle={containerStyle}
           center={defaultCenter}
           zoom={12}
-          options={{ disableDefaultUI: true, mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID || 'DEMO_MAP_ID' }}
+          options={{ disableDefaultUI: true, ...(process.env.NEXT_PUBLIC_GOOGLE_MAP_ID ? { mapId: process.env.NEXT_PUBLIC_GOOGLE_MAP_ID } : {}) }}
           onLoad={handleMapLoad}
           onClick={() => setActiveStation(null)}
         >
@@ -181,8 +206,10 @@ export default function OwnerMap() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-(--surface-soft)/40 rounded-xl p-3 border border-(--brand-border)/50 flex flex-col justify-center">
-                <p className="text-[9px] uppercase font-extrabold text-(--brand-muted) tracking-wider mb-0.5">Base Rate</p>
-                <p className="text-[13px] font-black text-(--brand-ink)">LKR {activeStation.pricePerKWh || 85}</p>
+                <p className="text-[9px] uppercase font-extrabold text-(--brand-muted) tracking-wider mb-0.5">Current Rate</p>
+                <p className="text-[13px] font-black text-(--brand-ink)">
+                  {Number.isFinite(Number(activeStation.pricePerKWh)) ? `LKR ${activeStation.pricePerKWh}` : '—'}
+                </p>
               </div>
               <div className="bg-(--surface-soft)/40 rounded-xl p-3 border border-(--brand-border)/50 flex flex-col justify-center">
                  <p className="text-[9px] uppercase font-extrabold text-(--brand-muted) tracking-wider mb-0.5">Hardware</p>

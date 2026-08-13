@@ -26,7 +26,7 @@ interface RateCalendarProps {
 
 export default function RateCalendar({ onBack }: RateCalendarProps) {
   const [selectedCharger, setSelectedCharger] = useState('');
-  const [baseRate, setBaseRate] = useState<number>(150);
+  const [baseRate, setBaseRate] = useState<number>(0);
   const [weeklyRates, setWeeklyRates] = useState<RateEntry[]>([]);
   const [editingRate, setEditingRate] = useState<RateEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -171,10 +171,10 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
                   const payload = await res.json();
                   const data = payload.data;
                   if (data?.rateConfig) {
-                    setBaseRate(data.rateConfig.baseRate || data.charger.basePricePerKwh || 150);
+                    setBaseRate(Number(data.rateConfig.baseRate) || Number(data.charger?.basePricePerKwh) || 0);
                     setWeeklyRates(data.rateConfig.customRates || []);
                   } else {
-                    setBaseRate(data.charger.basePricePerKwh || 150);
+                    setBaseRate(Number(data.charger?.basePricePerKwh) || 0);
                     setWeeklyRates([]);
                   }
                 } catch (err) {
@@ -193,7 +193,7 @@ export default function RateCalendar({ onBack }: RateCalendarProps) {
             
             <div className="mb-4 mt-1">
               <p className="text-(--brand-muted) text-[10px] font-extrabold uppercase tracking-wider mb-1">Global Base Rate</p>
-              <h3 className="text-[28px] font-black text-(--brand-ink) tracking-tight">{baseRate} <span className="text-[12px] font-bold text-(--brand-muted)">LKR/kWh</span></h3>
+              <h3 className="text-[28px] font-black text-(--brand-ink) tracking-tight">{baseRate > 0 ? baseRate : '—'} <span className="text-[12px] font-bold text-(--brand-muted)">{baseRate > 0 ? 'LKR/kWh' : 'Select a charger'}</span></h3>
             </div>
 
             <div className="relative mb-5">

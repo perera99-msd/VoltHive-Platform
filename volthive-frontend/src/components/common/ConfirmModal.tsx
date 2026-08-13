@@ -29,23 +29,24 @@ export default function ConfirmModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 font-sans pointer-events-auto">
           {/* Frosted Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={isLoading ? undefined : onClose}
-            className="absolute inset-0 bg-linear-to-br from-(--brand-ink)/40 to-(--brand-ink)/60 backdrop-blur-xl"
+            className="absolute inset-0 bg-(--brand-ink)/40 backdrop-blur-md pointer-events-auto cursor-pointer"
           />
 
           {/* Dialog Card */}
           <motion.div
+            onClick={(e) => e.stopPropagation()}
             initial={{ scale: 0.9, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 15 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="relative z-10 w-full max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl p-6 sm:p-8 border border-(--brand-border) shadow-[0_34px_80px_-30px_rgba(9,32,52,0.7)] text-(--brand-ink)"
+            className="relative z-10 pointer-events-auto w-full max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl p-6 sm:p-8 border border-(--brand-border) shadow-[0_34px_80px_-30px_rgba(9,32,52,0.7)] text-(--brand-ink)"
           >
             <div className="flex items-start gap-4 mb-4">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${

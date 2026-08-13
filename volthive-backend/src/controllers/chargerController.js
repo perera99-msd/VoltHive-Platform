@@ -48,6 +48,12 @@ exports.getChargerRates = async (req, res) => {
     const station = await findStationByChargerId(id);
     if (!station) return res.status(404).json({ success: false, message: 'Charger not found' });
 
+    // Ownership check (read path)
+    const owner = await User.findOne({ firebaseUid: req.user.uid });
+    if (!owner || owner.role !== 'owner' || String(station.ownerId) !== String(owner._id)) {
+      return res.status(403).json({ success: false, message: 'You can only view rates for your own chargers.' });
+    }
+
     const charger = station.chargers.id(id);
     const rate = await Rate.findOne({ chargerId: id });
 
