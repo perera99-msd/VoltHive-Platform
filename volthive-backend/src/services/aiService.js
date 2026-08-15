@@ -26,6 +26,18 @@ const getDynamicPriceMultiplier = async (stationData, currentContext) => {
       throw new Error('FLASK_API_URL environment variable is not set');
     }
 
+    // In production, never attempt the localhost dev fallback — it would always
+    // fail on the server and add noise/latency to every price calculation.
+    if ((process.env.NODE_ENV || 'development') === 'production' && !process.env.FLASK_API_URL) {
+      console.warn('AI service: FLASK_API_URL is not set — using base-price fallback (multiplier 1.0).');
+      return {
+        suggested_multiplier: 1.0,
+        ai_recommendation: 'System Fallback',
+        predicted_occupancy: 'Unknown',
+        warning: 'AI service unavailable - using standard pricing'
+      };
+    }
+
     // Construct the payload expected by Flask app.py
     const payload = {
       hour_of_day: Number(currentContext.hour) || new Date().getHours(),

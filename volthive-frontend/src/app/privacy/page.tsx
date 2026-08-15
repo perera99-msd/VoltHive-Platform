@@ -1,25 +1,44 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import HomeNavbar from '../../components/home/HomeNavbar';
+import Footer from '../../components/home/Footer';
 import PrivacyContent from '../../components/info/PrivacyContent';
+import Reveal from '../../components/common/Reveal';
 
 export default function PrivacyPage() {
-  const router = useRouter();
   return (
-    <main className="min-h-screen bg-[#f5f7f6] text-(--brand-ink) font-sans">
-      <div className="max-w-2xl mx-auto px-6 py-12">
-        <button
-          onClick={() => (window.history.length > 1 ? router.back() : router.push('/'))}
-          className="inline-flex items-center gap-2 text-sm font-semibold text-(--brand-blue) hover:underline mb-8 cursor-pointer"
-        >
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
-          Back
-        </button>
+    <div className="min-h-screen bg-(--background) text-(--brand-ink) font-sans flex flex-col selection:bg-(--accent-blue)/30">
+      
+      {/* Top Navbar */}
+      <HomeNavbar />
 
-        <h1 className="text-3xl font-extrabold tracking-tight mb-2">Privacy Policy</h1>
-        <p className="text-sm text-(--brand-muted) mb-8">Effective date: 13 August 2026</p>
-        <PrivacyContent />
-      </div>
-    </main>
+      {/* Main Content */}
+      <main className="flex-1 pt-32 sm:pt-40 pb-24 px-5 sm:px-10 max-w-[1100px] mx-auto w-full relative z-10">
+        
+        {/* Header */}
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-(--brand-border) shadow-2xs font-mono text-xs font-black uppercase tracking-widest text-(--brand-blue-deep) mb-6">
+            <span className="w-2 h-2 rounded-full bg-(--brand-green) animate-pulse" />
+            <span>SECURITY &amp; PRIVACY</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-(--brand-ink) mb-6 leading-[1.1]">
+            Privacy Architecture &amp; Data Policy.
+          </h1>
+          <p className="text-sm sm:text-base text-(--brand-muted) font-medium leading-relaxed">
+            Effective Date: January 1, 2026 · Telemetry Security Standard
+          </p>
+        </div>
+
+        {/* Privacy Content Box */}
+        <Reveal direction="up" className="rounded-[2.25rem] bg-white border border-(--brand-border) p-8 sm:p-14 shadow-sm">
+          <PrivacyContent />
+        </Reveal>
+
+      </main>
+
+      {/* Footer */}
+      <Footer />
+
+    </div>
   );
 }

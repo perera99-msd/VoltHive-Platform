@@ -5,8 +5,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import HomeNavbar from '../components/home/HomeNavbar';
 import Hero from '../components/home/Hero';
+import HubStackCarousel from '../components/home/HubStackCarousel';
+import PitchDeckSection from '../components/home/PitchDeckSection';
 import Features from '../components/home/Features';
+import EVModelSlider from '../components/home/EVModelSlider';
+import HowItWorks from '../components/home/HowItWorks';
+import NetworkCarousel from '../components/home/NetworkCarousel';
+import FAQSection from '../components/home/FAQSection';
 import PWAGuide from '../components/home/PWAGuide';
+import Testimonials from '../components/home/Testimonials';
 import Footer from '../components/home/Footer';
 import StationMap from '../components/StationMap';
 import BookingDrawer from '../components/driver/BookingDrawer';
@@ -21,7 +28,7 @@ interface Station {
   chargers: { _id: string; plugType: string; powerKW: number; status: string }[];
 }
 
-// Removed HomeSections in favor of dedicated components// ============================================================================
+// ============================================================================
 // MAIN PAGE COMPONENT
 // ============================================================================
 export default function Home() {
@@ -136,9 +143,16 @@ export default function Home() {
 
         {/* HOME / MARKETING VIEW */}
         <div className={`absolute inset-0 overflow-y-auto overflow-x-hidden custom-scrollbar transition-opacity duration-500 ease-in-out ${!isMapView ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
-          <Hero />
+          <Hero stations={stations} />
+          <HubStackCarousel />
+          <PitchDeckSection />
           <Features />
+          <EVModelSlider />
+          <HowItWorks />
+          <NetworkCarousel stations={stations} />
+          <FAQSection />
           <PWAGuide />
+          <Testimonials />
           <Footer />
         </div>
       </div>

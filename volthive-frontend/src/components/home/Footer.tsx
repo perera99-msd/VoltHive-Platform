@@ -8,7 +8,7 @@ export default function Footer() {
     <footer id="footer" className="relative z-10 bg-(--brand-card) text-(--brand-ink) font-sans border-t border-(--brand-border) overflow-hidden">
       
       {/* Brand Gradient Top CTA Banner */}
-      <div className="relative py-16 sm:py-24 px-6 sm:px-10 bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white overflow-hidden">
+      <div id="cta-section" className="relative py-16 sm:py-24 px-6 sm:px-10 bg-linear-to-r from-(--brand-blue-deep) via-(--brand-blue) to-(--brand-green) text-white overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none" />
         
         <div className="max-w-[1500px] mx-auto relative z-10 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-10 text-center md:text-left">
@@ -65,34 +65,37 @@ export default function Footer() {
 
           {/* COL 1: PRODUCT */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Product</h4>
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Platform &amp; Tools</h4>
             <ul className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm font-semibold text-(--brand-muted)">
-              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Driver App (PWA)</Link></li>
-              <li><Link href="/owner-login" className="hover:text-(--brand-blue) transition-colors">Station Admin Center</Link></li>
-              <li><Link href="#services" className="hover:text-(--brand-blue) transition-colors">Dynamic Pricing AI</Link></li>
-              <li><Link href="#hero" className="hover:text-(--brand-blue) transition-colors">Live Telemetry</Link></li>
+              <li><Link href="/pricing" className="hover:text-(--brand-blue) transition-colors">Pricing &amp; ROI Portal</Link></li>
+              <li><Link href="/guide" className="hover:text-(--brand-blue) transition-colors">Driver Help Guide</Link></li>
+              <li><Link href="/hosts" className="hover:text-(--brand-blue) transition-colors">Host Business Hub</Link></li>
+              <li><Link href="/technology" className="hover:text-(--brand-blue) transition-colors">Grid AI Architecture</Link></li>
+              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Driver WebAuthn App</Link></li>
             </ul>
           </div>
 
           {/* COL 2: RESOURCES */}
           <div className="lg:col-span-2 space-y-3 sm:space-y-4">
-            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Resources</h4>
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Ecosystem</h4>
             <ul className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm font-semibold text-(--brand-muted)">
-              <li><Link href="#pwa-guide" className="hover:text-(--brand-blue) transition-colors">PWA Installation</Link></li>
-              <li><Link href="#services" className="hover:text-(--brand-blue) transition-colors">Hardware Handshake</Link></li>
-              <li><Link href="#hero" className="hover:text-(--brand-blue) transition-colors">Grid Architecture</Link></li>
-              <li><Link href="/driver-login" className="hover:text-(--brand-blue) transition-colors">Biometric FIDO2</Link></li>
+              <li><Link href="/download-app" className="hover:text-(--brand-blue) transition-colors">PWA Install Guide</Link></li>
+              <li><Link href="/about" className="hover:text-(--brand-blue) transition-colors">About &amp; Mission</Link></li>
+              <li><Link href="/terms" className="hover:text-(--brand-blue) transition-colors">Terms of Execution</Link></li>
+              <li><Link href="/privacy" className="hover:text-(--brand-blue) transition-colors">Privacy &amp; Telemetry</Link></li>
+              <li><Link href="/owner-login" className="hover:text-(--brand-blue) transition-colors">Station Admin Center</Link></li>
             </ul>
           </div>
 
           {/* COL 3: SPECIFICATIONS */}
           <div className="lg:col-span-3 space-y-3 sm:space-y-4">
-            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Compliance & Specs</h4>
+            <h4 className="text-xs font-black tracking-[0.18em] uppercase text-(--brand-ink)">Compliance &amp; Specs</h4>
             <ul className="space-y-2.5 sm:space-y-3 text-xs sm:text-sm font-medium text-(--brand-muted)">
               <li><span className="text-(--brand-ink) font-bold">0% Gateway Fee</span> — Direct Settlements</li>
               <li><span className="text-(--brand-ink) font-bold">99.9% Telemetry Uptime</span></li>
-              <li><span className="text-(--brand-ink) font-bold">ISO 15118</span> Plug & Charge Ready</li>
+              <li><span className="text-(--brand-ink) font-bold">ISO 15118</span> Plug &amp; Charge Ready</li>
               <li><span className="text-(--brand-ink) font-bold">Python Predictor</span> Engine v2.4</li>
+              <li><span className="text-(--brand-ink) font-bold">OCPP 1.6J / 2.0.1</span> Native Controller</li>
             </ul>
           </div>
 
@@ -104,9 +107,9 @@ export default function Footer() {
         <div className="max-w-[1500px] mx-auto px-6 sm:px-10 py-5 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] sm:text-xs font-semibold text-(--brand-muted) text-center sm:text-left">
           <p>© {new Date().getFullYear()} VoltHive Technologies Inc. All enterprise rights reserved.</p>
           <div className="flex flex-wrap justify-center gap-5 sm:gap-6">
-            <Link href="#hero" className="hover:text-(--brand-ink) transition-colors">Privacy Architecture</Link>
-            <Link href="#services" className="hover:text-(--brand-ink) transition-colors">Terms of Execution</Link>
-            <Link href="#hero" className="hover:text-(--brand-ink) transition-colors">Telemetry Security</Link>
+            <Link href="/privacy" className="hover:text-(--brand-ink) transition-colors">Privacy Architecture</Link>
+            <Link href="/terms" className="hover:text-(--brand-ink) transition-colors">Terms of Execution</Link>
+            <Link href="/technology" className="hover:text-(--brand-ink) transition-colors">Telemetry Security</Link>
           </div>
         </div>
       </div>
