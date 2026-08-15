@@ -113,7 +113,7 @@ router.post('/vehicles', verifyToken, async (req, res) => {
       model: model || 'Model',
       year: year || '2025',
       batteryKWh: Number(batteryKWh) || 40,
-      connector: connector || 'CCS2 Fast',
+      connector: connector || 'CCS2',
       maxKW: Number(maxKW) || 50,
       isPrimary: isPrimary || user.vehicles.length === 0
     });

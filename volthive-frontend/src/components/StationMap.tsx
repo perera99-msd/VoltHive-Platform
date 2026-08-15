@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, DirectionsRenderer } from '@react-google-maps/api';
 import { AnimatePresence, motion } from 'framer-motion';
 import { apiUrl } from '../lib/api';
+import { auth } from '../lib/firebase';
 import Toast from './common/Toast';
 
 const containerStyle = { width: '100%', height: '100%' };
@@ -14,7 +15,7 @@ interface Charger {
   _id: string;
   plugType: string;
   powerKW: number;
-  status: 'Available' | 'Occupied' | 'Offline' | string;
+  status: string;
 }
 
 export interface Station {
@@ -42,7 +43,8 @@ interface StationMapProps {
   isGuest?: boolean;
 }
 
-const PLUG_TYPES = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T'];
+// Canonical charger/connector standards. KEEP IN SYNC with AddChargerModal, EditChargerModal, MyGarage, seedStations.js
+const PLUG_TYPES = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T', 'Tesla NACS'];
 
 // Straight-line (Haversine) distance in km — used for the 10 km radius filter.
 const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
@@ -53,6 +55,16 @@ const haversineKm = (a: { lat: number; lng: number }, b: { lat: number; lng: num
   const lb = (b.lat * Math.PI) / 180;
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(la) * Math.cos(lb) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+};
+
+// Read-only status badge for a charger (station popup).
+const chargerStatusInfo = (status: string) => {
+  const s = String(status || '').toUpperCase();
+  if (s === 'AVAILABLE') return { label: 'Ready', cls: 'text-(--ui-success) bg-(--ui-success)/15 border-(--ui-success)/30' };
+  if (s === 'PENDING_APPROVAL' || s === 'RESERVED') return { label: 'Booked', cls: 'text-amber-600 bg-amber-500/15 border-amber-500/30' };
+  if (s === 'CHARGING') return { label: 'Charging', cls: 'text-(--brand-blue) bg-(--brand-blue)/15 border-(--brand-blue)/30' };
+  if (s === 'OFFLINE') return { label: 'Offline', cls: 'text-(--ui-error) bg-(--ui-error)/10 border-(--ui-error)/20' };
+  return { label: status || 'Unknown', cls: 'text-(--brand-muted) bg-(--surface-soft) border-(--brand-border)' };
 };
 
 const fadeSlide = {
@@ -193,6 +205,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
   // --- SEARCH FORM STATES ---
   const [batteryLevel, setBatteryLevel] = useState<number>(50);
   const [selectedPlugs, setSelectedPlugs] = useState<string[]>(['CCS2']);
+  const plugsTouched = useRef(false); // once the driver customizes plugs, respect their choice
   const [isLoading, setIsLoading] = useState(false);
 
   // --- RESULTS STATES ---
@@ -232,10 +245,39 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
   }, [results, selectedIndex, effectiveUserLocation, viewState]);
 
   const togglePlug = (plug: string) => {
+    plugsTouched.current = true;
     setSelectedPlugs(prev =>
       prev.includes(plug) ? prev.filter(p => p !== plug) : [...prev, plug]
     );
   };
+
+  // When the driver opens Smart Match, auto-select their PRIMARY car's
+  // connector (from the garage). If there is no car / connector, the default
+  // stays. Manual plug selections are always respected (not overridden).
+  useEffect(() => {
+    if (isGuest || viewState !== 'searching' || plugsTouched.current) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) return;
+        const res = await fetch(apiUrl('/api/users/profile'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) return;
+        const profile = await res.json();
+        const vehicles = Array.isArray(profile.vehicles) ? profile.vehicles : [];
+        const primary = vehicles.find((v: any) => v.isPrimary) || vehicles[0];
+        const connector = String(primary?.connector || '');
+        if (connector && PLUG_TYPES.includes(connector) && !cancelled) {
+          setSelectedPlugs([connector]);
+        }
+      } catch (e) {
+        console.warn('Could not load primary car connector:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [viewState, isGuest]);
 
   const handleSearch = async () => {
     if (!effectiveUserLocation) {
@@ -249,9 +291,13 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
 
     setIsLoading(true);
     try {
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch(apiUrl('/api/stations/smart-match'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           userLat: effectiveUserLocation.lat,
           userLng: effectiveUserLocation.lng,
@@ -548,7 +594,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
 
       <AnimatePresence mode="wait">
         {activeIdleStation && (
-          <div className="fixed inset-x-0 bottom-32 md:inset-0 z-50 flex items-end md:items-center justify-center p-3 md:p-6 font-sans pointer-events-none">
+          <div className="fixed inset-x-0 bottom-[calc(8rem+env(safe-area-inset-bottom))] md:inset-0 z-50 flex items-end md:items-center justify-center p-3 md:p-6 font-sans pointer-events-none">
 
             {/* Transparent click outside overlay on map */}
             <motion.div
@@ -669,7 +715,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
                     <div>
                       <p className="text-(--brand-muted) text-[10px] font-bold uppercase tracking-widest mb-0.5">Average Rate</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-2xl font-black tracking-tighter text-(--brand-ink)">{(((activeIdleStation as RankedStation).currentDynamicPrice ?? activeIdleStation.pricePerKWh ?? 0)).toFixed(2)}</span>
+                        <span className="text-2xl font-black tracking-tighter text-(--brand-ink)">{((activeIdleStation.pricePerKWh ?? (activeIdleStation as RankedStation).currentDynamicPrice ?? 0)).toFixed(2)}</span>
                         <span className="text-xs font-bold text-(--brand-muted)">LKR / kWh</span>
                       </div>
                     </div>
@@ -685,7 +731,7 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
                   <h3 className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-widest mb-2 ml-1">Hardware Status</h3>
                   <div className="bg-(--surface-soft) rounded-xl border border-(--brand-border) overflow-hidden">
                     {activeIdleStation.chargers && activeIdleStation.chargers.length > 0 ? activeIdleStation.chargers.map((charger, idx) => {
-                      const cRate = ((charger as unknown) as Record<string, unknown>).pricePerKWh as number ?? ((charger as unknown) as Record<string, unknown>).rate as number ?? Math.round(((activeIdleStation as RankedStation).currentDynamicPrice ?? activeIdleStation.pricePerKWh ?? 85));
+                      const cRate = ((charger as unknown) as Record<string, unknown>).currentRate as number ?? ((charger as unknown) as Record<string, unknown>).pricePerKWh as number ?? ((charger as unknown) as Record<string, unknown>).rate as number ?? Math.round(((activeIdleStation as RankedStation).currentDynamicPrice ?? activeIdleStation.pricePerKWh ?? 85));
                       return (
                         <div key={idx} className={`flex items-center justify-between p-3 ${idx !== activeIdleStation.chargers!.length - 1 ? 'border-b border-(--brand-border)/40' : ''}`}>
                           <div className="flex items-center gap-2.5">
@@ -698,15 +744,9 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
                               </p>
                             </div>
                           </div>
-                          {charger.status === 'AVAILABLE' || charger.status === 'Available' ? (
-                            <span className="text-(--ui-success) font-bold text-[10px] uppercase bg-(--ui-success)/15 px-2 py-0.5 rounded-lg border border-(--ui-success)/30">
-                              Ready
-                            </span>
-                          ) : (
-                            <span className="text-(--ui-error) font-bold text-[10px] uppercase bg-(--ui-error)/10 px-2 py-0.5 rounded-lg border border-(--ui-error)/20">
-                              Occupied
-                            </span>
-                          )}
+                          <span className={`font-bold text-[10px] uppercase px-2 py-0.5 rounded-lg border ${chargerStatusInfo(charger.status).cls}`}>
+                            {chargerStatusInfo(charger.status).label}
+                          </span>
                         </div>
                       );
                     }) : (
@@ -727,12 +767,12 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
           <motion.div
             key={`results-${currentOption._id}-${selectedIndex}`}
             {...fadeSlide}
-            className="absolute bottom-32 sm:bottom-28 md:bottom-6 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl shadow-2xl border border-(--brand-border) overflow-hidden"
+            className="absolute bottom-[calc(8rem+env(safe-area-inset-bottom))] sm:bottom-[calc(7rem+env(safe-area-inset-bottom))] md:bottom-6 left-1/2 -translate-x-1/2 z-20 w-[92%] max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl shadow-2xl border border-(--brand-border) overflow-hidden"
           >
 
             <div className="bg-(--background) px-4 py-3 flex justify-between items-center border-b border-(--brand-border)">
               <button onClick={() => jumpToResult(Math.max(0, selectedIndex - 1))} disabled={selectedIndex === 0} className={`text-sm font-bold ${selectedIndex === 0 ? 'text-(--brand-border)' : 'text-(--brand-blue) hover:underline'}`}>← Prev</button>
-              <span className="text-xs font-black text-(--brand-muted) uppercase tracking-widest bg-(--brand-border)/50 px-3 py-1 rounded-full">Match {selectedIndex + 1} of 3</span>
+              <span className="text-xs font-black text-(--brand-muted) uppercase tracking-widest bg-(--brand-border)/50 px-3 py-1 rounded-full">Match {selectedIndex + 1} of {results.length}</span>
               <button onClick={() => jumpToResult(Math.min(results.length - 1, selectedIndex + 1))} disabled={selectedIndex === results.length - 1} className={`text-sm font-bold ${selectedIndex === results.length - 1 ? 'text-(--brand-border)' : 'text-(--brand-blue) hover:underline'}`}>Next →</button>
             </div>
 
@@ -755,8 +795,8 @@ export default function StationMap({ userLocation, stations = [], onBookClick, o
                 </div>
                 <div className="bg-(--background) p-3 rounded-xl border border-(--brand-border)">
                   <p className="text-[10px] uppercase font-bold text-(--brand-muted) mb-1">Dynamic Rate</p>
-                  <p className="text-lg font-black text-(--ui-success)">Rs. {currentOption.currentDynamicPrice.toFixed(2)}</p>
-                  <p className={`text-xs font-bold ${currentOption.demandStatus === 'Optimal' ? 'text-(--brand-green)' : 'text-(--ui-warning)'}`}>{currentOption.demandStatus}</p>
+                  <p className="text-lg font-black text-(--ui-success)">Rs. {(currentOption.currentDynamicPrice ?? 0).toFixed(2)}</p>
+                  <p className={`text-xs font-bold ${/low|discount/i.test(currentOption.demandStatus) ? 'text-(--brand-green)' : /high|surge/i.test(currentOption.demandStatus) ? 'text-(--ui-error)' : 'text-(--ui-warning)'}`}>{currentOption.demandStatus}</p>
                 </div>
               </div>
 

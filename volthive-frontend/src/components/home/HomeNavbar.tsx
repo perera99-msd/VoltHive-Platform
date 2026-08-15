@@ -152,4 +152,4 @@ export default function HomeNavbar({ onLogoClick, onNavigateSection }: HomeNavba
       </AnimatePresence>
     </header>
   );
-}
+}

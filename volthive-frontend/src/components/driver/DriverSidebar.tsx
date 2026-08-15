@@ -1,5 +1,9 @@
 'use client';
+
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useLiveEvents } from '../../context/LiveEventsContext';
+import { apiUrl } from '../../lib/api';
 
 interface SidebarProps {
   activeTab: 'home' | 'garage' | 'map' | 'reservations' | 'account';
@@ -7,7 +11,74 @@ interface SidebarProps {
 }
 
 export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) {
-  useAuth(); // Keeping this imported in case you need it later, though logout is now in Account view
+  const { user } = useAuth();
+  
+  const [hasBookingAlert, setHasBookingAlert] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  // Poll for driver booking updates & unread operator messages
+  const checkDriverAlerts = useCallback(async () => {
+    if (!user || (typeof document !== 'undefined' && document.hidden)) return;
+    try {
+      const token = await user.getIdToken();
+      
+      // 1. Check for unread operator messages
+      const chatRes = await fetch(apiUrl('/api/chat/driver/conversations'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (chatRes.ok) {
+        const json = await chatRes.json();
+        const totalUnread = (json.data || []).reduce((acc: number, c: { unread?: number }) => acc + (c.unread || 0), 0);
+        setUnreadChatCount(totalUnread);
+      }
+
+      // 2. Check for booking updates
+      const bookingsRes = await fetch(apiUrl('/api/bookings/driver'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (bookingsRes.ok) {
+        const json = await bookingsRes.json();
+        const bookings = json.data || [];
+        const lastViewedBookingTime = localStorage.getItem('volthive_driver_last_viewed_bookings');
+        
+        // Find if any booking status changed recently
+        const hasRecentUpdate = bookings.some((b: any) => {
+          if (!['Confirmed', 'Cancelled', 'Active_Charging'].includes(b.status)) return false;
+          if (!lastViewedBookingTime) return true;
+          const updated = new Date(b.updatedAt || b.createdAt).getTime();
+          return updated > Number(lastViewedBookingTime);
+        });
+        setHasBookingAlert(hasRecentUpdate);
+      }
+    } catch {
+      // silent fallback
+    }
+  }, [user]);
+
+  useEffect(() => {
+    checkDriverAlerts();
+    // Slow self-healing fallback poll (SSE pushes instant updates when live).
+    const interval = setInterval(checkDriverAlerts, 60000);
+    return () => clearInterval(interval);
+  }, [checkDriverAlerts]);
+
+  // Realtime: re-check alerts instantly when a booking or message event arrives.
+  const { subscribe } = useLiveEvents();
+  useEffect(() => {
+    const unsub = subscribe(['booking.updated', 'booking.expired', 'booking.deleted', 'message.new'], () => {
+      checkDriverAlerts();
+    });
+    return unsub;
+  }, [subscribe, checkDriverAlerts]);
+
+  // Handle Tab Change & clear relevant badges
+  const handleTabClick = (tab: 'home' | 'garage' | 'map' | 'reservations' | 'account') => {
+    if (tab === 'reservations') {
+      setHasBookingAlert(false);
+      localStorage.setItem('volthive_driver_last_viewed_bookings', Date.now().toString());
+    }
+    onTabChange(tab);
+  };
 
   // Helper function dynamically styling tabs using ONLY globals.css theme variables
   const getTabStyle = (tabName: string) => {
@@ -29,7 +100,7 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
   return (
     <nav className="fixed z-30 
                     /* Mobile: Bottom Floating Pill */
-                    bottom-8 left-1/2 -translate-x-1/2 h-[72px] w-[92%] max-w-[380px] 
+                    bottom-[calc(2rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 h-[72px] w-[92%] max-w-[380px] 
                     bg-(--brand-card)/60 backdrop-blur-[40px] saturate-[1.2] border border-(--brand-card)/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] ring-1 ring-black/5 rounded-[2.5rem] 
                     flex flex-row items-center justify-between px-3
                     /* Desktop: Left Floating Dock */
@@ -37,7 +108,7 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
                     transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]">
       
       {/* 1. Map (Always Highlighted Anchor - Desktop: Top, Mobile: Center) */}
-      <div className="order-3 md:order-1 flex-1 flex justify-center cursor-pointer group md:mb-1" onClick={() => onTabChange('map')}>
+      <div className="order-3 md:order-1 flex-1 flex justify-center cursor-pointer group md:mb-1" onClick={() => handleTabClick('map')}>
         <div className={`flex items-center justify-center ${getTabStyle('map')}`}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-[26px] h-[26px] md:w-[22px] md:h-[22px]">
             <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
@@ -50,7 +121,7 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
       </div>
 
       {/* 2. Home (Mobile: Pos 1, Desktop: Pos 2) */}
-      <div className="order-1 md:order-2 flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('home')}>
+      <div className="order-1 md:order-2 flex-1 flex justify-center cursor-pointer group" onClick={() => handleTabClick('home')}>
         <div className={`flex items-center justify-center ${getTabStyle('home')}`}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-5 md:h-5">
             <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
@@ -63,7 +134,7 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
       </div>
 
       {/* 3. Cars (Mobile: Pos 2, Desktop: Pos 3) */}
-      <div className="order-2 md:order-3 flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('garage')}>
+      <div className="order-2 md:order-3 flex-1 flex justify-center cursor-pointer group" onClick={() => handleTabClick('garage')}>
         <div className={`flex items-center justify-center ${getTabStyle('garage')}`}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-5 md:h-5">
             <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/>
@@ -76,13 +147,17 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
       </div>
 
       {/* 4. Bookings (Mobile: Pos 4, Desktop: Pos 4) */}
-      <div className="order-4 md:order-4 flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('reservations')}>
-        <div className={`flex items-center justify-center ${getTabStyle('reservations')}`}>
+      <div className="order-4 md:order-4 flex-1 flex justify-center cursor-pointer group relative" onClick={() => handleTabClick('reservations')}>
+        <div className={`flex items-center justify-center relative ${getTabStyle('reservations')}`}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-5 md:h-5">
             <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
             <line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/>
             <path d="m9 16 2 2 4-4"/>
           </svg>
+          {/* Notification Dot for Confirmed/Cancelled/Updated Bookings */}
+          {hasBookingAlert && activeTab !== 'reservations' && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse shadow-xs" />
+          )}
         </div>
         <span className="hidden md:block absolute left-[calc(100%+18px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-(--brand-ink) text-(--brand-card) text-[11px] font-semibold tracking-wide rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm">
           Bookings
@@ -90,12 +165,16 @@ export default function DriverSidebar({ activeTab, onTabChange }: SidebarProps) 
       </div>
 
       {/* 5. Account (Mobile: Pos 5, Desktop: Pos 5) */}
-      <div className="order-5 md:order-5 flex-1 flex justify-center cursor-pointer group" onClick={() => onTabChange('account')}>
-        <div className={`flex items-center justify-center ${getTabStyle('account')}`}>
+      <div className="order-5 md:order-5 flex-1 flex justify-center cursor-pointer group relative" onClick={() => handleTabClick('account')}>
+        <div className={`flex items-center justify-center relative ${getTabStyle('account')}`}>
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 md:w-5 md:h-5">
             <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
+          {/* Notification Dot for Unread Operator Chat Messages */}
+          {unreadChatCount > 0 && activeTab !== 'account' && (
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-(--brand-blue) border-2 border-white animate-pulse shadow-xs" />
+          )}
         </div>
         <span className="hidden md:block absolute left-[calc(100%+18px)] top-1/2 -translate-y-1/2 px-3 py-1.5 bg-(--brand-ink) text-(--brand-card) text-[11px] font-semibold tracking-wide rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-sm">
           Account

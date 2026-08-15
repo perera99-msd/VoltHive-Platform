@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import StationMap from '../../../components/StationMap';
 import type { Station } from '../../../components/StationMap';
@@ -31,21 +31,30 @@ export default function DriverDashboard() {
     setSelectedStation(null);
   };
 
-  useEffect(() => {
-    const fetchStations = async () => {
-      try {
-        const res = await fetch(apiUrl('/api/stations'));
-        if (res.ok) {
-            const payload = await res.json();
-            const stationsArray = Array.isArray(payload) ? payload : (payload?.data ?? []);
-            setStations(stationsArray);
-        }
-      } catch (error) {
-        console.error('Failed to fetch stations:', error);
+  // Load stations and keep charger status/availability current (real DB data).
+  const loadStations = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl('/api/stations'));
+      if (res.ok) {
+        const payload = await res.json();
+        const stationsArray: Station[] = Array.isArray(payload) ? payload : (payload?.data ?? []);
+        setStations(stationsArray);
+        // Keep the currently open station drawer in sync with the fresh data.
+        setSelectedStation(prev => {
+          if (!prev) return prev;
+          return stationsArray.find(s => s._id === prev._id) || prev;
+        });
       }
-    };
-    fetchStations();
+    } catch (error) {
+      console.error('Failed to fetch stations:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    loadStations();
+    const interval = setInterval(loadStations, 45000); // keep station/charger status current
+    return () => clearInterval(interval);
+  }, [loadStations]);
 
   const handleMarkerClick = (station: Station) => {
     setSelectedStation(station);

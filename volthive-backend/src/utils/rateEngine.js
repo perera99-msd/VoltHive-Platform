@@ -62,39 +62,93 @@ const getStationEffectiveRate = (station, now = new Date()) => {
  * per-charger time-of-use Rate doc):
  *   live plan entry -> legacy AI override -> custom TOU rate -> charger base -> station base.
  */
-const getChargerEffectiveRate = async (station, charger, now = new Date()) => {
-  // 1. AI price-plan entry (station-wide) live for this hour
+const applyMultiplier = (base, multiplier, fallbackRate, chargerBase) => {
+  const baseVal = Number(base);
+  const mult = Number(multiplier);
+  if (Number.isFinite(baseVal) && baseVal > 0 && Number.isFinite(mult)) {
+    return roundRateLKR(baseVal * mult);
+  }
+  return normalizeNumber(fallbackRate, chargerBase);
+};
+
+/**
+ * Charger-level effective rate core (synchronous). Pass a preloaded
+ * per-charger time-of-use Rate doc (or null) to avoid a DB hit.
+ *
+ * Precedence (highest first):
+ *   1. Live AI price-plan entry  -> AI multiplier applied to THIS charger's own base
+ *   2. Legacy AI override        -> AI multiplier applied to THIS charger's own base
+ *   3. Per-charger TOU rate (day + time match)
+ *   4. Charger base price
+ *   5. Station base price
+ */
+const getChargerEffectiveRateCore = (station, charger, rateDoc, now = new Date()) => {
+  const chargerBase = normalizeNumber(charger.basePricePerKwh, normalizeNumber(station.basePricePerKwh, 0));
+
+  // 1. AI price-plan entry (station-wide multiplier) live for this hour
   const planEntry = getActivePlanEntry(station, now);
   if (planEntry) {
-    return normalizeNumber(planEntry.effectiveRate, normalizeNumber(station.basePricePerKwh, 0));
+    return applyMultiplier(charger.basePricePerKwh, planEntry.multiplier, planEntry.effectiveRate, chargerBase);
   }
 
-  // 2. Legacy AI override (station-wide) wins while active
-  if (isOverrideActive(station.activePriceOverride, now)) {
-    return normalizeNumber(station.activePriceOverride.effectiveRate, normalizeNumber(station.basePricePerKwh, 0));
+  // 2. Legacy AI override (station-wide multiplier) wins while active
+  const override = station.activePriceOverride;
+  if (isOverrideActive(override, now)) {
+    return applyMultiplier(charger.basePricePerKwh, override.multiplier, override.effectiveRate, chargerBase);
   }
 
   // 3. Per-charger custom time-of-use rate
-  try {
-    const rateDoc = await Rate.findOne({ chargerId: charger._id });
-    if (rateDoc) {
-      const day = now.getDay();
-      const hhmm = now.toTimeString().slice(0, 5);
-      const match = (rateDoc.customRates || []).find((r) => {
-        if (r.dayOfWeek !== day) return false;
-        const start = r.startTime || '00:00';
-        const end = r.endTime || '23:59';
-        return start <= hhmm && hhmm <= end;
-      });
-      if (match) return normalizeNumber(match.rate, normalizeNumber(rateDoc.baseRate, normalizeNumber(charger.basePricePerKwh, 0)));
-      if (rateDoc.baseRate != null) return normalizeNumber(rateDoc.baseRate, 0);
-    }
-  } catch (e) {
-    // Fall through to charger/base price on any lookup error
+  if (rateDoc) {
+    const day = now.getDay();
+    const hhmm = now.toTimeString().slice(0, 5);
+    const match = (rateDoc.customRates || []).find((r) => {
+      if (r.dayOfWeek !== day) return false;
+      const start = r.startTime || '00:00';
+      const end = r.endTime || '23:59';
+      return start <= hhmm && hhmm <= end;
+    });
+    if (match) return normalizeNumber(match.rate, normalizeNumber(rateDoc.baseRate, chargerBase));
+    if (rateDoc.baseRate != null) return normalizeNumber(rateDoc.baseRate, 0);
   }
 
   // 4. / 5. Charger or station base price
-  return normalizeNumber(charger.basePricePerKwh, normalizeNumber(station.basePricePerKwh, 0));
+  return chargerBase;
+};
+
+const getChargerEffectiveRate = async (station, charger, now = new Date()) => {
+  let rateDoc = null;
+  try {
+    rateDoc = await Rate.findOne({ chargerId: charger._id });
+  } catch (e) {
+    rateDoc = null;
+  }
+  return getChargerEffectiveRateCore(station, charger, rateDoc, now);
+};
+
+/**
+ * Load per-charger time-of-use Rate docs for many chargers in ONE query.
+ * Returns a Map(chargerIdString -> rateDoc). Empty map on error (callers
+ * fall back to charger/station base pricing).
+ */
+const buildChargerRateMap = async (chargerIds) => {
+  const ids = (Array.isArray(chargerIds) ? chargerIds : []).filter(Boolean);
+  const map = new Map();
+  if (ids.length === 0) return map;
+  try {
+    const docs = await Rate.find({ chargerId: { $in: ids } });
+    for (const doc of docs) map.set(String(doc.chargerId), doc);
+  } catch (e) {
+    // leave map empty; callers fall back to charger/station base pricing
+  }
+  return map;
+};
+
+/**
+ * Synchronous charger-level effective rate using a prebuilt rate map.
+ */
+const getChargerEffectiveRateFromMap = (station, charger, rateMap, now = new Date()) => {
+  const rateDoc = rateMap ? (rateMap.get(String(charger._id)) || null) : null;
+  return getChargerEffectiveRateCore(station, charger, rateDoc, now);
 };
 
 // ============================================================
@@ -143,4 +197,4 @@ const roundRateLKR = (rate) => {
   return Number.isFinite(r) ? Math.round(r * 2) / 2 : 0;
 };
 
-module.exports = { getStationEffectiveRate, getChargerEffectiveRate, isOverrideActive, getActivePlanEntry, timeToMinutes, PRICING_PROFILES, getPricingProfile, occupancyToMultiplier, roundRateLKR };
+module.exports = { getStationEffectiveRate, getChargerEffectiveRate, getChargerEffectiveRateCore, getChargerEffectiveRateFromMap, buildChargerRateMap, isOverrideActive, getActivePlanEntry, timeToMinutes, PRICING_PROFILES, getPricingProfile, occupancyToMultiplier, roundRateLKR };

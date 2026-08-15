@@ -16,10 +16,10 @@ const {
 const { protect } = require('../middleware/authMiddleware');
 
 router.get('/', getAllStations);
-router.post('/smart-match', getSmartMatchStations);
+router.post('/smart-match', protect, getSmartMatchStations);
 
 router.get('/owner', protect, getOwnerStations);
-router.get('/:id', getStationById);
+router.get('/:id', protect, getStationById);
 
 router.post('/', protect, createStation);
 router.delete('/:id', protect, deleteStation);

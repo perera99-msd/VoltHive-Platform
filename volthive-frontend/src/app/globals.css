@@ -49,6 +49,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), "Segoe UI", sans-serif;
   overflow-x: hidden;
+  overscroll-behavior-y: none; /* stop pull-to-refresh/rubber-band breaking the app's fixed layouts */
   background-image:
     radial-gradient(circle at 12% -10%, rgba(74, 144, 164, 0.18), transparent 38%),
     radial-gradient(circle at 90% 6%, rgba(108, 181, 103, 0.14), transparent 36%),

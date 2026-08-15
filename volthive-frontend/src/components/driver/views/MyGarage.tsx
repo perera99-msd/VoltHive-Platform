@@ -26,6 +26,9 @@ interface UserProfile {
   vehicles?: Vehicle[];
 }
 
+// Canonical charger/connector standards. KEEP IN SYNC with StationMap, AddChargerModal, EditChargerModal, seedStations.js
+const CONNECTOR_OPTIONS = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T', 'Tesla NACS'];
+
 export default function MyGarage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -349,11 +352,12 @@ export default function MyGarage() {
                 <div>
                   <label className="block text-xs font-bold text-(--brand-muted) mb-1">Plug Type</label>
                   <select value={connector} onChange={e => setConnector(e.target.value)} className="w-full px-3 py-2 rounded-xl border border-(--brand-border) text-sm font-semibold bg-(--brand-card) text-(--brand-ink) focus:outline-none focus:border-(--brand-blue)">
-                    <option value="CCS2 Fast">CCS2 Fast</option>
-                    <option value="CHAdeMO">CHAdeMO</option>
-                    <option value="Type 2 AC">Type 2 AC</option>
-                    <option value="Tesla NACS">Tesla NACS</option>
-                    <option value="GB/T">GB/T</option>
+                    {CONNECTOR_OPTIONS.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                    {connector && !CONNECTOR_OPTIONS.includes(connector) && (
+                      <option value={connector}>{connector} (legacy)</option>
+                    )}
                   </select>
                 </div>
 

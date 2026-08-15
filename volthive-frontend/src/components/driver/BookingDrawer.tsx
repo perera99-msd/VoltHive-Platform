@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { apiUrl } from '../../lib/api';
 import { auth } from '../../lib/firebase';
+import { useLiveEvents } from '../../context/LiveEventsContext';
 import BookingConfirmModal from './BookingConfirmModal';
 import Toast from '../common/Toast';
 
@@ -42,12 +43,22 @@ interface ExistingBooking {
   driverName?: string;
 }
 
+// Map a charger DB status to a read-only status badge (driver station card).
+const getChargerStatusInfo = (status: string) => {
+  const s = String(status || '').toUpperCase();
+  if (s === 'AVAILABLE') return { label: 'Ready', cls: 'bg-(--ui-success)/15 text-(--ui-success) border-(--ui-success)/30', dot: 'bg-(--ui-success)' };
+  if (s === 'PENDING_APPROVAL' || s === 'RESERVED') return { label: 'Booked', cls: 'bg-amber-500/15 text-amber-600 border-amber-500/30', dot: 'bg-amber-500' };
+  if (s === 'CHARGING') return { label: 'Charging', cls: 'bg-(--brand-blue)/15 text-(--brand-blue) border-(--brand-blue)/30', dot: 'bg-(--brand-blue) animate-pulse' };
+  if (s === 'OFFLINE') return { label: 'Offline', cls: 'bg-(--ui-error)/10 text-(--ui-error) border-(--ui-error)/20', dot: 'bg-(--ui-error)' };
+  return { label: status || 'Unknown', cls: 'bg-(--surface-soft) text-(--brand-muted) border-(--brand-border)', dot: 'bg-(--brand-muted)' };
+};
+
 export default function BookingDrawer({ station, onClose, onMessageClick, isGuest = false }: BookingDrawerProps) {
+  const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isBooking, setIsBooking] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>([]);
-  const [selectedChargerId, setSelectedChargerId] = useState<string | null>(null);
   const [contactPhone, setContactPhone] = useState('');
   const [contactName, setContactName] = useState('');
   const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' | 'info' } | null>(null);
@@ -74,30 +85,66 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
     prefill();
   }, [isGuest]);
 
-  useEffect(() => {
-    const fetchExistingBookings = async () => {
-      if (isGuest) return;
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-
-        const res = await fetch(apiUrl(`/api/bookings/station/${station?._id}`), {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await res.json();
-
-        if (data.success && data.data) {
-          setExistingBookings(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch existing bookings:', error);
+  const fetchExistingBookings = useCallback(async () => {
+    if (isGuest || !station?._id) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const res = await fetch(apiUrl(`/api/bookings/station/${station._id}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setExistingBookings(data.data);
       }
-    };
-
-    if (station?._id) {
-      fetchExistingBookings();
+    } catch (error) {
+      console.error('Failed to fetch existing bookings:', error);
     }
-  }, [station?._id, isGuest]);
+  }, [isGuest, station?._id]);
+
+  // Refresh slot availability while the drawer is open so bookings made by
+  // other drivers are reflected (real DB data stays current).
+  // Live path: follow the station and refresh instantly on availability events.
+  // Fallback: slow 60s poll as a self-healing safety net.
+  const { subscribe, followStation, unfollowStation } = useLiveEvents();
+
+  useEffect(() => {
+    if (isGuest || !station?._id) return;
+    fetchExistingBookings();
+    const interval = setInterval(fetchExistingBookings, 60000);
+    return () => clearInterval(interval);
+  }, [fetchExistingBookings, isGuest, station?._id]);
+
+  // Follow the open station for instant availability updates (and unfollow on
+  // close / station switch). Only active for authenticated (non-guest) users.
+  useEffect(() => {
+    if (isGuest || !station?._id) return;
+    let cancelled = false;
+    followStation(station._id);
+    const unsub = subscribe('availability.updated', (_event, data) => {
+      if (cancelled) return;
+      if (data && String(data.stationId) === String(station?._id)) {
+        fetchExistingBookings();
+      }
+    });
+    return () => {
+      cancelled = true;
+      unsub();
+      unfollowStation(station._id);
+    };
+  }, [station?._id, isGuest, subscribe, followStation, unfollowStation, fetchExistingBookings]);
+
+  // Reset the per-station booking flow when switching stations so the previous
+  // station's wizard/success flash/pending auto-close never leaks into the next.
+  useEffect(() => {
+    if (autoCloseTimer.current) {
+      clearTimeout(autoCloseTimer.current);
+      autoCloseTimer.current = null;
+    }
+    setIsBooking(false);
+    setBookingSuccess(false);
+    setShowBookingModal(false);
+  }, [station?._id]);
 
   if (!station) return null;
 
@@ -111,14 +158,23 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
   const totalChargers = chargersList.length;
 
   const displayName = station.name || station.stationName || 'VoltHive Station';
-  const displayPrice = stationData.currentDynamicPrice ?? station.pricePerKWh ?? station.basePricePerKwh ?? 85;
-  const chargerRates = chargersList.map(c => ((c as unknown) as Record<string, unknown>).pricePerKWh as number ?? ((c as unknown) as Record<string, unknown>).rate as number ?? stationData.currentDynamicPrice ?? station.pricePerKWh ?? station.basePricePerKwh ?? 85);
+  // Prefer the server-provided LIVE per-charger rate (AI + TOU aware).
+  const chargerLiveRate = (c: unknown): number => {
+    const rec = (c as Record<string, unknown>) || {};
+    const currentRate = Number(rec.currentRate);
+    const pricePerKWh = Number(rec.pricePerKWh);
+    const rate = Number(rec.rate);
+    if (currentRate > 0) return currentRate;
+    if (pricePerKWh > 0) return pricePerKWh;
+    if (rate > 0) return rate;
+    return 0;
+  };
+
+  const displayPrice = Number(station.pricePerKWh) > 0 ? Number(station.pricePerKWh) : (stationData.currentDynamicPrice ?? station.basePricePerKwh ?? 85);
+  const chargerRates = chargersList.map(c => chargerLiveRate(c) || displayPrice);
   const avgRate = chargerRates.length > 0
     ? Math.round(chargerRates.reduce((a, b) => a + b, 0) / chargerRates.length)
-    : (stationData.currentDynamicPrice ?? station.pricePerKWh ?? station.basePricePerKwh ?? 85);
-
-  const selectedCharger = chargersList.find(c => c._id === selectedChargerId) || null;
-  const selectedChargerRate = selectedCharger ? (((selectedCharger as unknown) as Record<string, unknown>).pricePerKWh as number ?? ((selectedCharger as unknown) as Record<string, unknown>).rate as number ?? avgRate) : avgRate;
+    : displayPrice;
   const routeDistance = stationData.routeData?.distanceKm ?? null;
   const driveTime = stationData.routeData?.driveTimeMins ?? null;
 
@@ -126,13 +182,14 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
     date: string;
     startTime: string;
     endTime: string;
+    chargerId: string;
   }) => {
     if (!station || !station.chargers || station.chargers.length === 0) {
       setToastMessage({ msg: "No hardware found.", type: 'error' });
       return;
     }
 
-    if (!selectedChargerId) {
+    if (!bookingData.chargerId) {
       setToastMessage({ msg: "Please select a charger to proceed.", type: 'error' });
       return;
     }
@@ -144,7 +201,7 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
       return;
     }
 
-    const selectedCharger = station.chargers.find(c => c._id === selectedChargerId);
+    const selectedCharger = station.chargers.find(c => c._id === bookingData.chargerId);
     if (!selectedCharger) {
       setToastMessage({ msg: "Selected charger not found.", type: 'error' });
       return;
@@ -161,7 +218,7 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
         date: bookingData.date,
         startTime: bookingData.startTime,
         endTime: bookingData.endTime,
-        lockedPricePerKwh: selectedChargerRate,
+        lockedPricePerKwh: chargerLiveRate(selectedCharger) || avgRate,
         customerName: contactName.trim() || auth.currentUser?.displayName || '',
         customerPhone: phone
       };
@@ -184,7 +241,8 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
 
         // No client auto-cancel: the station owner must approve within 15 minutes,
         // otherwise the server marks the booking as Expired (record is kept).
-        setTimeout(() => {
+        if (autoCloseTimer.current) clearTimeout(autoCloseTimer.current);
+        autoCloseTimer.current = setTimeout(() => {
           setBookingSuccess(false);
           onClose();
         }, 2500);
@@ -200,7 +258,7 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
   };
 
   return (
-    <div className="fixed inset-x-0 bottom-28 md:inset-0 z-40 flex items-end md:items-center justify-center p-3 md:p-6 font-sans pointer-events-none">
+    <div className="fixed inset-x-0 bottom-[calc(7rem+env(safe-area-inset-bottom))] md:inset-0 z-40 flex items-end md:items-center justify-center p-3 md:p-6 font-sans pointer-events-none">
       
       {/* Click outside overlay without dark background or blur on map */}
       <div 
@@ -323,47 +381,32 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
             <h3 className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-widest mb-2 ml-1">Select a Charger</h3>
             <div className="grid grid-cols-1 gap-2">
               {chargersList.length > 0 ? chargersList.map((charger, idx) => {
-                const isAvailable = charger.status === 'Available' || charger.status === 'AVAILABLE';
-                const isSelected = selectedChargerId === charger._id;
-                const chargerRate = ((charger as unknown) as Record<string, unknown>).pricePerKWh as number ?? ((charger as unknown) as Record<string, unknown>).rate as number ?? avgRate;
+                const statusInfo = getChargerStatusInfo(charger.status);
+                const chargerRate = chargerLiveRate(charger) || avgRate;
 
                 return (
-                  <button
+                  <div
                     key={idx}
-                    onClick={() => isAvailable && setSelectedChargerId(charger._id)}
-                    disabled={!isAvailable}
-                    className={`p-3 rounded-xl border transition-all text-left relative cursor-pointer ${
-                      isAvailable
-                        ? isSelected
-                          ? 'bg-(--brand-blue)/14 border-2 border-(--brand-blue)'
-                          : 'bg-(--brand-card) border-(--brand-border) hover:border-(--brand-blue)/40'
-                        : 'bg-(--surface-soft) border-(--brand-border) opacity-60 cursor-not-allowed'
-                    }`}
+                    className="p-3 rounded-xl border bg-(--brand-card) border-(--brand-border) text-left relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold ${
-                          isAvailable ? 'bg-(--accent-blue)/16 text-(--brand-blue)' : 'bg-(--surface-soft) text-(--brand-muted)'
-                        }`}>
+                        <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold bg-(--accent-blue)/16 text-(--brand-blue)">
                           0{idx + 1}
                         </div>
                         <div>
-                          <p className={`font-bold text-xs ${isAvailable ? 'text-(--brand-ink)' : 'text-(--brand-muted)'}`}>
+                          <p className="font-bold text-xs text-(--brand-ink)">
                             {charger.plugType || 'Charger'} • <span className="font-extrabold text-(--brand-green-deep)">{charger.powerKW} kW</span> • <span className="font-bold text-(--brand-blue)">LKR {chargerRate}/kWh</span>
                           </p>
                         </div>
                       </div>
 
-                      <div className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 ${
-                        isAvailable
-                          ? 'bg-(--ui-success)/15 text-(--ui-success) border-(--ui-success)/30'
-                          : 'bg-(--ui-error)/10 text-(--ui-error) border-(--ui-error)/20'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isAvailable ? 'bg-(--ui-success)' : 'bg-(--ui-error)'}`} />
-                        {isAvailable ? 'Ready' : 'In Use'}
+                      <div className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border flex items-center gap-1 ${statusInfo.cls}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusInfo.dot}`} />
+                        {statusInfo.label}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               }) : (
                 <div className="bg-(--surface-soft) p-4 rounded-xl text-center border border-(--brand-border)">
@@ -400,20 +443,20 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
               </div>
               <button 
                 onClick={() => setShowBookingModal(true)}
-                disabled={isBooking || bookingSuccess || availableChargers === 0 || !selectedChargerId}
+                disabled={isBooking || bookingSuccess || availableChargers === 0}
                 className={`w-full py-3 rounded-xl font-bold text-xs shadow-sm flex justify-center items-center gap-2 transition-all cursor-pointer ${
                   bookingSuccess 
                     ? 'bg-(--ui-success) text-white' 
-                    : availableChargers === 0 || !selectedChargerId
+                    : availableChargers === 0
                     ? 'bg-(--surface-soft) text-(--brand-muted) cursor-not-allowed border border-(--brand-border)'
                     : 'bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white hover:brightness-105 active:scale-[0.98]'
                 }`}
               >
                 <span className="font-bold">
-                  {isBooking ? 'Securing Slot...' : bookingSuccess ? 'Slot Confirmed!' : availableChargers === 0 ? 'Station Full' : !selectedChargerId ? 'Select a Charger' : 'Secure Slot'}
+                  {isBooking ? 'Securing Slot...' : bookingSuccess ? 'Slot Confirmed!' : availableChargers === 0 ? 'Station Full' : 'Reserve Slot'}
                 </span>
                 
-                {!isBooking && !bookingSuccess && availableChargers > 0 && selectedChargerId && (
+                {!isBooking && !bookingSuccess && availableChargers > 0 && (
                   <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                   </svg>
@@ -429,11 +472,10 @@ export default function BookingDrawer({ station, onClose, onMessageClick, isGues
         <BookingConfirmModal
           stationName={displayName}
           address={station.address || 'Location provided on map'}
-          pricePerKwh={displayPrice}
-          powerKW={selectedCharger?.powerKW}
+          chargers={station.chargers || []}
+          existingBookings={existingBookings}
           onConfirmBooking={handleSecureReservation}
           onCancel={() => setShowBookingModal(false)}
-          existingBookings={existingBookings}
           isLoading={isBooking}
         />
       )}

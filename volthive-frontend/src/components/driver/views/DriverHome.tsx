@@ -49,9 +49,9 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
   const upcomingBookings = bookings.filter(b => ['Pending', 'Confirmed', 'Active_Charging'].includes(b.status));
   const completedBookings = bookings.filter(b => b.status === 'Completed');
   
-  const totalCost = completedBookings.reduce((acc, b) => acc + (b.totalCostLKR || 0), 0);
-  const totalKWh = completedBookings.reduce((acc, b) => acc + (b.energyConsumedKWh || 0), 0);
-  const avgCostPerKWh = totalKWh > 0 ? Math.round(totalCost / totalKWh) : null;
+  // No system billing — surface the average AGREED rate (locked at booking).
+  const agreedRates = bookings.map(b => Number(b.lockedPricePerKwh)).filter(r => r > 0);
+  const avgAgreedRate = agreedRates.length > 0 ? Math.round(agreedRates.reduce((a, b) => a + b, 0) / agreedRates.length) : null;
 
   const totalSessions = bookings.filter(b => ['Completed', 'Cancelled', 'No_Show'].includes(b.status));
   const completionRate = totalSessions.length > 0 ? Math.round((completedBookings.length / totalSessions.length) * 100) : null;
@@ -120,8 +120,8 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
           </p>
         </article>
         <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Average Tariff</p>
-          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">{avgCostPerKWh != null ? `LKR ${avgCostPerKWh}` : '—'}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-(--brand-muted)">Average Agreed Rate</p>
+          <p className="text-3xl font-bold tracking-tight text-(--brand-ink) mt-2">{avgAgreedRate != null ? `LKR ${avgAgreedRate}` : '—'}</p>
           <p className="text-xs text-(--brand-muted) mt-1">Per kWh across completed sessions</p>
         </article>
         <article className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-xl p-5 shadow-[0_16px_34px_-26px_rgba(9,32,52,0.42)]">
@@ -158,13 +158,13 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
                       <span className={`w-2 h-2 rounded-full ${b.status === 'Completed' ? 'bg-(--ui-success)' : b.status === 'Active_Charging' ? 'bg-(--brand-blue) animate-ping' : 'bg-(--ui-warning)'}`} />
                       <p className="font-bold text-sm text-(--brand-ink)">{b.station?.stationName || b.station?.name || 'EV Station'} · <span className="text-xs font-semibold uppercase text-(--brand-muted)">{b.status.replace('_', ' ')}</span></p>
                     </div>
-                    <p className="text-xs text-(--brand-muted) mt-1">{b.date} at {b.startTime} {b.energyConsumedKWh ? `· ${b.energyConsumedKWh.toFixed(1)} kWh delivered` : ''}</p>
+                    <p className="text-xs text-(--brand-muted) mt-1">{b.date} at {b.startTime} {b.lockedPricePerKwh ? `· LKR ${b.lockedPricePerKwh}/kWh agreed` : ''}</p>
                   </div>
-                  {b.totalCostLKR && (
+                  {b.lockedPricePerKwh ? (
                     <div className="text-right font-bold text-sm text-(--brand-ink)">
-                      LKR {Math.round(b.totalCostLKR)}
+                      LKR {b.lockedPricePerKwh}<span className="text-[10px] text-(--brand-muted)">/kWh</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               ))
             )}

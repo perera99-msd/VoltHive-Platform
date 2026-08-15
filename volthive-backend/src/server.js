@@ -12,6 +12,8 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const chargerRoutes = require('./routes/chargerRoutes');
 const chatRoutes = require('./routes/chatRoutes');
+const eventsRoutes = require('./routes/eventsRoutes');
+const { connectionCount, publishToUser, publishToStation } = require('./utils/eventBus');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,9 +54,10 @@ const corsOptions = {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.RATE_LIMIT_MAX || 300,
+  max: process.env.RATE_LIMIT_MAX || (NODE_ENV === 'development' ? 10000 : 2000),
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => NODE_ENV === 'development' || req.ip === '127.0.0.1' || req.ip === '::1' || req.ip === '::ffff:127.0.0.1',
   handler: (req, res) => {
     res.status(429).json({
       success: false,
@@ -73,7 +76,13 @@ app.use(helmet({
   contentSecurityPolicy: false, // Adjust based on your needs
   hsts: { maxAge: 31536000, includeSubDomains: true }
 }));
-app.use(compression());
+app.use(compression({
+  // Never buffer/compress the SSE stream — it must flush chunks immediately.
+  filter: (req, res) => {
+    if (req.path && req.path.startsWith('/api/events')) return false;
+    return compression.filter(req, res);
+  }
+}));
 app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' })); // Limit payload size
@@ -100,6 +109,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/chargers', chargerRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api', eventsRoutes);
 
 // ============================================
 // 404 HANDLER
@@ -145,6 +155,16 @@ const server = app.listen(PORT, () => {
   console.log(`🛡️  CORS Origins: ${allowedOrigins.join(', ')}`);
 
   // ============================================
+  // SSE STREAM SAFETY
+  // Node 18+ defaults requestTimeout to 300s, which would silently kill
+  // long-lived SSE connections. Disable request/header timeouts and keep the
+  // socket alive for the event stream.
+  // ============================================
+  server.requestTimeout = 0;
+  server.headersTimeout = 0;
+  server.keepAliveTimeout = 65 * 1000;
+
+  // ============================================
   // BACKGROUND TASK: 15-MIN UNCONFIRMED -> EXPIRED
   // (Booking record is KEPT in DB, never deleted)
   // ============================================
@@ -168,6 +188,7 @@ const server = app.listen(PORT, () => {
         if (!shouldExpire) continue;
 
         booking.status = 'Expired';
+        booking.removableAt = new Date(Date.now() + 10 * 60 * 1000); // visible 10 more min, then purged
         await booking.save();
 
         // Release the charger ONLY if it still points at THIS booking.
@@ -182,10 +203,104 @@ const server = app.listen(PORT, () => {
             }
           }
         }
+
+        // ── Realtime: notify driver + station followers of expiry ──
+        const expiredEventData = {
+          bookingId: booking._id,
+          stationId: String(booking.station),
+          stationName: station ? station.stationName : '',
+          chargerId: booking.chargerId,
+          status: 'Expired',
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          updatedAt: new Date().toISOString(),
+        };
+        publishToUser(booking.driver, 'booking.expired', expiredEventData);
+        publishToStation(String(booking.station), 'availability.updated', expiredEventData);
+
         console.log(`⏳ Expired unconfirmed booking ${booking._id} (Exceeded 15 min approval window or slot passed).`);
       }
     } catch (err) {
       console.error('Error in 15-min expiry job:', err.message);
+    }
+  }, 60 * 1000); // Check every 60 seconds
+
+  // ============================================
+  // BACKGROUND TASK: PURGE DISCARDABLE BOOKINGS
+  // Rejected / auto-expired bookings stay visible for 10 minutes (see
+  // removableAt) and are then removed from the DB. Confirmed & Completed
+  // bookings persist forever.
+  // ============================================
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      const doomed = await Booking.find({ removableAt: { $lt: now, $ne: null } });
+      for (const b of doomed) {
+        await b.deleteOne();
+        console.log(`🗑️  Purged booking ${b._id} (10-min grace passed).`);
+      }
+    } catch (err) {
+      console.error('Error in booking purge job:', err.message);
+    }
+  }, 60 * 1000); // Check every 60 seconds
+
+  // ============================================
+  // BACKGROUND TASK: CONFIRMED NO-SHOW -> AUTO FREE SLOT
+  // A Confirmed booking whose time slot has fully ended (+15-min grace) and
+  // whose session never started (actualStartedAt null) is treated as a no-show:
+  // the charger slot is auto-released so other drivers can use it. The record
+  // is marked No_Show + removableAt (10 min) so the purge job removes it.
+  // Sessions that actually started (Active_Charging) are NEVER touched.
+  // ============================================
+  setInterval(async () => {
+    try {
+      const now = Date.now();
+      const NO_SHOW_GRACE_MIN = 15; // allow drivers to be late past slot end
+      const confirmed = await Booking.find({ status: 'Confirmed', actualStartedAt: null });
+
+      for (const booking of confirmed) {
+        const slotEnd = new Date(`${booking.date}T${booking.endTime}:00`).getTime();
+        if (!Number.isFinite(slotEnd)) continue;
+        if (slotEnd + NO_SHOW_GRACE_MIN * 60 * 1000 > now) continue;
+
+        const station = await Station.findById(booking.station);
+        const charger = station && station.chargers ? station.chargers.id(booking.chargerId) : null;
+
+        // Only release if this booking still holds the charger's RESERVED lock.
+        const ownsCharger = !!charger && !!charger.activeBookingId &&
+          String(charger.activeBookingId) === String(booking._id) &&
+          charger.status === 'RESERVED';
+        if (!ownsCharger) continue;
+
+        charger.status = 'AVAILABLE';
+        charger.activeBookingId = null;
+        await station.save();
+
+        booking.status = 'No_Show';
+        booking.removableAt = new Date(Date.now() + 10 * 60 * 1000); // visible 10 more min, then purged
+        await booking.save();
+
+        // ── Realtime: notify driver + station followers ──
+        const noShowEventData = {
+          bookingId: booking._id,
+          stationId: String(booking.station),
+          stationName: station.stationName,
+          chargerId: booking.chargerId,
+          status: 'No_Show',
+          date: booking.date,
+          startTime: booking.startTime,
+          endTime: booking.endTime,
+          updatedAt: new Date().toISOString(),
+        };
+        publishToUser(booking.driver, 'booking.updated', noShowEventData);
+        publishToOwner(station.ownerId, 'booking.updated', noShowEventData);
+        publishToStation(String(booking.station), 'availability.updated', noShowEventData);
+
+        console.log(`🚫 Confirmed no-show booking ${booking._id} — slot auto-released (slot ${booking.date} ${booking.startTime}-${booking.endTime} passed + ${NO_SHOW_GRACE_MIN} min grace).`);
+      }
+    } catch (err) {
+      console.error('Error in confirmed no-show job:', err.message);
     }
   }, 60 * 1000); // Check every 60 seconds
 

@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useLiveEvents } from '../../../context/LiveEventsContext';
 import { apiUrl } from '../../../lib/api';
 import { motion } from 'framer-motion';
-import ConfirmModal from '../../common/ConfirmModal';
 import Toast from '../../common/Toast';
 
 interface Booking {
@@ -24,7 +24,6 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' | 'info' } | null>(null);
 
   const fetchReservations = useCallback(async () => {
@@ -50,35 +49,19 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
 
   useEffect(() => {
     fetchReservations();
-    const interval = setInterval(fetchReservations, 15000);
+    // Slow self-healing fallback poll (SSE pushes instant updates when live).
+    const interval = setInterval(fetchReservations, 60000);
     return () => clearInterval(interval);
   }, [fetchReservations]);
 
-  const executeCancelSlot = async (bookingId: string) => {
-    if (!user) return;
-    try {
-      const token = await user.getIdToken();
-      const res = await fetch(apiUrl(`/api/bookings/${bookingId}/status`), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'Cancelled' })
-      });
-      setCancellingId(null);
-      if (res.ok) {
-        setToastMessage({ msg: 'Charging reservation cancelled successfully.', type: 'success' });
-        fetchReservations();
-      } else {
-        setToastMessage({ msg: 'Failed to cancel reservation.', type: 'error' });
-      }
-    } catch (err) {
-      console.error('Failed to cancel slot:', err);
-      setCancellingId(null);
-      setToastMessage({ msg: 'Network error cancelling reservation.', type: 'error' });
-    }
-  };
+  // Realtime: refresh instantly when this driver's booking changes.
+  const { subscribe } = useLiveEvents();
+  useEffect(() => {
+    const unsub = subscribe(['booking.updated', 'booking.deleted', 'booking.expired'], () => {
+      fetchReservations();
+    });
+    return unsub;
+  }, [subscribe, fetchReservations]);
 
   const filteredBookings = bookings.filter(b => {
     if (tab === 'upcoming') {
@@ -170,8 +153,8 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
                   <p className="text-sm font-bold text-(--brand-ink) mt-1">{b.startTime} - {b.endTime}</p>
                 </div>
                 <div className="rounded-2xl border border-(--brand-border) bg-(--background)/80 p-3.5">
-                  <p className="text-[11px] uppercase tracking-widest font-bold text-(--brand-muted)">{b.status === 'Completed' ? 'Total Bill' : 'Status Info'}</p>
-                  <p className="text-sm font-bold text-(--brand-ink) mt-1">{b.status === 'Completed' ? `LKR ${Math.round(b.totalCostLKR || 0)}` : 'Guaranteed Slot'}</p>
+                  <p className="text-[11px] uppercase tracking-widest font-bold text-(--brand-muted)">{b.status === 'Completed' ? 'Agreed Rate' : 'Status Info'}</p>
+                  <p className="text-sm font-bold text-(--brand-ink) mt-1">{b.lockedPricePerKwh ? `LKR ${b.lockedPricePerKwh} / kWh` : 'Guaranteed Slot'}</p>
                 </div>
               </div>
 
@@ -196,28 +179,12 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
                       Message Station
                     </button>
                   )}
-                  <button
-                    onClick={() => setCancellingId(b._id)}
-                    className="flex-1 py-3 rounded-xl border border-(--ui-error)/30 bg-(--ui-error)/10 text-(--ui-error) text-sm font-bold hover:bg-(--ui-error)/20 transition-colors cursor-pointer"
-                  >
-                    Cancel Reservation
-                  </button>
                 </div>
               )}
             </motion.article>
           ))}
         </div>
       )}
-
-      <ConfirmModal
-        isOpen={Boolean(cancellingId)}
-        title="Cancel Reservation?"
-        message="Are you sure you want to cancel this charging slot reservation? Your guaranteed time window will be released immediately to other EV drivers."
-        confirmText="Yes, Cancel Slot"
-        isDanger={true}
-        onClose={() => setCancellingId(null)}
-        onConfirm={() => cancellingId && executeCancelSlot(cancellingId)}
-      />
 
       <Toast
         message={toastMessage?.msg || null}

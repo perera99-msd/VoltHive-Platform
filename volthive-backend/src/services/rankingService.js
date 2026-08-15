@@ -16,33 +16,46 @@ const getHaversineDistanceKm = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// Battery tiers (percent) that drive the Best-Value ranking objective.
+//    LOW  (b < 30)       : nearest station first (range anxiety)
+//    OK   (30 <= b <= 70) : best value for money AND distance (balanced)
+//    GOOD (b > 70)       : best value for money first (cheapest)
+const BATTERY_TIERS = { LOW: 30, GOOD: 70 };
+
+// Fallback road-distance estimate when the Google Distance Matrix API is
+// unavailable: straight-line km x ROAD_FACTOR ~ road km, at an urban average
+// speed so the approximate drive time is close to real-world values.
+const ROAD_FACTOR = 1.4;
+const URBAN_AVG_SPEED_KMH = 30;
+
 const calculateBestValue = async (userLocation, userCarDetails, stations, batteryLevel = 50) => {
   // 1. Resolve the driver's requested plug type(s) (supports multi-select adapters)
   const plugTypes = Array.isArray(userCarDetails.plugTypes) && userCarDetails.plugTypes.length > 0
     ? userCarDetails.plugTypes.map(p => String(p))
     : (userCarDetails.plugType ? [String(userCarDetails.plugType)] : []);
 
-  // 2. Stations that have at least one matching charger plug type
-  const matchesPlug = (station) =>
+  // 2. Stations that have an AVAILABLE charger of a SELECTED plug type.
+  //    A charger that is busy/OFFLINE does not count — the driver must be able
+  //    to plug in NOW, so we never fall back to non-available hardware.
+  const hasAvailableMatchingPlug = (station) =>
     Array.isArray(station.chargers) && station.chargers.some(c =>
-      plugTypes.length === 0 || plugTypes.includes(c.plugType)
+      (plugTypes.length === 0 || plugTypes.includes(c.plugType)) &&
+      (c.status === 'AVAILABLE' || c.status === 'Available')
     );
 
-  const compatibleStations = stations.filter(matchesPlug);
-  if (compatibleStations.length === 0) return [];
+  const candidates = stations.filter(hasAvailableMatchingPlug);
+  if (candidates.length === 0) return [];
 
-  // 3. Prefer stations with an AVAILABLE matching charger; fall back to all matching
-  const hasAvailable = (station) =>
-    station.chargers.some(c => c.status === 'AVAILABLE' || c.status === 'Available');
-
-  const availableStations = compatibleStations.filter(hasAvailable);
-  const candidates = availableStations.length > 0 ? availableStations : compatibleStations;
-
-  // 4. Battery-aware weights (0 = better for both time and price)
-  // Low battery (<= 20%): proximity first (time 0.8). Good battery: price first (price 0.8).
-  const isCriticalBattery = batteryLevel <= 20;
-  const timeWeight = isCriticalBattery ? 0.8 : 0.2;
-  const priceWeight = isCriticalBattery ? 0.2 : 0.8;
+  // 4. Battery tier -> ranking objective (0 = better for both time and price)
+  //    low  : nearest first (drive time primary)
+  //    ok   : value for money AND distance (balanced 50/50)
+  //    good : value for money first (price primary)
+  const tier = batteryLevel < BATTERY_TIERS.LOW ? 'low'
+    : batteryLevel > BATTERY_TIERS.GOOD ? 'good'
+    : 'ok';
+  // Balanced weights are used by the 'ok' tier; 'low'/'good' sort by explicit keys.
+  const timeWeight = 0.5;
+  const priceWeight = 0.5;
 
   // 5. Road distance/drive-time from Google Maps (falls back to Haversine)
   const origin = `${userLocation.lat},${userLocation.lng}`;
@@ -74,8 +87,9 @@ const calculateBestValue = async (userLocation, userCarDetails, stations, batter
       station.location.coordinates[1], station.location.coordinates[0]
     );
 
-    let roadKm = straightKm;
-    let driveTimeMins = (straightKm / 40) * 60; // Haversine fallback @ 40 km/h
+    // Fallback: road-adjusted straight-line distance at a realistic urban speed.
+    let roadKm = straightKm * ROAD_FACTOR;
+    let driveTimeMins = (roadKm / URBAN_AVG_SPEED_KMH) * 60;
 
     if (elements && elements[index] && elements[index].status === 'OK') {
       const d = elements[index];
@@ -115,8 +129,20 @@ const calculateBestValue = async (userLocation, userCarDetails, stations, batter
     return { ...s, valueScore: parseFloat(valueScore.toFixed(3)) };
   });
 
-  // 9. Sort by lowest score (best value) and return the top 3, dropping internal fields
-  ranked.sort((a, b) => a.valueScore - b.valueScore);
+  // 9. Sort by the tier's primary objective (nearest / balanced / cheapest),
+  //    with the secondary metric as a deterministic tie-breaker. Return the
+  //    top 3 (or fewer if that's all that exist), dropping internal fields.
+  ranked.sort((a, b) => {
+    if (tier === 'low') {
+      if (a.routeData.driveTimeMins !== b.routeData.driveTimeMins) return a.routeData.driveTimeMins - b.routeData.driveTimeMins;
+      return a._price - b._price;
+    }
+    if (tier === 'good') {
+      if (a._price !== b._price) return a._price - b._price;
+      return a.routeData.driveTimeMins - b.routeData.driveTimeMins;
+    }
+    return a.valueScore - b.valueScore; // ok: balanced value for money + distance
+  });
   return ranked.slice(0, 3).map(({ _straightKm, _price, ...station }) => station);
 };
 

@@ -4,26 +4,35 @@ import DatePicker from './DatePicker';
 import TimeSlotPicker from './TimeSlotPicker';
 import { todayYMD } from '../../lib/api';
 
+interface ChargerOption {
+  _id: string;
+  plugType: string;
+  powerKW: number;
+  status: string;
+  currentRate?: number;
+  pricePerKWh?: number;
+  rate?: number;
+}
+
 interface BookingConfirmModalProps {
   stationName: string;
   address: string;
-  pricePerKwh: number;
-  powerKW?: number;
+  chargers: ChargerOption[];
   onConfirmBooking: (bookingData: {
     date: string;
     startTime: string;
     endTime: string;
+    chargerId: string;
   }) => void;
   onCancel: () => void;
-  existingBookings: Array<{ startTime: string; endTime: string; status: string; date: string }>;
+  existingBookings: Array<{ startTime: string; endTime: string; status: string; date: string; chargerId?: string }>;
   isLoading?: boolean;
 }
 
 export default function BookingConfirmModal({
   stationName,
   address,
-  pricePerKwh,
-  powerKW,
+  chargers,
   onConfirmBooking,
   onCancel,
   existingBookings,
@@ -32,32 +41,65 @@ export default function BookingConfirmModal({
   const [selectedDate, setSelectedDate] = useState(todayYMD());
   const [selectedStartTime, setSelectedStartTime] = useState<string | null>(null);
   const [selectedEndTime, setSelectedEndTime] = useState<string | null>(null);
+  const [selectedChargerId, setSelectedChargerId] = useState<string | null>(null);
 
   const handleDateChange = (date: string) => {
     setSelectedDate(date);
     setSelectedStartTime(null);
     setSelectedEndTime(null);
+    setSelectedChargerId(null);
   };
 
   const todaysBookings = existingBookings.filter(b => b.date === selectedDate);
 
-  const estimatedDuration = selectedStartTime && selectedEndTime
-    ? Math.abs(parseInt(selectedEndTime.split(':')[0]) - parseInt(selectedStartTime.split(':')[0]))
-      + Math.abs(parseInt(selectedEndTime.split(':')[1]) - parseInt(selectedStartTime.split(':')[1])) / 60
+  const timeToMins = (t?: string | null) => {
+    if (!t || !/^\d{1,2}:\d{2}$/.test(t)) return NaN;
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const startMins = timeToMins(selectedStartTime);
+  const endMins = timeToMins(selectedEndTime);
+
+  const estimatedDuration = Number.isFinite(startMins) && Number.isFinite(endMins)
+    ? (endMins - startMins) / 60
     : 0;
 
-  // Realistic estimate: energy = duration × charger power, cost = energy × rate
-  const estimatedEnergyKWh = estimatedDuration * (powerKW || 0);
-  const estimatedCost = estimatedEnergyKWh * pricePerKwh;
+  // Chargers free for the chosen date + slot (no overlapping active booking).
+  const ACTIVE_SLOT = ['Pending', 'Confirmed', 'Active_Charging'];
+  const busyChargerIds = new Set(
+    todaysBookings
+      .filter(b => b.chargerId && ACTIVE_SLOT.includes(b.status) && Number.isFinite(startMins) && Number.isFinite(endMins))
+      .filter(b => {
+        const bs = timeToMins(b.startTime);
+        const be = timeToMins(b.endTime);
+        return Number.isFinite(bs) && Number.isFinite(be) && bs < endMins && be > startMins;
+      })
+      .map(b => b.chargerId)
+  );
+  const availableChargers = chargers.filter(c => !busyChargerIds.has(c._id));
 
-  const canConfirm = selectedStartTime && selectedEndTime && selectedStartTime < selectedEndTime;
+  const chargerRateOf = (c: ChargerOption) => {
+    const currentRate = Number(c.currentRate);
+    const pricePerKWh = Number(c.pricePerKWh);
+    const rate = Number(c.rate);
+    if (currentRate > 0) return currentRate;
+    if (pricePerKWh > 0) return pricePerKWh;
+    if (rate > 0) return rate;
+    return 0;
+  };
+  const selectedCharger = chargers.find(c => c._id === selectedChargerId) || null;
+  const agreedRate = selectedCharger ? chargerRateOf(selectedCharger) : 0;
+
+  const canConfirm = !!selectedStartTime && !!selectedEndTime && selectedStartTime < selectedEndTime
+    && !!selectedChargerId && availableChargers.some(c => c._id === selectedChargerId);
 
   const handleConfirm = () => {
     if (canConfirm) {
       onConfirmBooking({
         date: selectedDate,
         startTime: selectedStartTime!,
-        endTime: selectedEndTime!
+        endTime: selectedEndTime!,
+        chargerId: selectedChargerId!
       });
     }
   };
@@ -110,15 +152,66 @@ export default function BookingConfirmModal({
             <TimeSlotPicker
               selectedStartTime={selectedStartTime}
               selectedEndTime={selectedEndTime}
-              onStartTimeChange={setSelectedStartTime}
-              onEndTimeChange={setSelectedEndTime}
+              onStartTimeChange={(t) => { setSelectedStartTime(t); setSelectedChargerId(null); }}
+              onEndTimeChange={(t) => { setSelectedEndTime(t); setSelectedChargerId(null); }}
               bookedSlots={todaysBookings}
               isToday={selectedDate === todayYMD()}
             />
           </div>
 
-          {/* Summary Card */}
+          {/* Select an Available Charger for the chosen slot */}
           {selectedStartTime && selectedEndTime && (
+            <div>
+              <h3 className="font-bold text-(--brand-ink) text-xs uppercase tracking-widest text-(--brand-muted) mb-2">
+                Available Chargers ({availableChargers.length})
+              </h3>
+              {availableChargers.length === 0 ? (
+                <div className="bg-(--surface-soft) p-4 rounded-xl text-center border border-(--brand-border)">
+                  <p className="text-xs text-(--brand-muted) font-medium">No chargers are free for this time slot. Pick another time.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  {availableChargers.map((charger, idx) => {
+                    const isSelected = selectedChargerId === charger._id;
+                    return (
+                      <button
+                        key={charger._id}
+                        onClick={() => setSelectedChargerId(charger._id)}
+                        className={`p-3 rounded-xl border transition-all text-left relative cursor-pointer ${
+                          isSelected
+                            ? 'bg-(--brand-blue)/14 border-2 border-(--brand-blue)'
+                            : 'bg-(--brand-card) border-(--brand-border) hover:border-(--brand-blue)/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-bold ${isSelected ? 'bg-(--brand-blue) text-white' : 'bg-(--accent-blue)/16 text-(--brand-blue)'}`}>
+                              0{idx + 1}
+                            </div>
+                            <div>
+                              <p className="font-bold text-xs text-(--brand-ink)">
+                                {charger.plugType || 'Charger'} • <span className="font-extrabold text-(--brand-green-deep)">{charger.powerKW} kW</span>
+                                {chargerRateOf(charger) > 0 && (
+                                  <span className="font-bold text-(--brand-blue)"> • LKR {chargerRateOf(charger)}/kWh</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border bg-(--ui-success)/15 text-(--ui-success) border-(--ui-success)/30 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-(--ui-success)" />
+                            {isSelected ? 'Selected' : 'Free'}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Summary Card */}
+          {selectedStartTime && selectedEndTime && selectedCharger && (
             <div className="bg-(--surface-soft) border border-(--brand-border) rounded-2xl p-4 space-y-3">
               <h3 className="font-bold text-(--brand-ink) text-xs uppercase tracking-widest text-(--brand-muted)">Booking Summary</h3>
               
@@ -128,28 +221,29 @@ export default function BookingConfirmModal({
                   <p className="font-extrabold text-(--brand-ink) text-xs">{selectedStartTime} → {selectedEndTime}</p>
                 </div>
                 <div className="col-span-2 sm:col-span-1 bg-(--brand-card) p-3 rounded-xl border border-(--brand-border)">
-                  <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-0.5">Duration</p>
-                  <p className="font-extrabold text-(--brand-ink) text-xs">{estimatedDuration.toFixed(1)} hrs</p>
+                  <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-0.5">Charger</p>
+                  <p className="font-extrabold text-(--brand-ink) text-xs">{selectedCharger.plugType} • {selectedCharger.powerKW} kW</p>
                 </div>
                 <div className="col-span-2 sm:col-span-1 bg-(--brand-card) p-3 rounded-xl border border-(--brand-border)">
                   <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-0.5">Locked Rate</p>
                   <p className="font-extrabold text-sm text-(--brand-blue)">
-                    Rs. {pricePerKwh} / kWh
+                    {agreedRate > 0 ? `Rs. ${agreedRate} / kWh` : '—'}
                   </p>
                 </div>
                 <div className="col-span-2 sm:col-span-1 bg-(--brand-blue)/10 border border-(--brand-blue)/25 rounded-xl p-3">
-                  <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-0.5">Est. Total Cost</p>
-                  <p className="font-black text-xl text-(--brand-green-deep)">Rs. {estimatedCost.toFixed(2)}</p>
-                  <p className="text-[10px] text-(--brand-muted) font-semibold mt-0.5">
-                    ≈ {estimatedEnergyKWh.toFixed(1)} kWh {powerKW ? `at ${powerKW} kW` : ''}
-                  </p>
+                  <p className="text-[10px] text-(--brand-muted) font-bold uppercase tracking-wider mb-0.5">Duration</p>
+                  <p className="font-black text-xl text-(--brand-green-deep)">{estimatedDuration.toFixed(1)} hrs</p>
+                  <p className="text-[10px] text-(--brand-muted) font-semibold mt-0.5">Agreed price is locked at booking time</p>
                 </div>
               </div>
 
               {/* Important Notice */}
               <div className="bg-(--ui-warning)/10 border border-(--ui-warning)/25 rounded-xl p-3 space-y-1">
                 <p className="text-[11px] text-(--brand-muted) leading-relaxed">
-                  <span className="font-bold text-(--ui-warning)">⚠️ Note:</span> Your slot requires owner confirmation within <span className="font-bold">15 minutes</span>. If not confirmed, the request expires and slot is released.
+                  <span className="font-bold text-(--ui-warning)">⚠️ Note:</span> Your slot requires owner confirmation within <span className="font-bold">15 minutes</span>. If not confirmed, the request expires, the slot is released, and the booking is removed shortly after.
+                </p>
+                <p className="text-[11px] text-(--brand-muted) leading-relaxed">
+                  <span className="font-bold text-(--brand-blue)">ℹ️ Price:</span> The rate shown is locked at booking time. The station owner settles the final amount manually when your session is complete.
                 </p>
               </div>
             </div>

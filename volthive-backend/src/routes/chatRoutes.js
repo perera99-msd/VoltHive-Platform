@@ -8,6 +8,7 @@ const verifyToken = require('../middleware/authMiddleware');
 const User = require('../models/User');
 const Station = require('../models/Station');
 const Message = require('../models/Message');
+const { publishToUser, publishToOwner, publishToStation } = require('../utils/eventBus');
 
 // Resolve the authenticated User doc; responds 401/403 on failure.
 const resolveUser = async (req, res) => {
@@ -115,6 +116,21 @@ router.post('/driver/:stationId', verifyToken, async (req, res) => {
       text,
       read: false,
     });
+
+    // ── Realtime: notify the station owner + station followers ──
+    const msgEventData = {
+      stationId: String(station._id),
+      stationName: station.stationName,
+      driverId: String(driver._id),
+      driverName: driver.name || 'EV Driver',
+      sender: 'driver',
+      text,
+      messageId: String(message._id),
+      createdAt: message.createdAt,
+    };
+    publishToOwner(station.ownerId, 'message.new', msgEventData);
+    publishToStation(String(station._id), 'message.new', msgEventData);
+
     res.status(201).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -284,6 +300,20 @@ router.post('/owner/:stationId/:driverId', verifyToken, async (req, res) => {
       text,
       read: false,
     });
+
+    // ── Realtime: notify the driver + station followers ──
+    const ownerMsgEventData = {
+      stationId: String(station._id),
+      stationName: station.stationName,
+      driverId: String(req.params.driverId),
+      sender: 'owner',
+      text,
+      messageId: String(message._id),
+      createdAt: message.createdAt,
+    };
+    publishToUser(req.params.driverId, 'message.new', ownerMsgEventData);
+    publishToStation(String(station._id), 'message.new', ownerMsgEventData);
+
     res.status(201).json({ success: true, message });
   } catch (err) {
     res.status(500).json({ error: err.message });

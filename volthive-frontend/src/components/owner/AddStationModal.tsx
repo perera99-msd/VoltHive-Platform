@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { apiUrl } from '../../lib/api';
-import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 import ConfirmModal from '../common/ConfirmModal';
 
 type Props = {
@@ -45,7 +45,7 @@ export default function AddStationModal({ isOpen, onClose, onSaved }: Props) {
 
   const handleLocationRequest = () => {
     setShowMapPicker(true);
-    if (!sLat && !sLng && navigator.geolocation) {
+    if (!sLat && !sLng && typeof window !== 'undefined' && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           setMapCenter({
@@ -79,7 +79,7 @@ export default function AddStationModal({ isOpen, onClose, onSaved }: Props) {
         phone: sPhone,
         description: sDescription,
         ownerName: user?.displayName || 'VoltHive Partner',
-        location: { type: 'Point', coordinates: [Number(sLng), Number(sLat)] }
+        location: { type: 'Point', coordinates: [Number(sLng || 79.8612), Number(sLat || 6.9271)] }
       };
 
       const res = await fetch(apiUrl('/api/stations'), {
@@ -111,150 +111,253 @@ export default function AddStationModal({ isOpen, onClose, onSaved }: Props) {
     }
   };
 
-  const inputCls = "w-full px-4 py-3 bg-(--surface-soft)/40 border border-(--brand-border)/80 rounded-xl text-[13px] text-(--brand-ink) font-medium focus:outline-none focus:ring-2 focus:ring-(--brand-blue)/30 focus:border-(--brand-blue) transition-all placeholder:text-(--brand-muted)/50";
+  const inputCls = "w-full px-4 py-3 bg-(--surface-soft)/50 border border-[#e0e5e3] rounded-2xl text-xs text-(--brand-ink) font-semibold focus:outline-none focus:ring-2 focus:ring-(--brand-blue)/30 focus:border-(--brand-blue) focus:bg-white transition-all placeholder:text-(--brand-muted)/60";
 
   return (
     <>
       <AnimatePresence>
         {isOpen && !showMapPicker && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-(--brand-ink)/70 backdrop-blur-sm"
-          >
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 font-sans">
             <motion.div
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
-              className="bg-white rounded-[24px] max-w-2xl w-full border border-(--brand-border)/80 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs cursor-pointer"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative z-10 w-full max-w-2xl bg-white/95 backdrop-blur-3xl rounded-3xl border border-[#e0e5e3] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Header */}
-              <div className="px-6 sm:px-8 py-5 border-b border-(--brand-border)/60 flex justify-between items-center bg-(--surface-soft)/30">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-(--brand-blue)/10 border border-(--brand-blue)/20 flex items-center justify-center text-(--brand-blue)">
-                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+              <div className="px-6 sm:px-8 py-5 border-b border-[#e0e5e3] flex justify-between items-center bg-white/80 backdrop-blur-xl">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-(--brand-blue)/10 to-(--brand-green)/10 border border-[#e0e5e3] flex items-center justify-center text-(--brand-blue-deep) shadow-2xs">
+                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
                   </div>
                   <div>
-                    <h3 className="text-[18px] font-extrabold text-(--brand-ink) tracking-tight">Deploy New Premise</h3>
-                    <p className="text-[12px] text-(--brand-muted) font-medium mt-0.5">Add a physical station location to your network profile.</p>
+                    <h3 className="text-lg font-black text-(--brand-ink) tracking-tight">Deploy New Premise</h3>
+                    <p className="text-xs text-(--brand-muted) font-medium">Add a physical station location to your network profile.</p>
                   </div>
                 </div>
-                <button onClick={onClose} className="p-2 rounded-xl text-(--brand-muted) hover:bg-(--surface-soft) transition-colors cursor-pointer">
-                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button 
+                  onClick={onClose} 
+                  className="w-9 h-9 flex items-center justify-center rounded-xl bg-(--surface-soft) text-(--brand-muted) hover:text-(--brand-ink) border border-[#e0e5e3] transition-colors cursor-pointer"
+                >
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
 
               {/* Form Body */}
-              <div className="p-6 sm:px-8 overflow-y-auto">
-                <form id="add-station-form" onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-5">
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Station Name</label>
-                    <input required type="text" value={sName} onChange={e => setSName(e.target.value)} className={inputCls} placeholder="e.g. VoltHive City Center Parking" />
+              <div className="p-6 sm:px-8 overflow-y-auto space-y-4 [&::-webkit-scrollbar]:hidden">
+                <form id="add-station-form" onSubmit={handleFormSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* Station Name */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Station / Location Name *
+                    </label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="e.g. Colombo Supercharger Hub - One Galle Face" 
+                      value={sName} 
+                      onChange={(e) => setSName(e.target.value)} 
+                      className={inputCls} 
+                    />
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Physical Address</label>
-                    <input required type="text" value={sAddress} onChange={e => setSAddress(e.target.value)} className={inputCls} placeholder="Full street address" />
+                  {/* Physical Address */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Physical Street Address *
+                    </label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="e.g. 1A Galle Road, Colombo 00300" 
+                      value={sAddress} 
+                      onChange={(e) => setSAddress(e.target.value)} 
+                      className={inputCls} 
+                    />
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Location Type <span className="text-(--brand-muted)/60 normal-case font-medium">(used by AI demand model)</span></label>
-                    <select value={sLocationType} onChange={e => setSLocationType(e.target.value)} className={`${inputCls} cursor-pointer`}>
-                      {['Airport', 'Highway Corridor', 'Hotel/Hospitality', 'Residential', 'Shopping Center', 'Suburban', 'Urban Center', 'Workplace'].map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
+                  {/* Location Type */}
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Premise Type
+                    </label>
+                    <select 
+                      value={sLocationType} 
+                      onChange={(e) => setSLocationType(e.target.value)} 
+                      className={inputCls}
+                    >
+                      <option value="Urban Center">Urban Center / Mall</option>
+                      <option value="Highway Hub">Highway / Rest Stop Hub</option>
+                      <option value="Commercial Complex">Commercial / Office Park</option>
+                      <option value="Hotel & Resort">Hotel & Hospitality</option>
+                      <option value="Residential">Residential Community</option>
                     </select>
                   </div>
 
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Map Coordinates</label>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                      <input required type="text" placeholder="Latitude" value={sLat} onChange={e => setSLat(e.target.value)} className={`${inputCls} flex-1`} />
-                      <input required type="text" placeholder="Longitude" value={sLng} onChange={e => setSLng(e.target.value)} className={`${inputCls} flex-1`} />
-                      <button type="button" onClick={handleLocationRequest} className="px-5 py-2.5 bg-(--surface-soft) text-(--brand-blue) rounded-xl border border-(--brand-border)/80 font-bold hover:bg-(--surface-tint) transition-colors shrink-0 flex justify-center items-center gap-2 cursor-pointer text-[12px]">
-                        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        Pin on Map
+                  {/* Contact Phone */}
+                  <div>
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Site Hotline / Support Phone
+                    </label>
+                    <input 
+                      type="tel" 
+                      placeholder="e.g. +94 11 234 5678" 
+                      value={sPhone} 
+                      onChange={(e) => setSPhone(e.target.value)} 
+                      className={inputCls} 
+                    />
+                  </div>
+
+                  {/* Map Coordinates Picker */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Map Positioning (GPS Coordinates)
+                    </label>
+                    <div className="flex items-center gap-2.5">
+                      <input 
+                        type="text" 
+                        readOnly 
+                        placeholder="Latitude, Longitude coordinates" 
+                        value={sLat && sLng ? `${sLat}, ${sLng}` : ''} 
+                        className={`${inputCls} cursor-not-allowed bg-white`} 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleLocationRequest} 
+                        className="px-4 py-3 bg-(--surface-soft) hover:bg-white text-(--brand-ink) font-extrabold text-xs rounded-2xl border border-[#e0e5e3] transition-all shrink-0 cursor-pointer shadow-2xs"
+                      >
+                        📍 Pick on Map
                       </button>
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Support Hotline</label>
-                    <input required type="tel" value={sPhone} onChange={e => setSPhone(e.target.value)} className={inputCls} placeholder="+94 11 234 5678" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Owner / Operating Company</label>
-                    <input type="text" disabled value={user?.displayName || 'Auto-Detected'} className={`${inputCls} bg-(--surface-soft)/40 opacity-70 cursor-not-allowed text-(--brand-muted)`} />
-                  </div>
-
-                  <div className="space-y-1.5 md:col-span-2">
-                    <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Premise Notes & Directions</label>
-                    <textarea rows={3} value={sDescription} onChange={e => setSDescription(e.target.value)} className={inputCls} placeholder="Optional directions or parking notes..." />
+                  {/* Premise Notes */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-black uppercase tracking-wider text-(--brand-muted) mb-1.5">
+                      Premise Directions & Driver Notes
+                    </label>
+                    <textarea 
+                      rows={3} 
+                      placeholder="e.g. Located on Basement Level 2, near Pillar B4. 24/7 security available on site." 
+                      value={sDescription} 
+                      onChange={(e) => setSDescription(e.target.value)} 
+                      className={inputCls} 
+                    />
                   </div>
                 </form>
               </div>
 
-              {/* Footer Actions */}
-              <div className="px-6 sm:px-8 py-5 border-t border-(--brand-border)/60 bg-(--surface-soft)/30 flex flex-col sm:flex-row gap-3 justify-end">
-                <button type="button" onClick={onClose} className="px-6 py-3 bg-white border border-(--brand-border)/80 text-(--brand-ink) font-bold rounded-xl hover:bg-(--surface-soft)/50 transition-colors text-[13px] cursor-pointer w-full sm:w-auto">
+              {/* Footer */}
+              <div className="px-6 sm:px-8 py-4 bg-white border-t border-[#e0e5e3] flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={onClose} 
+                  className="px-5 py-2.5 rounded-xl border border-[#e0e5e3] text-xs font-bold text-(--brand-muted) hover:bg-(--surface-soft) transition-all cursor-pointer"
+                >
                   Cancel
                 </button>
-                <button type="submit" form="add-station-form" disabled={loading} className="px-8 py-3 bg-gradient-to-r from-(--brand-blue) to-(--brand-green) text-white font-bold rounded-xl shadow-sm hover:brightness-105 transition-all text-[13px] cursor-pointer w-full sm:w-auto">
-                  {loading ? 'Deploying...' : 'Deploy Premise'}
+                <button 
+                  type="submit" 
+                  form="add-station-form" 
+                  disabled={loading} 
+                  className="px-5 py-2.5 rounded-xl bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white text-xs font-black shadow-xs hover:shadow-md transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {loading ? 'Deploying...' : 'Deploy Station Premise'}
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* ── MAP MODAL ── */}
+      {/* Map Picker Modal */}
       <AnimatePresence>
         {showMapPicker && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[70] bg-(--brand-ink)/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <motion.div initial={{ scale: 0.97, y: 12 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.97, y: 12 }} className="bg-white rounded-2xl overflow-hidden w-full max-w-4xl h-[80vh] flex flex-col border border-(--brand-border)/80 shadow-2xl">
-              <div className="px-6 py-4 border-b border-(--brand-border)/60 flex justify-between items-center bg-white z-10 relative">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-(--brand-blue)/10 flex items-center justify-center text-(--brand-blue)">
-                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  </div>
-                  <h3 className="font-extrabold text-(--brand-ink) tracking-tight text-[15px]">Pin Station Location</h3>
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 font-sans">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMapPicker(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs cursor-pointer"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              className="relative z-10 w-full max-w-2xl bg-white rounded-3xl border border-[#e0e5e3] shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="px-6 py-4 border-b border-[#e0e5e3] flex justify-between items-center bg-white/80 backdrop-blur-xl">
+                <div>
+                  <h3 className="text-sm font-extrabold text-(--brand-ink)">Pinpoint Station Coordinates</h3>
+                  <p className="text-xs text-(--brand-muted) font-medium">Click on the map to set exact GPS coordinates.</p>
                 </div>
-                <button onClick={() => setShowMapPicker(false)} className="p-2 rounded-lg text-(--brand-muted) hover:bg-(--surface-soft) transition-colors cursor-pointer">
-                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button 
+                  onClick={() => setShowMapPicker(false)} 
+                  className="w-8 h-8 flex items-center justify-center rounded-xl bg-(--surface-soft) text-(--brand-muted) hover:text-(--brand-ink) border border-[#e0e5e3] transition-colors cursor-pointer"
+                >
+                  <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-              
-              <div className="flex-1 relative bg-(--surface-soft)/40">
+
+              <div className="w-full h-80 bg-slate-100 relative">
                 {isLoaded ? (
-                  <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={mapCenter} zoom={14} onClick={handleMapClick} options={{ disableDefaultUI: true }}>
-                    {sLat && sLng && <Marker position={{ lat: Number(sLat), lng: Number(sLng) }} />}
+                  <GoogleMap
+                    mapContainerStyle={{ width: '100%', height: '100%' }}
+                    center={sLat && sLng ? { lat: Number(sLat), lng: Number(sLng) } : mapCenter}
+                    zoom={14}
+                    onClick={handleMapClick}
+                    options={{ disableDefaultUI: true, zoomControl: true }}
+                  >
+                    {sLat && sLng && (
+                      <MarkerF position={{ lat: Number(sLat), lng: Number(sLng) }} />
+                    )}
                   </GoogleMap>
-                ) : <div className="flex h-full items-center justify-center text-[13px] font-bold text-(--brand-muted)">Loading Maps...</div>}
+                ) : (
+                  <div className="flex h-full items-center justify-center text-xs font-bold text-(--brand-muted)">Loading Maps...</div>
+                )}
               </div>
-              
-              <div className="px-6 py-4 bg-white border-t border-(--brand-border)/60 flex justify-between items-center z-10 relative">
-                <div className="text-[12px] font-bold text-(--brand-ink)">
-                  {sLat && sLng ? <span className="font-mono bg-(--surface-soft) px-2 py-1 rounded-md border border-(--brand-border)">{sLat}, {sLng}</span> : <span className="text-(--brand-muted)">Click anywhere on the map to place a pin</span>}
-                </div>
-                <button onClick={() => setShowMapPicker(false)} className="px-5 py-2.5 bg-(--brand-ink) text-white rounded-xl text-[12px] font-bold hover:bg-black transition-colors cursor-pointer">
-                  Confirm Pin
+
+              <div className="px-6 py-3.5 bg-white border-t border-[#e0e5e3] flex justify-between items-center">
+                <span className="text-xs font-mono font-bold text-(--brand-blue-deep)">
+                  {sLat && sLng ? `Selected: ${sLat}, ${sLng}` : 'Click map to place pin'}
+                </span>
+                <button 
+                  type="button" 
+                  onClick={() => setShowMapPicker(false)} 
+                  className="px-5 py-2 bg-linear-to-r from-(--brand-blue) to-(--brand-green) text-white font-black text-xs rounded-xl shadow-xs cursor-pointer"
+                >
+                  Confirm Coordinates
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* ── CONFIRM CREATE MODAL ── */}
+      {/* Confirmation Modal Before Creating */}
       <ConfirmModal
         isOpen={showConfirmCreate}
-        title="Deploy New Premise"
-        message="Are you sure you want to add this new physical premise to your network profile?"
-        confirmText="Deploy Premise"
-        isDanger={false}
+        title="Deploy New Station Premise?"
+        message={`Deploy "${sName || 'New Station'}" to the network? You can install hardware chargers immediately after deploying.`}
+        confirmText="Confirm & Deploy"
+        cancelText="Cancel"
         isLoading={loading}
         onClose={() => setShowConfirmCreate(false)}
         onConfirm={executeCreateStation}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../../context/AuthContext';
+import { useLiveEvents } from '../../../context/LiveEventsContext';
 import { apiUrl } from '../../../lib/api';
 import AddChargerModal from '../AddChargerModal';
 import EditChargerModal from '../EditChargerModal';
@@ -62,7 +63,19 @@ export default function ChargersView() {
 
   useEffect(() => {
     fetchStations();
+    // Slow self-healing fallback poll (SSE pushes instant updates when live).
+    const interval = setInterval(fetchStations, 60000);
+    return () => clearInterval(interval);
   }, [fetchStations]);
+
+  // Realtime: refresh the fleet grid instantly when charger availability changes.
+  const { subscribe } = useLiveEvents();
+  useEffect(() => {
+    const unsub = subscribe('availability.updated', () => {
+      fetchStations();
+    });
+    return unsub;
+  }, [subscribe, fetchStations]);
 
   const executeDeleteCharger = async (chargerId: string) => {
     try {
@@ -113,10 +126,12 @@ export default function ChargersView() {
     const st = c.status || c.statusDisplay;
     return st === 'AVAILABLE' || st === 'Online';
   }).length;
-  // Real average tariff (only chargers with an actual price configured)
-  const pricedChargers = allChargers.filter(c => Number(c.basePricePerKwh) > 0);
+  // Real average tariff — use the LIVE per-charger rate (AI + TOU aware) so the
+  // KPI agrees with what each charger card shows. Falls back to base price.
+  const rateOf = (c: Charger) => Number((c as { currentRate?: number }).currentRate) || Number(c.basePricePerKwh) || 0;
+  const pricedChargers = allChargers.filter(c => rateOf(c) > 0);
   const avgTariff = pricedChargers.length > 0
-    ? Math.round(pricedChargers.reduce((acc, c) => acc + Number(c.basePricePerKwh), 0) / pricedChargers.length)
+    ? Math.round(pricedChargers.reduce((acc, c) => acc + rateOf(c), 0) / pricedChargers.length)
     : 0;
 
   if (loading) {
@@ -137,7 +152,7 @@ export default function ChargersView() {
             <h1 className="text-[24px] font-extrabold tracking-tight text-(--brand-ink)">Hardware Fleet</h1>
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-(--brand-blue)/10 text-(--brand-blue-deep) text-[10px] font-extrabold uppercase tracking-wider border border-(--brand-blue)/20">
               <span className="w-1.5 h-1.5 rounded-full bg-(--brand-green) animate-pulse" />
-              {allChargers.length} Active Ports
+              {allChargers.length} Registered Ports
             </span>
           </div>
           <p className="text-[12px] text-(--brand-muted) font-medium">Manage charging hardware ports, power outputs, set base tariffs, and inspect live states.</p>
@@ -311,8 +326,8 @@ export default function ChargersView() {
                     <span className="text-[14px] font-black text-(--brand-ink)">{charger.powerKW ?? '—'}<span className="text-[10px] opacity-80">{charger.powerKW ? ' kW' : ''}</span></span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-(--surface-soft)/40 border border-(--brand-border)/50 flex flex-col items-center text-center">
-                    <span className="text-[9px] font-extrabold text-(--brand-muted) uppercase tracking-wider mb-0.5">Base Tariff</span>
-                    <span className="text-[14px] font-black text-(--brand-ink)">{Number.isFinite(Number(charger.basePricePerKwh)) ? `LKR ${charger.basePricePerKwh}` : '—'}</span>
+                    <span className="text-[9px] font-extrabold text-(--brand-muted) uppercase tracking-wider mb-0.5">Current Rate</span>
+                    <span className="text-[14px] font-black text-(--brand-ink)">{Number.isFinite(Number((charger as { currentRate?: number }).currentRate ?? charger.basePricePerKwh)) ? `LKR ${(charger as { currentRate?: number }).currentRate ?? charger.basePricePerKwh}` : '—'}</span>
                   </div>
                 </div>
                 
@@ -321,14 +336,16 @@ export default function ChargersView() {
                   <span className={`px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider rounded-md border flex items-center gap-1.5 ${
                     st === 'AVAILABLE' || st === 'Online' ? 'bg-(--brand-green)/10 text-(--brand-green-deep) border-(--brand-green)/20' :
                     st === 'CHARGING' ? 'bg-(--brand-blue)/10 text-(--brand-blue-deep) border-(--brand-blue)/20' :
+                    st === 'OFFLINE' ? 'bg-(--ui-error)/10 text-(--ui-error) border-(--ui-error)/20' :
                     'bg-[var(--ui-warning)]/10 text-[#d09d2e] border-[var(--ui-warning)]/20'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       st === 'AVAILABLE' || st === 'Online' ? 'bg-(--brand-green)' :
                       st === 'CHARGING' ? 'bg-(--brand-blue) animate-pulse' :
+                      st === 'OFFLINE' ? 'bg-(--ui-error)' :
                       'bg-[var(--ui-warning)]'
                     }`} />
-                    {st}
+                    {charger.statusDisplay || st}
                   </span>
 
                   <button 

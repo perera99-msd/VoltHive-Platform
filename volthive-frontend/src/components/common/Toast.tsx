@@ -26,7 +26,7 @@ export default function Toast({ message, type = 'error', onClose, durationMs = 2
           initial={{ opacity: 0, y: 30, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="fixed bottom-28 sm:bottom-8 left-4 right-4 sm:left-auto sm:right-8 sm:max-w-md z-[9999]"
+          className="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] sm:bottom-8 left-4 right-4 sm:left-auto sm:right-8 sm:max-w-md z-[9999]"
         >
           <div className={`p-4 sm:p-5 rounded-2xl backdrop-blur-2xl shadow-2xl border flex items-center gap-3.5 text-sm font-bold ${
             type === 'error'
