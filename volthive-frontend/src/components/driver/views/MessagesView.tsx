@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../../../context/AuthContext';
+import { useLiveEvents } from '../../../context/LiveEventsContext';
 import { apiUrl } from '../../../lib/api';
 import { motion } from 'framer-motion';
 import Toast from '../../common/Toast';
@@ -112,6 +113,24 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
     }
   };
 
+  // Refresh just the open thread (used by SSE + fallback poll).
+  const refreshThread = useCallback(async (stationId: string) => {
+    if (!user) return;
+    try {
+      const token = await tokenFor();
+      const res = await fetch(apiUrl(`/api/chat/driver/${stationId}`), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setMessages(json.messages || []);
+        loadConversations();
+      }
+    } catch (e) {
+      console.warn('Failed to refresh thread', e);
+    }
+  }, [user, tokenFor, loadConversations]);
+
   // Auto-scroll to newest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -122,24 +141,26 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
     loadConversations();
   }, [loadConversations]);
 
-  // Poll while a thread is open
+  // Poll while a thread is open — slow fallback; SSE pushes instant updates.
   useEffect(() => {
     if (!openStationId) return;
-    const timer = setInterval(async () => {
-      if (!user) return;
-      try {
-        const token = await tokenFor();
-        const res = await fetch(apiUrl(`/api/chat/driver/${openStationId}`), {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const json = await res.json();
-          setMessages(json.messages || []);
-        }
-      } catch (e) { /* keep last state */ }
-    }, 6000);
+    const timer = setInterval(() => {
+      if (!user || (typeof document !== 'undefined' && document.hidden)) return;
+      refreshThread(openStationId);
+    }, 30000);
     return () => clearInterval(timer);
-  }, [openStationId, user, tokenFor]);
+  }, [openStationId, user, refreshThread]);
+
+  // Realtime: new message in the open thread → refresh instantly.
+  const { subscribe } = useLiveEvents();
+  useEffect(() => {
+    if (!openStationId) return;
+    const unsub = subscribe('message.new', (_event, data) => {
+      if (!data || String(data.stationId) !== String(openStationId)) return;
+      refreshThread(openStationId);
+    });
+    return unsub;
+  }, [openStationId, subscribe, refreshThread]);
 
   const backToList = () => {
     setOpenStationId(null);

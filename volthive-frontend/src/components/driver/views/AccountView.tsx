@@ -16,6 +16,7 @@ const SettingsRow = ({
   icon,
   title,
   value,
+  badge,
   iconBgClass,
   onClick,
   isDestructive,
@@ -23,6 +24,7 @@ const SettingsRow = ({
   icon: ReactNode;
   title: string;
   value?: string;
+  badge?: string;
   iconBgClass?: string;
   onClick?: () => void;
   isDestructive?: boolean;
@@ -42,6 +44,11 @@ const SettingsRow = ({
       </p>
     </div>
     <div className="flex items-center gap-3 shrink-0">
+      {badge && (
+        <span className="px-2 py-0.5 rounded-full bg-(--brand-blue) text-white text-[10px] font-black animate-pulse shadow-xs">
+          {badge}
+        </span>
+      )}
       {value && <span className="text-[13px] font-medium text-(--brand-muted) max-w-[140px] sm:max-w-[220px] truncate">{value}</span>}
       {onClick && (
         <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-(--brand-muted)">
@@ -84,6 +91,30 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
 
   // Modals state
   const [activeModal, setActiveModal] = useState<'name' | 'password' | 'address' | 'history' | 'help' | null>(null);
+
+  // Unread driver chat messages count
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(apiUrl('/api/chat/driver/conversations'), {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          const total = (json.data || []).reduce((acc: number, c: { unread?: number }) => acc + (c.unread || 0), 0);
+          setUnreadChatCount(total);
+        }
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 20000);
+    return () => clearInterval(interval);
+  }, [user, chatOpen]);
 
   // Form Inputs
   const [editName, setEditName] = useState('');
@@ -481,8 +512,13 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
       <SettingsCard title="Inbox & Messages">
         <SettingsRow 
           title="Messages" 
-          value="Chat with stations"
-          onClick={() => { setChatStationId(null); setChatOpen(true); }}
+          value={unreadChatCount > 0 ? undefined : "Chat with stations"}
+          badge={unreadChatCount > 0 ? `${unreadChatCount} new` : undefined}
+          onClick={() => { 
+            setChatStationId(null); 
+            setChatOpen(true); 
+            setUnreadChatCount(0);
+          }}
           iconBgClass="bg-(--accent-green)/16 text-(--brand-green-deep)"
           icon={<svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>} 
         />

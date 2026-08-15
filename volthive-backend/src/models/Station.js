@@ -17,7 +17,7 @@ const ChargerSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['AVAILABLE', 'PENDING_APPROVAL', 'RESERVED', 'CHARGING', 'OFFLINE'],
+    enum: ['AVAILABLE', 'PENDING_APPROVAL', 'RESERVED', 'CHARGING', 'OFFLINE', 'MAINTENANCE'],
     default: 'AVAILABLE'
   },
   activeBookingId: {

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "../context/AuthContext"; // <-- Import the provider
+import { LiveEventsProvider } from "../context/LiveEventsContext";
 import MotionShell from "../components/MotionShell";
 import AppShell from "../components/AppShell";
 
@@ -62,9 +63,11 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {/* Wrap the children inside the AuthProvider */}
         <AuthProvider>
-          <AppShell>
-            <MotionShell>{children}</MotionShell>
-          </AppShell>
+          <LiveEventsProvider>
+            <AppShell>
+              <MotionShell>{children}</MotionShell>
+            </AppShell>
+          </LiveEventsProvider>
         </AuthProvider>
       </body>
     </html>

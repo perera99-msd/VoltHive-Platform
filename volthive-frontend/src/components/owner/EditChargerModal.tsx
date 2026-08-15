@@ -21,6 +21,9 @@ type Props = {
   onSaved: (msg?: string) => void;
 };
 
+// Canonical charger/connector standards. KEEP IN SYNC with StationMap, AddChargerModal, MyGarage, seedStations.js
+const CONNECTOR_OPTIONS = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T', 'Tesla NACS'];
+
 export default function EditChargerModal({ charger, isOpen, onClose, onSaved }: Props) {
   const { user } = useAuth();
   const [plugType, setPlugType] = useState('CCS2');
@@ -118,10 +121,12 @@ export default function EditChargerModal({ charger, isOpen, onClose, onSaved }: 
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Connector Plug Standard</label>
                     <select value={plugType} onChange={e => setPlugType(e.target.value)} className={`${inputCls} cursor-pointer`}>
-                      <option value="CCS2">CCS2 (European DC Fast)</option>
-                      <option value="Type 2">Type 2 (AC Mennekes)</option>
-                      <option value="CHAdeMO">CHAdeMO (Japanese DC)</option>
-                      <option value="GB/T">GB/T (Chinese Standard)</option>
+                      {CONNECTOR_OPTIONS.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      {plugType && !CONNECTOR_OPTIONS.includes(plugType) && (
+                        <option value={plugType}>{plugType} (custom)</option>
+                      )}
                     </select>
                   </div>
 
@@ -147,6 +152,8 @@ export default function EditChargerModal({ charger, isOpen, onClose, onSaved }: 
                     <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Hardware Status</label>
                     <select value={status} onChange={e => setStatus(e.target.value)} className={`${inputCls} cursor-pointer`}>
                       <option value="AVAILABLE">AVAILABLE (Online & Ready)</option>
+                      <option value="PENDING_APPROVAL">PENDING APPROVAL (Awaiting Owner)</option>
+                      <option value="RESERVED">RESERVED (Slot Booked)</option>
                       <option value="CHARGING">CHARGING (Active Session)</option>
                       <option value="OFFLINE">OFFLINE (Disconnected)</option>
                       <option value="MAINTENANCE">MAINTENANCE (Servicing Required)</option>

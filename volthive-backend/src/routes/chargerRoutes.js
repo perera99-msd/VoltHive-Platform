@@ -18,6 +18,6 @@ router.delete('/:id', protect, deleteCharger);
 
 router.get('/:id/rates', protect, getChargerRates);
 router.put('/:id/rates', protect, updateChargerRates);
-router.get('/:id/current-rate', getCurrentChargerRate);
+router.get('/:id/current-rate', protect, getCurrentChargerRate);
 
 module.exports = router;

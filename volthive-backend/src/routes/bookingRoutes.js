@@ -6,7 +6,8 @@ const Booking = require('../models/Booking');
 const Station = require('../models/Station');
 const User = require('../models/User');
 const verifyToken = require('../middleware/authMiddleware');
-const { getStationEffectiveRate } = require('../utils/rateEngine');
+const { getChargerEffectiveRate } = require('../utils/rateEngine');
+const { publishToUser, publishToOwner, publishToStation } = require('../utils/eventBus');
 
 // Statuses that still occupy a charger slot (used for overlap checks)
 const ACTIVE_SLOT_STATUSES = ['Pending', 'Confirmed', 'Active_Charging'];
@@ -76,33 +77,6 @@ const authorizeBookingAccess = async (req, booking, { requireOwner = false } = {
 
   return { ok: true, user, booking, station };
 };
-
-/**
- * POST /api/bookings/test-postman
- * Dedicated route for Postman testing (Bypasses Auth & DB Checks)
- */
-router.post('/test-postman', (req, res) => {
-  const { driverId, stationId, chargerType, startTime, endTime, energyRequestedKwh, aiPredictedPricePerKwh } = req.body;
-
-  res.status(201).json({
-    success: true,
-    message: 'Booking created successfully (Postman Test Mode)',
-    data: {
-      _id: new mongoose.Types.ObjectId(),
-      driver: driverId || new mongoose.Types.ObjectId(),
-      station: stationId || new mongoose.Types.ObjectId(),
-      chargerType: chargerType || 'DC_CCS2',
-      date: startTime ? startTime.split('T')[0] : '2026-08-01',
-      startTime: startTime,
-      endTime: endTime,
-      energyRequestedKwh: energyRequestedKwh || 45,
-      lockedPricePerKwh: aiPredictedPricePerKwh || 65.50,
-      status: 'Pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-  });
-});
 
 /**
  * Validate booking input
@@ -189,15 +163,6 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
-    // Check if driver has any unpaid (Not Done) bookings
-    const unpaidBooking = await Booking.findOne({ driver: user._id, paymentStatus: 'Not Done' });
-    if (unpaidBooking) {
-      return res.status(403).json({
-        success: false,
-        message: 'Booking restricted. You have an unpaid booking (Payment Status: Not Done). Please settle your previous payment to book chargers.'
-      });
-    }
-
     // Find station
     const station = await Station.findById(stationId);
     if (!station) {
@@ -259,9 +224,10 @@ router.post('/', verifyToken, async (req, res) => {
       });
     }
 
-    // Lock the price SERVER-SIDE from the station's current effective rate.
-    // (Never trust the client price — prevents 0-LKR / spoofed bookings.)
-    const effectiveRate = getStationEffectiveRate(station);
+    // Lock the price SERVER-SIDE from the SELECTED CHARGER's current effective
+    // rate (AI multiplier applied to this charger's own base, or its TOU rate).
+    // Never trust the client price — prevents 0-LKR / spoofed bookings.
+    const effectiveRate = await getChargerEffectiveRate(station, charger);
     if (!(effectiveRate > 0)) {
       return res.status(400).json({
         success: false,
@@ -292,6 +258,22 @@ router.post('/', verifyToken, async (req, res) => {
       charger.activeBookingId = newBooking._id;
       await station.save();
     }
+
+    // ── Realtime: notify the station owner + station followers ──
+    const bookingEventData = {
+      bookingId: newBooking._id,
+      stationId: String(newBooking.station),
+      stationName: station.stationName,
+      chargerId: newBooking.chargerId,
+      status: newBooking.status,
+      date: newBooking.date,
+      startTime: newBooking.startTime,
+      endTime: newBooking.endTime,
+      driverName: newBooking.customerName || user.name || 'EV Driver',
+      createdAt: newBooking.createdAt,
+    };
+    publishToOwner(station.ownerId, 'booking.created', bookingEventData);
+    publishToStation(String(newBooking.station), 'availability.updated', bookingEventData);
 
     res.status(201).json({
       success: true,
@@ -489,20 +471,19 @@ router.get('/', verifyToken, async (req, res) => {
 });
 
 
-// 5. PATCH /api/bookings/:id/status - THE POS STATE MACHINE
+// 5. PATCH /api/bookings/:id/status - THE BOOKING STATE MACHINE
 // Owner flow:   Pending -> Confirmed -> Active_Charging -> Completed
-//               Pending -> Cancelled (reject, no penalty)
-//               Confirmed -> No_Show | Cancelled (after approval -> 50% penalty)
-//               Expired -> Cancelled (admin cleanup)
-// Driver flow:  Pending/Confirmed -> Cancelled (>= 1h before start, no penalty)
+//               Pending -> Cancelled (reject)
+// Driver has NO manual actions (no edit/delete/cancel).
+// NOTE: No automatic billing — the owner settles the agreed lockedPricePerKwh
+// manually. Cancelled/rejected bookings are purged from the DB after 10 min.
 const ALLOWED_TRANSITIONS = {
-  Pending: { owner: ['Confirmed', 'Cancelled'], driver: ['Cancelled'] },
-  Confirmed: { owner: ['Active_Charging', 'No_Show', 'Cancelled'], driver: ['Cancelled'] },
+  Pending: { owner: ['Confirmed', 'Cancelled'], driver: [] },
+  Confirmed: { owner: ['Active_Charging'], driver: [] },
   Active_Charging: { owner: ['Completed'], driver: [] },
   Completed: { owner: [], driver: [] },
   Cancelled: { owner: [], driver: [] },
-  No_Show: { owner: [], driver: [] },
-  Expired: { owner: ['Cancelled'], driver: [] },
+  Expired: { owner: [], driver: [] },
 };
 
 router.patch('/:id/status', verifyToken, async (req, res) => {
@@ -530,68 +511,68 @@ router.patch('/:id/status', verifyToken, async (req, res) => {
       });
     }
 
-    // 1-HOUR CANCELLATION RESTRICTION FOR DRIVERS
-    if (role === 'driver' && status === 'Cancelled') {
-      const bookingStart = new Date(`${booking.date}T${booking.startTime}:00`);
-      const diffMins = (bookingStart.getTime() - Date.now()) / (1000 * 60);
-      if (diffMins < 60) {
-        return res.status(400).json({
-          success: false,
-          message: 'Cancellation restricted. Bookings cannot be cancelled less than 1 hour before scheduled start time.'
-        });
-      }
-    }
-
+    // Drivers cannot cancel/edit/delete bookings themselves.
     const charger = station ? station.chargers.id(booking.chargerId) : null;
 
-    // Apply charger state transitions
+    // The charger's lock (status + activeBookingId) belongs to AT MOST ONE
+    // booking at a time — the one that booked it while it was AVAILABLE, or
+    // the one that started charging on it. Non-overlapping future bookings
+    // on a busy charger do NOT hold the lock. So every charger mutation below
+    // is guarded: only mutate if THIS booking owns the charger (DELETE and
+    // the 15-min expiry job already guard this way).
+    const ownsCharger = !!charger && !!charger.activeBookingId &&
+      String(charger.activeBookingId) === String(booking._id);
+
+    // Apply charger state transitions + booking timestamps.
+    // NOTE: The system does NOT calculate energy/cost. The station owner
+    // settles the amount manually using the agreed lockedPricePerKwh.
     if (status === 'Confirmed') {
-      if (charger) charger.status = 'RESERVED';
+      if (ownsCharger) charger.status = 'RESERVED';
     } else if (status === 'Active_Charging') {
-      if (charger) charger.status = 'CHARGING';
       booking.actualStartedAt = new Date();
+      if (ownsCharger) {
+        charger.status = 'CHARGING';
+      } else if (charger && charger.status === 'AVAILABLE') {
+        // Session actually started on a currently-free charger — claim the lock.
+        charger.status = 'CHARGING';
+        charger.activeBookingId = booking._id;
+      }
     } else if (status === 'Completed') {
-      if (charger) {
-        charger.status = 'AVAILABLE';
-        charger.activeBookingId = null;
-      }
       booking.actualEndedAt = new Date();
-
-      const durationHours = booking.actualStartedAt
-        ? Math.max(0.25, (booking.actualEndedAt - booking.actualStartedAt) / (1000 * 60 * 60))
-        : 0.5;
-      const power = charger ? charger.powerKW : 50;
-      booking.energyConsumedKWh = durationHours * power;
-      booking.totalCostLKR = Math.round(booking.energyConsumedKWh * booking.lockedPricePerKwh);
-      booking.paymentStatus = 'Pending';
-    } else if (status === 'No_Show' || status === 'Cancelled') {
-      if (charger) {
+      if (ownsCharger) {
         charger.status = 'AVAILABLE';
         charger.activeBookingId = null;
       }
-
-      // 50% penalty applies for no-show, or for owner-side cancellations
-      // AFTER approval. Driver cancellations are penalty-free.
-      const wasApproved = ['Confirmed', 'Active_Charging'].includes(currentStatus);
-      const penaltyApplies = status === 'No_Show' || (status === 'Cancelled' && wasApproved && role === 'owner');
-      if (penaltyApplies) {
-        const startTime = new Date(`${booking.date}T${booking.startTime}`);
-        let endTime = new Date(`${booking.date}T${booking.endTime}`);
-        if (Number.isNaN(endTime.getTime())) {
-          endTime = new Date(startTime.getTime() + 30 * 60000);
-        }
-        const estDurationHours = Math.max(0.25, (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60));
-        const power = charger ? charger.powerKW : 50;
-        const estimatedTotalLKR = estDurationHours * power * booking.lockedPricePerKwh;
-
-        booking.totalCostLKR = Math.round(estimatedTotalLKR * 0.5); // 50% penalty
-        booking.paymentStatus = 'Not Done'; // Flag unpaid
+      // No automatic billing — lockedPricePerKwh remains the agreed rate.
+    } else if (status === 'Cancelled') {
+      if (ownsCharger) {
+        charger.status = 'AVAILABLE';
+        charger.activeBookingId = null;
       }
+      // Rejected/cancelled -> visible for 10 more minutes, then purged.
+      booking.removableAt = new Date(Date.now() + 10 * 60 * 1000);
     }
 
     booking.status = status;
     await booking.save();
     if (station) await station.save();
+
+    // ── Realtime: notify driver, station owner, and station followers ──
+    const updatedEventData = {
+      bookingId: booking._id,
+      stationId: String(booking.station),
+      stationName: station ? station.stationName : '',
+      chargerId: booking.chargerId,
+      status: booking.status,
+      previousStatus: currentStatus,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      updatedAt: booking.updatedAt,
+    };
+    publishToUser(booking.driver, 'booking.updated', updatedEventData);
+    if (station) publishToOwner(station.ownerId, 'booking.updated', updatedEventData);
+    publishToStation(String(booking.station), 'availability.updated', updatedEventData);
 
     res.status(200).json({ success: true, data: booking });
   } catch (error) {
@@ -600,142 +581,14 @@ router.patch('/:id/status', verifyToken, async (req, res) => {
   }
 });
 
-/**
- * PATCH /api/bookings/:id/payment - Update payment status (Done, Not Done, Pending)
- */
-router.patch('/:id/payment', verifyToken, async (req, res) => {
-  try {
-    const { paymentStatus } = req.body;
-    if (!['Pending', 'Done', 'Not Done'].includes(paymentStatus)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid paymentStatus. Allowed values: Pending, Done, Not Done'
-      });
-    }
-
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ success: false, message: 'Booking not found.' });
-    }
-
-    // Only the station owner can settle payment
-    const { ok, error, status: errStatus } = await authorizeBookingAccess(req, booking, { requireOwner: true });
-    if (!ok) return res.status(errStatus).json({ success: false, message: error });
-
-    booking.paymentStatus = paymentStatus;
-    await booking.save();
-
-    res.status(200).json({
-      success: true,
-      message: `Payment status updated to ${paymentStatus}`,
-      data: booking
-    });
-  } catch (error) {
-    console.error('Error updating payment status:', error);
-    res.status(500).json({ success: false, message: 'Server error', error: error.message });
-  }
-});
-
 // NOTE: The old /api/bookings/:id/auto-cancel endpoint was removed.
+// NOTE: Payments are settled manually by the station owner (off-system).
+//       There is intentionally NO payment endpoint.
 // Unapproved Pending bookings are now auto-marked 'Expired' by the server's
 // 15-minute background job (kept in DB, charger released) — never deleted.
 
-// 7. PUT /api/bookings/:id - Station Owner Edits Booking Details
-// (single consolidated handler; driver users may not edit reservations)
-router.put('/:id', verifyToken, async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found.' });
-
-    const { ok, error, status: errStatus, user, station } = await authorizeBookingAccess(req, booking, { requireOwner: true });
-    if (!ok) return res.status(errStatus).json({ success: false, message: error });
-
-    // Only Pending / Confirmed bookings can be edited
-    if (!['Pending', 'Confirmed'].includes(booking.status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Bookings in '${booking.status}' state cannot be edited.`
-      });
-    }
-
-    const { date, startTime, endTime, chargerId, customerName, customerPhone, lockedPricePerKwh } = req.body;
-
-    // Validate the new slot if time/date is changing
-    const newDate = date || booking.date;
-    const newStart = startTime || booking.startTime;
-    const newEnd = endTime || booking.endTime;
-
-    const startMins = timeToMinutes(newStart);
-    const endMins = timeToMinutes(newEnd);
-    if (!Number.isFinite(startMins) || !Number.isFinite(endMins) || startMins >= endMins) {
-      return res.status(400).json({ success: false, message: 'Invalid time range (HH:MM, start before end).' });
-    }
-
-    // Contact details remain mandatory for walk-in bookings
-    const finalName = (customerName !== undefined ? customerName : booking.customerName || '').trim();
-    const finalPhone = (customerPhone !== undefined ? customerPhone : booking.customerPhone || '').trim();
-    if (!finalName || !finalPhone) {
-      return res.status(400).json({ success: false, message: 'Customer Name and Contact Phone are mandatory.' });
-    }
-
-    // If the slot moved, prevent overlap with another active booking
-    const targetChargerId = chargerId && chargerId !== String(booking.chargerId) ? chargerId : booking.chargerId;
-    if (newDate !== booking.date || newStart !== booking.startTime || newEnd !== booking.endTime || chargerId) {
-      const overlapping = await findOverlappingBooking(
-        booking.station,
-        targetChargerId,
-        newDate,
-        newStart,
-        newEnd,
-        booking._id
-      );
-      if (overlapping) {
-        return res.status(409).json({
-          success: false,
-          message: `The selected charger is already booked for an overlapping slot (${overlapping.startTime} - ${overlapping.endTime}).`
-        });
-      }
-    }
-
-    // Handle charger reassignment (release old, lock new)
-    const oldChargerStr = String(booking.chargerId);
-    if (targetChargerId !== oldChargerStr && station) {
-      const newCharger = station.chargers.id(targetChargerId);
-      if (!newCharger) {
-        return res.status(404).json({ success: false, message: 'Target charger not found at this station.' });
-      }
-      if (newCharger.status !== 'AVAILABLE' && String(newCharger.activeBookingId) !== String(booking._id)) {
-        return res.status(409).json({ success: false, message: `Target charger is not available. Current status: ${newCharger.status}` });
-      }
-      const oldCharger = station.chargers.id(oldChargerStr);
-      if (oldCharger && String(oldCharger.activeBookingId) === String(booking._id)) {
-        oldCharger.status = 'AVAILABLE';
-        oldCharger.activeBookingId = null;
-      }
-      newCharger.status = 'RESERVED';
-      newCharger.activeBookingId = booking._id;
-      booking.chargerId = targetChargerId;
-    }
-
-    // Apply field updates
-    booking.customerName = finalName;
-    booking.customerPhone = finalPhone;
-    booking.date = newDate;
-    booking.startTime = newStart;
-    booking.endTime = newEnd;
-    if (typeof lockedPricePerKwh === 'number' && Number.isFinite(lockedPricePerKwh) && lockedPricePerKwh >= 0) {
-      booking.lockedPricePerKwh = lockedPricePerKwh;
-    }
-
-    await booking.save();
-    if (station) await station.save();
-
-    return res.status(200).json({ success: true, message: 'Booking updated successfully', data: booking });
-  } catch (error) {
-    console.error('Error updating booking:', error);
-    return res.status(500).json({ success: false, message: 'Failed to update booking', error: error.message });
-  }
-});
+// NOTE: Editing bookings (PUT) has been removed — bookings are created via
+// the booking wizard and managed with approve / reject / delete / complete.
 
 // 10. DELETE /api/bookings/:id - Station Owner Deletes a Booking Record (cleanup)
 router.delete('/:id', verifyToken, async (req, res) => {
@@ -749,9 +602,19 @@ router.delete('/:id', verifyToken, async (req, res) => {
     const { ok, error, status: errStatus } = await authorizeBookingAccess(req, booking, { requireOwner: true });
     if (!ok) return res.status(errStatus).json({ success: false, message: error });
 
+    // Pending/Confirmed can be deleted (frees the slot). Active/Completed
+    // bookings are never removable — the owner must complete, not delete.
+    if (['Active_Charging', 'Completed'].includes(booking.status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Bookings in '${booking.status}' state cannot be deleted.`
+      });
+    }
+
     // Release charger if locked by this booking
+    let station = null;
     if (booking.station && booking.chargerId) {
-      const station = await Station.findById(booking.station);
+      station = await Station.findById(booking.station);
       if (station) {
         const charger = station.chargers.id(booking.chargerId);
         if (charger && charger.activeBookingId?.toString() === booking._id.toString()) {
@@ -763,7 +626,23 @@ router.delete('/:id', verifyToken, async (req, res) => {
     }
 
     await Booking.findByIdAndDelete(req.params.id);
-    return res.status(200).json({ success: true, message: 'Booking deleted successfully.' });
+
+    // ── Realtime: notify driver, station owner, and station followers ──
+    const deletedEventData = {
+      bookingId: booking._id,
+      stationId: String(booking.station),
+      stationName: station ? station.stationName : '',
+      chargerId: booking.chargerId,
+      status: booking.status,
+      date: booking.date,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+    };
+    publishToUser(booking.driver, 'booking.deleted', deletedEventData);
+    if (station) publishToOwner(station.ownerId, 'booking.deleted', deletedEventData);
+    publishToStation(String(booking.station), 'availability.updated', deletedEventData);
+
+    return res.status(200).json({ success: true, message: 'Booking deleted successfully. Slot released.' });
   } catch (error) {
     console.error('Error deleting booking:', error);
     return res.status(500).json({ success: false, message: 'Failed to delete booking', error: error.message });

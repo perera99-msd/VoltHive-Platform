@@ -27,7 +27,8 @@ const CITY_HUBS = [
 ];
 
 const BRANDS = ['EcoCharge', 'VoltHive', 'PowerNet', 'GreenVolt', 'LankaCharge', 'Ceylon EV'];
-const PLUG_TYPES = ['CCS2', 'Type 2', 'CHAdeMO', 'CCS1', 'GB/T'];
+// Canonical charger/connector standards. KEEP IN SYNC with frontend StationMap/AddChargerModal/EditChargerModal/MyGarage
+const PLUG_TYPES = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T', 'Tesla NACS'];
 const STATUSES = ['AVAILABLE', 'AVAILABLE', 'AVAILABLE', 'CHARGING', 'OFFLINE'];
 
 const randomInRange = (min, max) => Math.random() * (max - min) + min;

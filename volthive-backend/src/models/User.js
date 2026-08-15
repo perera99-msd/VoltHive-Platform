@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
     model: { type: String, required: true },
     year: { type: String, default: '2025' },
     batteryKWh: { type: Number, default: 40 },
-    connector: { type: String, default: 'CCS2 Fast' },
+    connector: { type: String, default: 'CCS2' },
     maxKW: { type: Number, default: 50 },
     isPrimary: { type: Boolean, default: false }
   }]

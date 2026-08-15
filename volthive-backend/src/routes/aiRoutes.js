@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const verifyToken = require('../middleware/authMiddleware');
 const Station = require('../models/Station');
 const User = require('../models/User');
+const { roundRateLKR } = require('../utils/rateEngine');
 let EventConfig = null;
 try {
   EventConfig = require('../models/EventConfig');
@@ -214,10 +215,10 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * GET /api/ai/station-forecast/:stationId
+ * GET /api/ai/station-forecast/:stationId or GET /api/ai/forecast/:stationId
  * Location-based forecast & weather for 1 specific station
  */
-router.get('/station-forecast/:stationId', verifyToken, async (req, res) => {
+router.get(['/station-forecast/:stationId', '/forecast/:stationId'], verifyToken, async (req, res) => {
   try {
     const st = await Station.findById(req.params.stationId);
     if (!st) return res.status(404).json({ error: 'Station not found' });
@@ -367,8 +368,10 @@ router.post('/apply-price-override/:stationId', verifyToken, async (req, res) =>
     if (!owner) return; // response already sent
 
     const baseRate = Number(st.basePricePerKwh) || 85;
-    const effectiveRate = Number(calculatedRate) || baseRate;
     const mult = Number(multiplier) || 1.0;
+    // If a concrete rate is sent, trust it; otherwise derive the station
+    // reference rate from baseRate x multiplier so the AI surge is real.
+    const effectiveRate = Number(calculatedRate) > 0 ? Number(calculatedRate) : roundRateLKR(baseRate * mult);
 
     // Resolve the slot label ("HH:00") from the request, defaulting to the
     // current hour if none given. Accepts both "18" and "18:00".
@@ -424,6 +427,84 @@ router.post('/apply-price-override/:stationId', verifyToken, async (req, res) =>
       activePriceOverride: live,
       basePricePerKwh: baseRate,
       effectiveRate
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/ai/price-plan/:stationId
+ * Adds (or updates) an AI-recommended multiplier for a single hour slot in the
+ * station's scheduled price plan. This is the endpoint the owner dashboard
+ * calls when toggling "Apply AI Price". The multiplier is applied to EACH
+ * charger's own base rate at read time (rateEngine), so per-charger price
+ * differences are preserved while surging/discounting proportionally.
+ */
+router.post('/price-plan/:stationId', verifyToken, async (req, res) => {
+  try {
+    const { hourSlot, multiplier } = req.body;
+    const st = await Station.findById(req.params.stationId);
+    if (!st) return res.status(404).json({ error: 'Station not found' });
+
+    const owner = await requireStationOwner(req, res, st);
+    if (!owner) return; // response already sent
+
+    const baseRate = Number(st.basePricePerKwh) || 85;
+    const mult = Number(multiplier) || 1.0;
+
+    // Resolve the slot label ("HH:00") from the request, defaulting to the
+    // current hour if none given. Accepts both "18" and "18:00".
+    const now = new Date();
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const hourStr = String(hourSlot || '').trim();
+    let slotHour = null;
+    if (/^\d{1,2}$/.test(hourStr)) {
+      slotHour = Number(hourStr);
+    } else {
+      const m = hourStr.match(/^(\d{1,2}):00$/);
+      if (m) slotHour = Number(m[1]);
+    }
+    const slotLabel = (slotHour !== null && slotHour >= 0 && slotHour <= 23)
+      ? `${pad2(slotHour)}:00`
+      : `${pad2(now.getHours())}:00`;
+
+    // Expiry: 23:59:59 of the chosen hour slot (e.g. "18:00" -> 18:59:59).
+    let expiresAt = new Date(now);
+    expiresAt.setMinutes(0, 0, 0);
+    if (slotHour !== null && slotHour >= 0 && slotHour <= 23) {
+      expiresAt.setHours(slotHour);
+      if (expiresAt.getTime() <= now.getTime()) expiresAt.setDate(expiresAt.getDate() + 1);
+    }
+    expiresAt.setMinutes(59, 59, 999);
+
+    // Drop stale slots first so the plan stays clean.
+    st.pricePlan = (st.pricePlan || []).filter(p => !p.expiresAt || new Date(p.expiresAt).getTime() > now.getTime());
+
+    const entry = {
+      hourSlot: slotLabel,
+      effectiveRate: roundRateLKR(baseRate * mult),
+      originalRate: baseRate,
+      multiplier: mult,
+      expiresAt,
+      appliedAt: new Date()
+    };
+
+    const existingIdx = st.pricePlan.findIndex(p => p.hourSlot === slotLabel);
+    if (existingIdx >= 0) st.pricePlan[existingIdx] = entry;
+    else st.pricePlan.push(entry);
+
+    await st.save();
+
+    const liveSlot = `${pad2(now.getHours())}:00`;
+    const live = st.pricePlan.find(p => p.hourSlot === liveSlot && p.expiresAt && new Date() < new Date(p.expiresAt)) || null;
+
+    return res.status(200).json({
+      status: 'success',
+      pricePlan: st.pricePlan,
+      activePriceOverride: live,
+      basePricePerKwh: baseRate,
+      effectiveRate: entry.effectiveRate
     });
   } catch (err) {
     return res.status(500).json({ error: err.message });

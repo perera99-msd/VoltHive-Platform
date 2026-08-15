@@ -1,6 +1,7 @@
 const Station = require('../models/Station');
 const User = require('../models/User');
 const Rate = require('../models/Rate');
+const { getChargerEffectiveRateFromMap } = require('../utils/rateEngine');
 
 // Helper to find station & charger by chargerId
 const findStationByChargerId = async (chargerId) => {
@@ -29,6 +30,7 @@ exports.getOwnerChargers = async (req, res) => {
           plugType: c.plugType,
           powerKW: c.powerKW,
           basePricePerKwh: c.basePricePerKwh,
+          currentRate: getChargerEffectiveRateFromMap(s, c, rateMap),
           status: c.status,
           rateConfig: rateMap.get(String(c._id)) || null
         });

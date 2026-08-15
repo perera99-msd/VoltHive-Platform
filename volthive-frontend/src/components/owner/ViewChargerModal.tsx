@@ -25,6 +25,7 @@ export default function ViewChargerModal({ charger, isOpen, onClose, onEdit }: P
   if (!charger) return null;
 
   const currentStatus = charger.status || charger.statusDisplay || 'AVAILABLE';
+  const statusLabel = charger.statusDisplay || currentStatus;
 
   return (
     <AnimatePresence>
@@ -68,8 +69,8 @@ export default function ViewChargerModal({ charger, isOpen, onClose, onEdit }: P
                 </div>
 
                 <div className="p-4 bg-(--surface-soft)/40 rounded-2xl border border-(--brand-border)/60 flex flex-col justify-center">
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-(--brand-muted) mb-1">Base Tariff Rate</span>
-                  <span className="text-[18px] font-black text-(--brand-ink)">LKR {charger.basePricePerKwh || 85} <span className="text-[10px] font-bold opacity-75">/ kWh</span></span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider text-(--brand-muted) mb-1">Current Rate</span>
+                  <span className="text-[18px] font-black text-(--brand-ink)">LKR {(charger as { currentRate?: number }).currentRate || charger.basePricePerKwh || 85} <span className="text-[10px] font-bold opacity-75">/ kWh</span></span>
                 </div>
               </div>
 
@@ -80,14 +81,16 @@ export default function ViewChargerModal({ charger, isOpen, onClose, onEdit }: P
                   <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wider rounded-md border flex items-center gap-1.5 ${
                     currentStatus === 'AVAILABLE' || currentStatus === 'Online' ? 'bg-(--brand-green)/10 text-(--brand-green-deep) border-(--brand-green)/20' :
                     currentStatus === 'CHARGING' ? 'bg-(--brand-blue)/10 text-(--brand-blue-deep) border-(--brand-blue)/20' :
+                    currentStatus === 'OFFLINE' ? 'bg-(--ui-error)/10 text-(--ui-error) border-(--ui-error)/20' :
                     'bg-[var(--ui-warning)]/10 text-[#d09d2e] border-[var(--ui-warning)]/20'
                   }`}>
                     <span className={`w-1.5 h-1.5 rounded-full ${
                       currentStatus === 'AVAILABLE' || currentStatus === 'Online' ? 'bg-(--brand-green)' :
                       currentStatus === 'CHARGING' ? 'bg-(--brand-blue) animate-pulse' :
+                      currentStatus === 'OFFLINE' ? 'bg-(--ui-error)' :
                       'bg-[var(--ui-warning)]'
                     }`} />
-                    {currentStatus}
+                    {statusLabel}
                   </span>
                 </div>
 

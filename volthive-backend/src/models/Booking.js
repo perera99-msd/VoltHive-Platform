@@ -75,6 +75,12 @@ const BookingSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Done', 'Not Done'],
     default: 'Pending'
+  },
+  // When set, this booking is discardable (rejected / auto-expired) and will
+  // be purged from the DB once this timestamp passes (10-min grace period).
+  removableAt: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

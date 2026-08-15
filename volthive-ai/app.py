@@ -130,6 +130,9 @@ def map_charger_type(ct):
         return "Tesla Dc Fast"
     if "level 2" in c or " ac" in c or c == "ac" or "type 2" in c:
         return "Level 2"
+    # Type 1 (SAE J1772) is single-phase AC; IEC Mode 1/2/3 are AC charging modes.
+    if "type 1" in c or "j1772" in c or "mode 1" in c or "mode 2" in c or "mode 3" in c:
+        return "Level 2"
     return "Dc Fast Charge"
 
 

@@ -11,6 +11,9 @@ type Station = {
   stationName: string;
 };
 
+// Canonical charger/connector standards. KEEP IN SYNC with StationMap, EditChargerModal, MyGarage, seedStations.js
+const CONNECTOR_OPTIONS = ['CCS2', 'CHAdeMO', 'CCS1', 'Type 2', 'Type 1', 'GB/T', 'Tesla NACS'];
+
 type Props = {
   stations: Station[];
   isOpen: boolean;
@@ -136,10 +139,9 @@ export default function AddChargerModal({ stations, isOpen, onClose, onSaved }: 
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-(--brand-muted) uppercase tracking-[0.14em]">Plug Standard</label>
                       <select required value={connectorType} onChange={e => setConnectorType(e.target.value)} className={`${inputCls} cursor-pointer`}>
-                        <option value="CCS2">CCS2 (DC Fast)</option>
-                        <option value="CHAdeMO">CHAdeMO (DC Fast)</option>
-                        <option value="Type 2">Type 2 (AC)</option>
-                        <option value="GB/T">GB/T (Chinese Standard)</option>
+                        {CONNECTOR_OPTIONS.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
                         <option value="Other">Other Custom Plug</option>
                       </select>
                     </div>
