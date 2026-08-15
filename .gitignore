@@ -53,6 +53,9 @@ eggs/
 .eggs/
 lib/
 lib64/
+# Frontend lib folder is application source code, not a Python venv
+!volthive-frontend/src/lib/
+!volthive-frontend/src/lib/**
 parts/
 sdist/
 var/
