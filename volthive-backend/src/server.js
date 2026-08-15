@@ -32,6 +32,39 @@ const normalizeAllowedOrigins = () => {
 
 const allowedOrigins = normalizeAllowedOrigins();
 
+/**
+ * Decide whether a request origin is allowed.
+ *  - exact matches from CORS_ALLOWED_ORIGINS
+ *  - www. / bare-domain variants of listed origins
+ *    (e.g. volthive.vercel.app ⇄ www.volthive.vercel.app)
+ *  - any *.vercel.app subdomain (Vercel production + preview deployments)
+ */
+const isOriginAllowed = (origin) => {
+  if (allowedOrigins.includes(origin)) return true;
+
+  try {
+    const { hostname } = new URL(origin);
+
+    // Any Vercel deployment (project.vercel.app, project-git-hash.vercel.app, www.*)
+    if (hostname === 'vercel.app' || hostname.endsWith('.vercel.app')) return true;
+
+    // www. / non-www variant of an explicitly allowed origin
+    const bare = hostname.replace(/^www\./, '');
+    for (const allowed of allowedOrigins) {
+      try {
+        const allowedHost = new URL(allowed).hostname.replace(/^www\./, '');
+        if (allowedHost === bare) return true;
+      } catch {
+        /* ignore malformed allowed origin */
+      }
+    }
+  } catch {
+    /* ignore unparseable origin */
+  }
+
+  return false;
+};
+
 const corsOptions = {
   origin(origin, callback) {
     // Allow server-to-server calls and tools like curl/postman (no origin header)
@@ -40,7 +73,7 @@ const corsOptions = {
       return;
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
       return;
     }
@@ -153,6 +186,15 @@ const server = app.listen(PORT, () => {
   console.log(`✅ VoltHive Backend running on http://0.0.0.0:${PORT}`);
   console.log(`📍 Environment: ${NODE_ENV}`);
   console.log(`🛡️  CORS Origins: ${allowedOrigins.join(', ')}`);
+
+  // Operational warnings for cloud deployments missing key settings.
+  const onCloud = Boolean(process.env.WEBSITES_PORT || process.env.WEBSITE_SITE_NAME);
+  if (onCloud && NODE_ENV !== 'production') {
+    console.warn('⚠️  Running on Azure but NODE_ENV is not "production". Set NODE_ENV=production (enables rate limiting & hides error stack traces).');
+  }
+  if (onCloud && !process.env.FLASK_API_URL) {
+    console.warn('⚠️  FLASK_API_URL is not set — AI surge pricing will use base price (multiplier 1.0).');
+  }
 
   // ============================================
   // SSE STREAM SAFETY

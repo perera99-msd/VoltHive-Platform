@@ -7,7 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { auth } from '../../lib/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { apiUrl } from '../../lib/api';
 
 export default function AuthPage() {
@@ -305,28 +305,26 @@ export default function AuthPage() {
       </div>
 
       {/* =========================================================
-          LOGO (Disabled navigation in Standalone PWA App Mode)
+          BACK TO HOME BUTTON (Hidden in Standalone PWA App Mode)
       ========================================================= */}
-      <Link
-        href={isAppOrMobile ? "#" : "/"}
-        className="absolute top-8 left-1/2 -translate-x-1/2 lg:translate-x-0 lg:top-10 lg:left-10 z-50 bg-(--brand-card)/70 lg:bg-(--brand-card)/90 backdrop-blur-2xl lg:backdrop-blur-md border border-(--brand-card)/50 lg:border-(--brand-border) rounded-[1.25rem] lg:rounded-2xl px-4 py-3 lg:px-3 lg:py-2 shadow-[0_16px_40px_-16px_rgba(9,32,52,0.3)] hover:shadow-[0_20px_40px_-24px_rgba(74,144,164,0.4)] transition-all"
-      >
-        <Image
-          src="/brand/logo-without-slogan.png"
-          alt="VoltHive"
-          width={160}
-          height={42}
-          className="h-7 sm:h-9 w-auto"
-          priority
-        />
-      </Link>
+      {!isAppOrMobile && (
+        <Link
+          href="/"
+          className="absolute top-4 left-4 sm:top-8 sm:left-8 z-50 group inline-flex items-center gap-2.5 rounded-full border border-(--brand-border) bg-(--brand-card)/80 px-3.5 py-2.5 shadow-[0_12px_32px_-16px_rgba(9,32,52,0.35)] backdrop-blur-md hover:shadow-[0_16px_36px_-18px_rgba(74,144,164,0.45)] transition-all"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-(--surface-soft) text-(--brand-blue-deep) transition-transform group-hover:-translate-x-0.5">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+          </span>
+          <span className="text-[13px] font-bold text-(--brand-muted) group-hover:text-(--brand-ink)">Back to home</span>
+        </Link>
+      )}
 
       {/* =========================================================
           LEFT PANE (Desktop Only)
       ========================================================= */}
       <div className="hidden lg:flex lg:w-1/2 relative flex-col justify-end p-16 xl:p-20 overflow-hidden border-r border-(--brand-border) bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)]">
-        <div className="absolute -top-[16%] -right-[10%] w-[58%] h-[54%] rounded-full bg-(--accent-blue)/30 blur-[110px] z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-[14%] left-[4%] w-[58%] h-[52%] rounded-full bg-(--accent-green)/28 blur-[120px] z-0 pointer-events-none"></div>
+        <div className="absolute -top-[16%] -right-[10%] w-[58%] h-[54%] rounded-full bg-(--accent-blue)/30 blur-[110px] z-0 pointer-events-none vh-float-soft"></div>
+        <div className="absolute -bottom-[14%] left-[4%] w-[58%] h-[52%] rounded-full bg-(--accent-green)/28 blur-[120px] z-0 pointer-events-none vh-float-soft [animation-delay:2s]"></div>
         <div className="absolute inset-0 z-0 opacity-25 bg-[linear-gradient(rgba(74,144,164,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(108,181,103,0.08)_1px,transparent_1px)] bg-size-[3rem_3rem] mask-[radial-gradient(ellipse_78%_78%_at_50%_50%,#000_35%,transparent_100%)]"></div>
 
         <div className="relative z-10 vh-rise-in">
@@ -368,8 +366,21 @@ export default function AuthPage() {
       >
         
         {/* The Form Card */}
-        <div className="w-full max-w-125 bg-(--brand-card)/75 lg:bg-(--brand-card)/92 backdrop-blur-2xl lg:backdrop-blur-md rounded-4xl lg:rounded-4xl border border-(--brand-card)/60 lg:border-(--brand-border) shadow-[0_24px_80px_-24px_rgba(9,32,52,0.2)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-6 sm:p-10 vh-rise-in my-auto">
-          
+        <motion.div
+          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="w-full max-w-125 bg-(--brand-card)/75 lg:bg-(--brand-card)/92 backdrop-blur-2xl lg:backdrop-blur-md rounded-4xl lg:rounded-4xl border border-(--brand-card)/60 lg:border-(--brand-border) shadow-[0_24px_80px_-24px_rgba(9,32,52,0.2)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-6 sm:p-10 my-auto"
+        >
+          <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={isLogin ? 'login' : 'register'}
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], opacity: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }}
+            className="overflow-hidden"
+          >
           <div className="mb-8 text-left">
             <h2 className="text-3xl font-semibold tracking-tight text-(--brand-ink) mb-2">
               {isLogin ? 'Welcome back.' : 'Create an account.'}
@@ -545,7 +556,9 @@ export default function AuthPage() {
               </button>
             </p>
           </div>
-        </div>
+          </motion.div>
+          </AnimatePresence>
+        </motion.div>
       </motion.div>
     </main>
   );

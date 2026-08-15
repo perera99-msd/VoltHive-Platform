@@ -37,11 +37,67 @@ const HERO_SLIDES = [
       { value: '< 1 Sec', label: 'Telemetry Sync' },
       { value: 'FIDO2', label: 'Biometric Auth' }
     ]
+  },
+  {
+    id: 'seamless-booking',
+    badge: 'PRE-ARRIVAL BOOKING',
+    title: 'Reserve. Arrive. Charge.',
+    subtitle: 'A guaranteed slot before you leave home.',
+    description: 'Lock in an ultra-fast charging slot up to 24 hours ahead and skip the queue. Live availability, transparent pricing, and zero guesswork.',
+    bgImage: '/hero/slide3.png',
+    primaryCta: { text: 'Reserve a Charger', href: '/driver-login' },
+    secondaryCta: { text: 'Explore Capabilities', href: '#services' },
+    stats: [
+      { value: '24 hr', label: 'Advance Booking' },
+      { value: '0', label: 'Queue Anxiety' },
+      { value: 'Live', label: 'Slot Availability' },
+      { value: '1 Tap', label: 'To Reserve' }
+    ]
+  },
+  {
+    id: 'own-the-grid',
+    badge: 'FOR STATION OWNERS',
+    title: 'Own the Grid. Grow the Yield.',
+    subtitle: 'Zero gateway fees, full revenue control.',
+    description: 'Deploy chargers, set dynamic tariffs, and settle revenue directly. Real-time telemetry and AI pricing turn your hardware into a predictable asset engine.',
+    bgImage: '/hero/slide4.png',
+    primaryCta: { text: 'Admin Center', href: '/owner-login' },
+    secondaryCta: { text: 'See Capabilities', href: '#services' },
+    stats: [
+      { value: '0%', label: 'Gateway Cut' },
+      { value: 'AI', label: 'Dynamic Pricing' },
+      { value: 'Live', label: 'Telemetry' },
+      { value: '100%', label: 'Your Revenue' }
+    ]
   }
 ];
 
-export default function Hero() {
+interface HeroProps {
+  stations?: Array<{
+    _id: string;
+    name?: string;
+    stationName?: string;
+    pricePerKWh?: number;
+    chargers?: Array<{ _id: string; status?: string }>;
+  }>;
+}
+
+export default function Hero({ stations = [] }: HeroProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // Real live-network stats computed from the station feed (accurate data).
+  const totalChargers = stations.reduce((n, s) => n + (s.chargers?.length || 0), 0);
+  const avgPrice = stations.length
+    ? Math.round(stations.reduce((sum, s) => sum + (s.pricePerKWh || 0), 0) / stations.length)
+    : 0;
+  const liveStats = stations.length
+    ? [
+        { value: `${stations.length}`, label: 'Stations Online' },
+        { value: `${totalChargers}`, label: 'Live Connectors' },
+        { value: `LKR ${avgPrice}`, label: 'Avg. per kWh' },
+        { value: '24/7', label: 'Network Live' },
+      ]
+    : null;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -158,7 +214,7 @@ export default function Hero() {
                 transition={{ duration: 1.4, delay: 0.9 }}
                 className="pt-4 sm:pt-6 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 max-w-2xl"
               >
-                {slide.stats.map((st, i) => (
+                {(liveStats || slide.stats).map((st, i) => (
                   <div key={i} className="p-2.5 sm:p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-(--brand-border) shadow-2xs">
                     <div className="text-lg sm:text-2xl font-black text-(--brand-ink)">{st.value}</div>
                     <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-(--brand-muted) mt-0.5">{st.label}</div>
@@ -171,15 +227,15 @@ export default function Hero() {
 
       </div>
 
-      {/* Slider Controls */}
+      {/* Slider Indicator Dots */}
       <div className="absolute bottom-6 left-5 sm:bottom-10 sm:left-10 z-20 flex gap-2.5 sm:gap-3 items-center">
         {HERO_SLIDES.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentSlide(idx)}
             className={`h-1.5 sm:h-2 rounded-full transition-all duration-1000 cursor-pointer ${
-              idx === currentSlide 
-                ? 'w-10 sm:w-12 bg-linear-to-r from-(--brand-blue) to-(--brand-green)' 
+              idx === currentSlide
+                ? 'w-10 sm:w-12 bg-linear-to-r from-(--brand-blue) to-(--brand-green)'
                 : 'w-3 sm:w-4 bg-(--brand-border) hover:bg-(--brand-muted)/40'
             }`}
             aria-label={`Go to slide ${idx + 1}`}

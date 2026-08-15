@@ -43,7 +43,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
   const [sending, setSending] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   const tokenFor = useCallback(async () => (await user?.getIdToken()) || '', [user]);
 
@@ -131,9 +131,11 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
     }
   }, [user, tokenFor, loadConversations]);
 
-  // Auto-scroll to newest message
+  // Auto-scroll ONLY the inner chat stream container to the newest message,
+  // so the page itself (outer scroll area) is never pushed off-screen.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = messagesContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   // Load list on mount
@@ -256,7 +258,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
           className="bg-(--brand-card)/85 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_20px_50px_-25px_rgba(9,32,52,0.45)] overflow-hidden flex flex-col h-[58dvh] max-h-[580px] min-h-[380px] relative z-10"
         >
           {/* Scrollable Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-(--surface-soft)/20 [&::-webkit-scrollbar]:hidden">
+          <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-(--surface-soft)/20 [&::-webkit-scrollbar]:hidden">
             {loadingThread ? (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <div className="w-8 h-8 rounded-full border-2 border-(--brand-blue) border-t-transparent animate-spin mb-3" />
@@ -301,7 +303,6 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
                 );
               })
             )}
-            <div ref={bottomRef} />
           </div>
 
           {/* Chat Input Bar */}
