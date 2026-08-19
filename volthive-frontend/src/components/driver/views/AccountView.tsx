@@ -31,27 +31,27 @@ const SettingsRow = ({
 }) => (
   <div
     onClick={onClick}
-    className={`flex items-center justify-between p-4 sm:px-6 cursor-pointer transition-colors border-b border-(--brand-border) last:border-0 ${
+    className={`flex items-center justify-between p-3.5 sm:p-4 sm:px-6 cursor-pointer transition-colors border-b border-(--brand-border) last:border-0 ${
       isDestructive ? 'hover:bg-(--ui-error)/10' : onClick ? 'hover:bg-(--accent-blue)/8' : ''
     }`}
   >
-    <div className="flex items-center gap-4 min-w-0 flex-1 mr-3">
-      <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center border border-(--brand-border) shrink-0 ${iconBgClass || 'bg-(--accent-blue)/12 text-(--brand-muted)'}`}>
+    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 mr-2 sm:mr-3">
+      <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] flex items-center justify-center border border-(--brand-border) shrink-0 ${iconBgClass || 'bg-(--accent-blue)/12 text-(--brand-muted)'}`}>
         {icon}
       </div>
-      <p className={`text-[15px] font-medium tracking-tight truncate ${isDestructive ? 'text-(--ui-error)' : 'text-(--brand-ink)'}`}>
+      <p className={`text-sm sm:text-[15px] font-medium tracking-tight truncate ${isDestructive ? 'text-(--ui-error)' : 'text-(--brand-ink)'}`}>
         {title}
       </p>
     </div>
-    <div className="flex items-center gap-3 shrink-0">
+    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
       {badge && (
         <span className="px-2 py-0.5 rounded-full bg-(--brand-blue) text-white text-[10px] font-black animate-pulse shadow-xs">
           {badge}
         </span>
       )}
-      {value && <span className="text-[13px] font-medium text-(--brand-muted) max-w-[140px] sm:max-w-[220px] truncate">{value}</span>}
+      {value && <span className="text-xs sm:text-[13px] font-medium text-(--brand-muted) max-w-[120px] sm:max-w-[220px] truncate text-right">{value}</span>}
       {onClick && (
-        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-(--brand-muted)">
+        <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 text-(--brand-muted) shrink-0">
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       )}
@@ -60,8 +60,8 @@ const SettingsRow = ({
 );
 
 const SettingsCard = ({ title, children }: { title: string; children: ReactNode }) => (
-  <div className="mb-8">
-    <h3 className="text-xs font-bold text-(--brand-muted) uppercase tracking-[0.15em] mb-3 ml-2">{title}</h3>
+  <div className="mb-6">
+    <h3 className="text-xs font-bold text-(--brand-muted) uppercase tracking-[0.15em] mb-2.5 ml-2">{title}</h3>
     <div className="bg-(--brand-card)/82 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_10px_30px_-24px_rgba(9,32,52,0.45)] overflow-hidden">
       {children}
     </div>
@@ -401,35 +401,35 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="mb-7 rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
+        className="mb-6 rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-5 sm:p-7 shadow-[0_20px_50px_-30px_rgba(9,32,52,0.45)]"
       >
         <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Profile Settings</p>
-        <h1 className="text-3xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight mt-2">
+        <h1 className="text-2xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight mt-1.5">
           Account
           <span className="text-transparent bg-clip-text bg-linear-to-r from-(--brand-blue) to-(--brand-green)"> Center</span>
         </h1>
-        <p className="text-(--brand-muted) text-sm mt-2 font-medium">Manage identity, billing, security, and support preferences in one premium workspace.</p>
+        <p className="text-(--brand-muted) text-xs sm:text-sm mt-1.5 font-medium">Manage identity, billing, security, and support preferences in one premium workspace.</p>
       </motion.header>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-(--brand-card)/84 backdrop-blur-2xl rounded-[2.2rem] border border-(--brand-card)/70 shadow-[0_20px_48px_-30px_rgba(9,32,52,0.52)] p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 mb-10 relative overflow-hidden"
+        className="bg-(--brand-card)/84 backdrop-blur-2xl rounded-3xl border border-(--brand-card)/70 shadow-[0_16px_40px_-26px_rgba(9,32,52,0.4)] p-5 sm:p-7 flex flex-col sm:flex-row items-center gap-5 mb-8 relative overflow-hidden"
       >
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-(--accent-blue)/16 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-(--accent-green)/16 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative shrink-0">
-          <div className="w-24 h-24 sm:w-28 sm:h-28 bg-linear-to-br from-(--brand-blue) to-(--brand-green) rounded-[1.5rem] flex items-center justify-center text-4xl font-light text-(--brand-card) shadow-xl shadow-(--brand-blue)/25 border-2 border-(--brand-card)/80 z-10 relative">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-linear-to-br from-(--brand-blue) to-(--brand-green) rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-light text-white shadow-lg shadow-(--brand-blue)/20 border-2 border-white/40 z-10 relative">
             {profileData?.name?.charAt(0) || user?.displayName?.charAt(0) || 'D'}
           </div>
         </div>
 
-        <div className="text-center sm:text-left flex-1 relative z-10">
-          <h2 className="text-2xl font-semibold text-(--brand-ink) tracking-tight">{profileData?.name || user?.displayName || '—'}</h2>
-          <p className="text-[15px] font-medium text-(--brand-muted) mt-1">{user?.email || '—'}</p>
-          <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--accent-blue)/12 text-(--brand-muted) text-[11px] font-bold uppercase tracking-widest border border-(--brand-border) shadow-sm">
+        <div className="text-center sm:text-left flex-1 relative z-10 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-semibold text-(--brand-ink) tracking-tight truncate">{profileData?.name || user?.displayName || '—'}</h2>
+          <p className="text-sm sm:text-[15px] font-medium text-(--brand-muted) mt-0.5 truncate">{user?.email || '—'}</p>
+          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-(--accent-blue)/12 text-(--brand-muted) text-[10px] sm:text-[11px] font-bold uppercase tracking-widest border border-(--brand-border) shadow-xs">
             Member since {joinDate}
           </div>
         </div>
@@ -573,7 +573,7 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
       ========================================================= */}
       <AnimatePresence>
         {activeModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
             <motion.div 
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
@@ -586,7 +586,7 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
               initial={{ opacity: 0, scale: 0.95, y: 12 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95, y: 12 }} 
-              className="relative z-10 w-full max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl border border-(--brand-border) shadow-[0_34px_80px_-30px_rgba(9,32,52,0.7)] p-6 sm:p-8 overflow-hidden text-(--brand-ink)"
+              className="relative z-10 w-full max-w-md bg-(--brand-card)/95 backdrop-blur-3xl rounded-3xl border border-(--brand-border) shadow-[0_34px_80px_-30px_rgba(9,32,52,0.7)] p-5 sm:p-7 overflow-y-auto max-h-[88dvh] text-(--brand-ink)"
             >
               {/* MODAL 1: EDIT NAME */}
               {activeModal === 'name' && (
@@ -730,26 +730,6 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
               )}
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
-
-      {/* ══════════ FULL-SCREEN IN-APP: MESSAGES ══════════ */}
-      <AnimatePresence>
-        {chatOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed inset-0 z-[90] bg-(--background) overflow-y-auto"
-          >
-            <div className="w-full min-h-dvh md:pl-[120px] lg:pl-[140px] md:pr-12 pt-8 px-6 pb-36 max-w-4xl mx-auto">
-              <MessagesView
-                initialStationId={chatStationId}
-                onBack={() => { setChatOpen(false); setChatStationId(null); }}
-              />
-            </div>
-          </motion.div>
         )}
       </AnimatePresence>
 

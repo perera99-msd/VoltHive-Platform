@@ -202,35 +202,35 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="mb-4 rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/85 backdrop-blur-2xl p-4 sm:p-5 shadow-[0_16px_40px_-24px_rgba(9,32,52,0.4)] flex items-center justify-between gap-3 relative z-10"
+          className="mb-3 sm:mb-4 rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/85 backdrop-blur-2xl p-3.5 sm:p-5 shadow-[0_16px_40px_-24px_rgba(9,32,52,0.4)] flex items-center justify-between gap-3 relative z-10"
         >
-          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+          <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
             <button
               onClick={handleBack}
-              className="w-10 h-10 flex items-center justify-center rounded-2xl bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) active:scale-95 transition-all cursor-pointer shrink-0 shadow-xs"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) active:scale-95 transition-all cursor-pointer shrink-0 shadow-xs"
               title="Back"
             >
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
 
-            <div className="w-11 h-11 rounded-2xl bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-md border border-white/20">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-linear-to-br from-(--brand-blue) to-(--brand-green) text-white flex items-center justify-center font-bold text-base sm:text-lg shrink-0 shadow-md border border-white/20">
               {station?.stationName?.charAt(0) || 'S'}
             </div>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold text-(--brand-ink) truncate tracking-tight">
+                <h2 className="text-sm sm:text-lg font-bold text-(--brand-ink) truncate tracking-tight">
                   {station?.stationName || 'Station Chat'}
                 </h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-(--ui-success)/15 text-(--ui-success) text-[10px] font-extrabold uppercase tracking-wider border border-(--ui-success)/30 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-(--ui-success)/15 text-(--ui-success) text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider border border-(--ui-success)/30 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-(--ui-success) animate-pulse" />
                   Active
                 </span>
               </div>
               {station?.address && (
-                <p className="text-xs text-(--brand-muted) font-medium truncate mt-0.5">
+                <p className="text-[11px] sm:text-xs text-(--brand-muted) font-medium truncate mt-0.5">
                   {station.address}
                 </p>
               )}
@@ -240,7 +240,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
           {station?.phone && (
             <a
               href={`tel:${station.phone}`}
-              className="w-10 h-10 flex items-center justify-center rounded-2xl bg-(--brand-blue)/12 text-(--brand-blue) border border-(--brand-blue)/25 hover:bg-(--brand-blue)/20 transition-all cursor-pointer shrink-0 shadow-xs"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl bg-(--brand-blue)/12 text-(--brand-blue) border border-(--brand-blue)/25 hover:bg-(--brand-blue)/20 transition-all cursor-pointer shrink-0 shadow-xs"
               title={`Call ${station.phone}`}
             >
               <svg fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
@@ -255,7 +255,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
           initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-          className="bg-(--brand-card)/85 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_20px_50px_-25px_rgba(9,32,52,0.45)] overflow-hidden flex flex-col h-[58dvh] max-h-[580px] min-h-[380px] relative z-10"
+          className="bg-(--brand-card)/85 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_20px_50px_-25px_rgba(9,32,52,0.45)] overflow-hidden flex flex-col h-[calc(100dvh-250px)] sm:h-[560px] min-h-[380px] relative z-10"
         >
           {/* Scrollable Messages Area */}
           <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-(--surface-soft)/20 [&::-webkit-scrollbar]:hidden">
@@ -367,29 +367,29 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="mb-7 rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-6 sm:p-7 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)] relative z-10"
+        className="mb-6 rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-5 sm:p-7 shadow-[0_20px_50px_-30px_rgba(9,32,52,0.45)] relative z-10"
       >
         <div className="flex items-center gap-3">
           {onBack && (
             <button
               onClick={onBack}
-              className="w-10 h-10 flex items-center justify-center rounded-2xl bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) active:scale-95 transition-all cursor-pointer shrink-0 shadow-xs"
+              className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-2xl bg-(--surface-soft) border border-(--brand-border) text-(--brand-ink) hover:bg-(--surface-tint) active:scale-95 transition-all cursor-pointer shrink-0 shadow-xs"
               title="Back"
             >
-              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-5 h-5">
+              <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
               </svg>
             </button>
           )}
           <div>
             <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Direct Communication</p>
-            <h1 className="text-3xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight mt-1">
+            <h1 className="text-2xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight mt-1">
               Station
               <span className="text-transparent bg-clip-text bg-linear-to-r from-(--brand-blue) to-(--brand-green)"> Messages</span>
             </h1>
           </div>
         </div>
-        <p className="text-(--brand-muted) text-sm mt-2 font-medium">
+        <p className="text-(--brand-muted) text-xs sm:text-sm mt-1.5 font-medium">
           Chat directly with station owners regarding charger status, hardware specs, and reservation confirmations.
         </p>
       </motion.header>

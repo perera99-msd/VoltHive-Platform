@@ -352,11 +352,11 @@ export default function OwnerLoginPage() {
   );
 
   return (
-    <main className={`relative min-h-dvh w-full flex flex-col items-center justify-center px-4 py-24 sm:px-6 sm:py-28 ${isSignUp ? 'lg:py-5' : 'lg:py-16'} font-sans text-(--brand-ink) selection:bg-(--accent-blue)/30 overflow-hidden`}>
+    <main className={`relative min-h-dvh w-full flex flex-col items-center justify-center px-4 py-8 sm:px-6 sm:py-12 ${isSignUp ? 'lg:py-6' : 'lg:py-14'} font-sans text-(--brand-ink) selection:bg-(--accent-blue)/30 overflow-x-hidden bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)]`}>
       {/* =========================================================
           BACKGROUND — same clean theme gradient as driver login
       ========================================================= */}
-      <div className="absolute inset-0 z-0 bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)] overflow-hidden pointer-events-none">
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[12%] -right-[10%] w-[70%] h-[60%] rounded-full bg-(--accent-blue)/25 blur-[120px] vh-float-soft" />
         <div className="absolute -bottom-[14%] -left-[10%] w-[70%] h-[60%] rounded-full bg-(--accent-green)/25 blur-[120px] vh-float-soft [animation-delay:2s]" />
         <div className="absolute inset-0 opacity-25 bg-[linear-gradient(rgba(74,144,164,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(108,181,103,0.08)_1px,transparent_1px)] bg-size-[3rem_3rem] mask-[radial-gradient(ellipse_100%_100%_at_50%_50%,#000_30%,transparent_100%)]" />
@@ -367,26 +367,26 @@ export default function OwnerLoginPage() {
       ========================================================= */}
       <Link
         href="/"
-        className="absolute top-4 left-4 sm:top-8 sm:left-8 z-50 group inline-flex items-center gap-2.5 rounded-full border border-(--brand-border) bg-(--brand-card)/80 px-3.5 py-2.5 shadow-[0_12px_32px_-16px_rgba(9,32,52,0.35)] backdrop-blur-md hover:shadow-[0_16px_36px_-18px_rgba(74,144,164,0.45)] transition-all"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 group inline-flex items-center gap-2 rounded-full border border-(--brand-border) bg-(--brand-card)/85 px-3 py-2 shadow-[0_10px_25px_-12px_rgba(9,32,52,0.3)] backdrop-blur-md hover:shadow-[0_14px_30px_-14px_rgba(74,144,164,0.4)] transition-all"
       >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-(--surface-soft) text-(--brand-blue-deep) transition-transform group-hover:-translate-x-0.5">
-          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-(--surface-soft) text-(--brand-blue-deep) transition-transform group-hover:-translate-x-0.5">
+          <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
         </span>
-        <span className="text-[13px] font-bold text-(--brand-muted) group-hover:text-(--brand-ink)">Back to home</span>
+        <span className="text-[12px] font-bold text-(--brand-muted) group-hover:text-(--brand-ink)">Back</span>
       </Link>
 
       {/* =========================================================
           CENTERED SPLIT CARD — form left, image right
       ========================================================= */}
       <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className={`relative z-10 w-full ${isSignUp ? 'max-w-[1140px]' : 'max-w-[960px]'} grid grid-cols-1 lg:grid-cols-2 overflow-hidden rounded-[2rem] border border-(--brand-border) bg-(--brand-card) shadow-[0_40px_100px_-40px_rgba(9,32,52,0.4)] transition-[max-width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]`}
+        className={`relative z-10 w-full ${isSignUp ? 'max-w-[1140px]' : 'max-w-[960px]'} grid grid-cols-1 lg:grid-cols-2 overflow-hidden rounded-3xl lg:rounded-[2rem] border border-(--brand-border) bg-(--brand-card) shadow-[0_20px_60px_-24px_rgba(9,32,52,0.25)] lg:shadow-[0_40px_100px_-40px_rgba(9,32,52,0.4)] transition-[max-width] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] my-auto`}
       >
 
         {/* ---------- LEFT: form column ---------- */}
-        <div className="order-2 lg:order-1 p-5 sm:p-6 lg:p-6">
+        <div className="order-2 lg:order-1 p-5 sm:p-7 lg:p-8">
           {headerBlock}
           {alertsBlock}
           {formBody}
@@ -395,7 +395,7 @@ export default function OwnerLoginPage() {
         </div>
 
         {/* ---------- RIGHT: image column ---------- */}
-        <div className="order-1 lg:order-2 relative h-44 sm:h-52 lg:h-auto lg:min-h-[560px]">
+        <div className="order-1 lg:order-2 relative h-32 sm:h-44 lg:h-auto lg:min-h-[540px]">
           <Image
             src="/owner%20login/owner%20login.jpg"
             alt="VoltHive Station Infrastructure"
@@ -409,19 +409,18 @@ export default function OwnerLoginPage() {
           {/* Bottom scrim */}
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-(--brand-ink)/85 via-(--brand-ink)/35 to-transparent" />
 
-          {/* Top pill (desktop) */}
-          <div className="absolute left-6 top-6 z-10 hidden lg:inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white/90 backdrop-blur-md">
+          {/* Top pill */}
+          <div className="absolute left-4 top-4 sm:left-6 sm:top-6 z-10 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-white/90 backdrop-blur-md">
             <span className="h-2 w-2 rounded-full bg-(--brand-green) shadow-[0_0_14px_rgba(108,181,103,0.9)]" />
-            VoltHive admin
+            VoltHive Host
           </div>
 
           {/* Tagline */}
-          <div className="absolute bottom-6 left-6 right-6 z-10 lg:bottom-8 lg:left-8 lg:right-8">
-            <h2 className="text-[1.4rem] sm:text-[1.6rem] lg:text-[1.9rem] font-semibold leading-tight tracking-[-0.03em] text-white drop-shadow-[0_6px_18px_rgba(9,32,52,0.5)]">
+          <div className="absolute bottom-4 left-4 right-4 z-10 sm:bottom-6 sm:left-6 sm:right-6 lg:bottom-8 lg:left-8 lg:right-8">
+            <h2 className="text-base sm:text-xl lg:text-[1.85rem] font-semibold leading-tight tracking-tight text-white drop-shadow-[0_4px_12px_rgba(9,32,52,0.6)]">
               One network. Smart charging.
-              <br className="lg:hidden" /> Zero waiting.
             </h2>
-            <p className="mt-2 max-w-sm text-[13px] lg:text-[14px] leading-relaxed text-white/80">
+            <p className="mt-1 max-w-sm text-xs sm:text-[13px] lg:text-[14px] leading-relaxed text-white/80 hidden sm:block">
               Turn your EV charging operations into a predictable, high-performing infrastructure engine.
             </p>
           </div>

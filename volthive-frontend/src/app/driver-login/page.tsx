@@ -293,14 +293,14 @@ export default function AuthPage() {
   };
 
   return (
-    <main className="min-h-screen w-full flex text-(--brand-ink) font-sans selection:bg-(--accent-blue)/30 overflow-hidden relative">
+    <main className="min-h-dvh w-full flex text-(--brand-ink) font-sans selection:bg-(--accent-blue)/30 relative overflow-x-hidden bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)]">
       
       {/* =========================================================
           MOBILE BACKGROUND (Hidden on Desktop lg: screens)
       ========================================================= */}
-      <div className="absolute inset-0 lg:hidden z-0 bg-[linear-gradient(160deg,#f5f7f6_0%,#e8f3ef_44%,#dcefe8_100%)] overflow-hidden">
-        <div className="absolute -top-[10%] -right-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-blue)/30 blur-[100px] z-0 pointer-events-none"></div>
-        <div className="absolute -bottom-[10%] -left-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-green)/25 blur-[100px] z-0 pointer-events-none"></div>
+      <div className="absolute inset-0 lg:hidden z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -right-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-blue)/25 blur-[100px] z-0 pointer-events-none"></div>
+        <div className="absolute -bottom-[10%] -left-[10%] w-[80%] h-[60%] rounded-full bg-(--accent-green)/20 blur-[100px] z-0 pointer-events-none"></div>
         <div className="absolute inset-0 z-0 opacity-25 bg-[linear-gradient(rgba(74,144,164,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(108,181,103,0.08)_1px,transparent_1px)] bg-size-[3rem_3rem] mask-[radial-gradient(ellipse_100%_100%_at_50%_50%,#000_30%,transparent_100%)]"></div>
       </div>
 
@@ -310,12 +310,12 @@ export default function AuthPage() {
       {!isAppOrMobile && (
         <Link
           href="/"
-          className="absolute top-4 left-4 sm:top-8 sm:left-8 z-50 group inline-flex items-center gap-2.5 rounded-full border border-(--brand-border) bg-(--brand-card)/80 px-3.5 py-2.5 shadow-[0_12px_32px_-16px_rgba(9,32,52,0.35)] backdrop-blur-md hover:shadow-[0_16px_36px_-18px_rgba(74,144,164,0.45)] transition-all"
+          className="absolute top-4 left-4 sm:top-6 sm:left-6 z-50 group inline-flex items-center gap-2 rounded-full border border-(--brand-border) bg-(--brand-card)/85 px-3 py-2 shadow-[0_10px_25px_-12px_rgba(9,32,52,0.3)] backdrop-blur-md hover:shadow-[0_14px_30px_-14px_rgba(74,144,164,0.4)] transition-all"
         >
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-(--surface-soft) text-(--brand-blue-deep) transition-transform group-hover:-translate-x-0.5">
-            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3.5 w-3.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-(--surface-soft) text-(--brand-blue-deep) transition-transform group-hover:-translate-x-0.5">
+            <svg fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="h-3 w-3"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
           </span>
-          <span className="text-[13px] font-bold text-(--brand-muted) group-hover:text-(--brand-ink)">Back to home</span>
+          <span className="text-[12px] font-bold text-(--brand-muted) group-hover:text-(--brand-ink)">Back</span>
         </Link>
       )}
 
@@ -362,16 +362,27 @@ export default function AuthPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-12 relative z-10 bg-transparent min-h-dvh lg:min-h-0 pt-28 lg:pt-0 overflow-y-auto"
+        className="w-full lg:w-1/2 flex items-center justify-center px-4 py-12 sm:px-8 lg:p-12 relative z-10 bg-transparent min-h-dvh overflow-y-auto"
       >
         
         {/* The Form Card */}
         <motion.div
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-125 bg-(--brand-card)/75 lg:bg-(--brand-card)/92 backdrop-blur-2xl lg:backdrop-blur-md rounded-4xl lg:rounded-4xl border border-(--brand-card)/60 lg:border-(--brand-border) shadow-[0_24px_80px_-24px_rgba(9,32,52,0.2)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-6 sm:p-10 my-auto"
+          className="w-full max-w-md bg-(--brand-card)/90 lg:bg-(--brand-card)/95 backdrop-blur-2xl rounded-3xl lg:rounded-4xl border border-(--brand-border) shadow-[0_20px_60px_-24px_rgba(9,32,52,0.25)] lg:shadow-[0_34px_80px_-46px_rgba(9,32,52,0.6)] p-5 sm:p-8 my-auto"
         >
+          {/* Mobile Top Brand Header */}
+          <div className="flex items-center gap-3 mb-6 lg:hidden">
+            <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-(--brand-blue) to-(--brand-green) p-0.5 shadow-md flex items-center justify-center shrink-0">
+              <Image src="/brand/logo-without-slogan.png" alt="VoltHive" width={28} height={28} className="w-6 h-6 object-contain brightness-0 invert" />
+            </div>
+            <div>
+              <span className="text-lg font-bold tracking-tight text-(--brand-ink)">Volt<span className="text-(--brand-green)">Hive</span></span>
+              <p className="text-[10px] uppercase font-bold tracking-widest text-(--brand-muted)">Driver Portal</p>
+            </div>
+          </div>
+
           <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={isLogin ? 'login' : 'register'}
@@ -381,16 +392,16 @@ export default function AuthPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], opacity: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } }}
             className="overflow-hidden"
           >
-          <div className="mb-8 text-left">
-            <h2 className="text-3xl font-semibold tracking-tight text-(--brand-ink) mb-2">
+          <div className="mb-6 text-left">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-(--brand-ink) mb-1.5">
               {isLogin ? 'Welcome back.' : 'Create an account.'}
             </h2>
-            <p className="text-(--brand-muted) text-sm">
+            <p className="text-(--brand-muted) text-xs sm:text-sm">
               {isLogin ? 'Enter your details to access your dashboard.' : 'Select your role and enter your details to join the network.'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             
             {/* role selector removed - owner registration moved to separate pages */}
             {/* 1. BIOMETRICS UNLOCK BUTTON (Only visible when enabled in Profile settings on this device) */}
