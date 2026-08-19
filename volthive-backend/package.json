@@ -1,6 +1,6 @@
 {
   "name": "volthive-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "VoltHive backend API (Express + MongoDB + Firebase Admin)",
   "main": "src/server.js",
   "scripts": {
