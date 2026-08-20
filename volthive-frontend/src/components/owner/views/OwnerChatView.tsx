@@ -43,7 +43,7 @@ const QUICK_REPLIES = [
   '⏱️ Your reserved slot is approaching its end time.'
 ];
 
-export default function OwnerChatView() {
+export default function OwnerChatView({ initialStationId, initialDriverId }: { initialStationId?: string; initialDriverId?: string } = {}) {
   const { user } = useAuth();
   const [threads, setThreads] = useState<OwnerThread[]>([]);
   const [openThread, setOpenThread] = useState<OwnerThread | null>(null);
@@ -59,30 +59,6 @@ export default function OwnerChatView() {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const tokenFor = useCallback(async () => (await user?.getIdToken()) || '', [user]);
-
-  const loadThreads = useCallback(async () => {
-    if (!user) return;
-    try {
-      const token = await tokenFor();
-      const res = await fetch(apiUrl('/api/chat/owner/conversations'), {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const json = await res.json();
-        const data: OwnerThread[] = json.data || [];
-        setThreads(data);
-        
-        // Auto-select first thread on desktop if none open
-        if (!openThread && data.length > 0 && typeof window !== 'undefined' && window.innerWidth >= 1024) {
-          openConversation(data[0]);
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to load chat threads', e);
-    } finally {
-      setLoadingList(false);
-    }
-  }, [user, tokenFor, openThread]);
 
   const openConversation = useCallback(async (t: OwnerThread) => {
     setOpenThread(t);
@@ -112,6 +88,38 @@ export default function OwnerChatView() {
       setLoadingThread(false);
     }
   }, [tokenFor]);
+
+  const loadThreads = useCallback(async () => {
+    if (!user) return;
+    try {
+      const token = await tokenFor();
+      const res = await fetch(apiUrl('/api/chat/owner/conversations'), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const data: OwnerThread[] = json.data || [];
+        setThreads(data);
+        
+        if (initialStationId && initialDriverId) {
+          const target = data.find(t => String(t.stationId) === String(initialStationId) && String(t.driverId) === String(initialDriverId));
+          if (target) {
+            openConversation(target);
+            return;
+          }
+        }
+
+        // Auto-select first thread on desktop if none open
+        if (!openThread && data.length > 0 && typeof window !== 'undefined' && window.innerWidth >= 1024) {
+          openConversation(data[0]);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load chat threads', e);
+    } finally {
+      setLoadingList(false);
+    }
+  }, [user, tokenFor, openThread, initialStationId, initialDriverId, openConversation]);
 
   const sendReply = async () => {
     const text = draft.trim();

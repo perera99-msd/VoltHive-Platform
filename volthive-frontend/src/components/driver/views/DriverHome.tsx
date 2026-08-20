@@ -75,15 +75,12 @@ export default function DriverHome({ onBookNow }: { onBookNow?: () => void }) {
   }, [user]);
 
   return (
-    <section className="space-y-6 relative overflow-hidden">
-      <div className="absolute -top-24 -right-16 w-72 h-72 rounded-full bg-(--accent-blue)/18 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
-
+    <section className="space-y-6 relative pb-12 font-sans text-(--brand-ink)">
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 md:p-8 shadow-[0_26px_70px_-42px_rgba(9,32,52,0.58)]"
+        className="relative rounded-4xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-6 md:p-8 shadow-[0_26px_70px_-42px_rgba(9,32,52,0.58)]"
       >
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div>

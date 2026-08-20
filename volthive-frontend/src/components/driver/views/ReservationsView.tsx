@@ -71,16 +71,13 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
   });
 
   return (
-    <section className="font-sans relative overflow-hidden pb-32 md:pb-12 space-y-7">
-      <div className="absolute -top-20 -right-12 w-72 h-72 rounded-full bg-(--accent-blue)/14 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/12 blur-[120px] pointer-events-none" />
-
+    <section className="font-sans relative pb-32 md:pb-12 space-y-7">
       {/* Brand Theme Header Card */}
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
+        className="relative rounded-4xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
       >
         <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">EV Slot Management</p>
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-(--brand-ink) mt-1">
@@ -168,11 +165,13 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
                   >
                     Get GPS Directions
                   </a>
-                  {b.station?._id && (
+                  {b.station && (
                     <button
                       onClick={() => {
-                        setToastMessage({ msg: 'Opening station chat thread...', type: 'info' });
-                        onMessageClick && onMessageClick(b.station!._id!);
+                        const targetId = typeof b.station === 'object' ? b.station?._id : b.station;
+                        if (targetId && onMessageClick) {
+                          onMessageClick(String(targetId));
+                        }
                       }}
                       className="flex-1 py-3 rounded-xl border border-(--brand-blue)/30 bg-(--brand-blue)/10 text-(--brand-blue) text-sm font-bold hover:bg-(--brand-blue)/20 transition-colors cursor-pointer"
                     >

@@ -6,17 +6,29 @@
 
 **Smart, Secure, and Seamless EV Charging at Your Fingertips**
 
-[![Node.js](https://img.shields.io/badge/Node.js-v18.x-green)](https://nodejs.org)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
+[![Node.js](https://img.shields.io/badge/Node.js-v20.x-green)](https://nodejs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16.2-black)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19.x-blue)](https://react.dev)
 [![Python](https://img.shields.io/badge/Python-3.10+-blue)](https://python.org)
-[![MongoDB](https://img.shields.io/badge/MongoDB-9.3+-green)](https://mongodb.com)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas-green)](https://mongodb.com)
 [![License](https://img.shields.io/badge/License-MIT-blue)](./LICENSE)
 
-[📖 Quick Start](#-quick-start) • [🏗️ Architecture](#-architecture) • [🔒 Security](#-security) • [🚀 Deployment](#-deployment)
+[📖 Quick Start](#-quick-start) • [📚 Comprehensive Docs](#-complete-documentation-suite) • [🏗️ Architecture](#-architecture) • [🚀 Deployment](#-deployment)
 
 </div>
 
 ---
+
+## 📚 Complete Documentation Suite
+
+For exhaustive technical, architectural, machine learning, operational, and API details, refer to the VoltHive documentation library:
+
+1. 🧠 **[AI/ML Architecture & Model Defense](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/01_AI_ML_MODEL_DOCUMENTATION.md)**: Dataset analysis (1.3M records), Phase 1 GridSearch (RandomForest vs HistGradientBoosting vs Ridge), Phase 2 master training, benchmark metrics ($R^2=0.9276$, $\text{MAE}=0.0565$), and dynamic surge pricing formulas.
+2. 💻 **[Technology Stack & Frameworks](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/02_TECHNOLOGY_STACK.md)**: Complete breakdown of Next.js 16 (React 19), Node.js Express, MongoDB Atlas, WebAuthn Biometrics, and Python Scikit-Learn.
+3. 🏛️ **[System Architecture & Data Engineering](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/03_SYSTEM_ARCHITECTURE.md)**: System topology, database ERDs, SSE EventBus real-time pipeline, charging session state machine, and 1-to-1 chat architecture.
+4. 📱 **[User & Operator Manual](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/04_USER_AND_OPERATOR_GUIDE.md)**: Step-by-step guides for EV Drivers (PWA, Map, Bookings, Garage, Biometrics) and Station Hosts (POS Terminal, Hardware, Tariffs, Analytics).
+5. 📋 **[Feature Catalog & REST API Reference](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/05_FEATURE_CATALOG_AND_API_REFERENCE.md)**: Full platform module inventory and exhaustive HTTP endpoint documentation.
+6. 🚀 **[Deployment, DevOps & Production Runbook](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/06_DEPLOYMENT_AND_DEVOPS_GUIDE.md)**: Environment variables, Docker Compose multi-container setup, Nginx SSL reverse proxy, and monitoring.
 
 ## 🎯 Overview
 
