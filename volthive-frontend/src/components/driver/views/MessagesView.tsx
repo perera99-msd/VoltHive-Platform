@@ -192,17 +192,13 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
   // ── THREAD VIEW ──
   if (openStationId) {
     return (
-      <section className="space-y-4 relative overflow-hidden pb-12 font-sans text-(--brand-ink)">
-        {/* Background Ambient Glow matching Profile Section */}
-        <div className="absolute -top-20 -right-12 w-72 h-72 rounded-full bg-(--accent-blue)/16 blur-[120px] pointer-events-none" />
-        <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
-
+      <section className="space-y-4 relative pb-12 font-sans text-(--brand-ink)">
         {/* Thread Header Card */}
         <motion.header
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/85 backdrop-blur-2xl p-3.5 sm:p-5 shadow-[0_16px_40px_-24px_rgba(9,32,52,0.4)] flex items-center justify-between gap-3 relative z-10"
+          className="rounded-3xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-3.5 sm:p-5 shadow-[0_16px_40px_-24px_rgba(9,32,52,0.4)] flex items-center justify-between gap-3 relative z-10"
         >
           <div className="flex items-center gap-3 sm:gap-3.5 min-w-0 flex-1">
             <button
@@ -357,17 +353,13 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
 
   // ── CONVERSATION LIST VIEW ──
   return (
-    <section className="space-y-6 relative overflow-hidden pb-12 font-sans text-(--brand-ink)">
-      {/* Background Ambient Glow matching Profile Section */}
-      <div className="absolute -top-20 -right-12 w-72 h-72 rounded-full bg-(--accent-blue)/16 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
-
+    <section className="space-y-6 relative pb-12 font-sans text-(--brand-ink)">
       {/* Header Banner matching Account Center */}
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)] relative z-10"
+        className="relative rounded-4xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)] relative z-10"
       >
         <div className="flex items-center gap-3.5">
           {onBack && (

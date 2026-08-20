@@ -188,15 +188,12 @@ export default function MyGarage() {
   const vehicles = profile?.vehicles || [];
 
   return (
-    <section className="space-y-6 relative overflow-hidden pb-32 md:pb-12 font-sans">
-      <div className="absolute -top-24 right-0 w-72 h-72 rounded-full bg-(--accent-blue)/16 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 left-0 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
-
+    <section className="space-y-6 relative pb-32 md:pb-12 font-sans">
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-6 md:p-7 shadow-[0_26px_70px_-46px_rgba(9,32,52,0.55)] flex flex-col md:flex-row md:items-center justify-between gap-4"
+        className="relative rounded-4xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-6 md:p-7 shadow-[0_26px_70px_-46px_rgba(9,32,52,0.55)] flex flex-col md:flex-row md:items-center justify-between gap-4"
       >
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Vehicle Profiles</p>

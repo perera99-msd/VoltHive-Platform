@@ -88,9 +88,9 @@ export default function DriverDashboard() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 z-20 overflow-y-auto"
+              className="absolute inset-0 z-20 overflow-y-auto bg-(--background)"
             >
-              <div className="fixed inset-0 bg-(--background)/94 backdrop-blur-2xl pointer-events-none -z-10" />
+              <div className="fixed inset-0 bg-(--background) pointer-events-none -z-10" />
               <div className="w-full min-h-dvh md:pl-[120px] lg:pl-[140px] md:pr-12 pt-12 px-6 pb-36 md:pb-14">
                 {activeTab === 'home' && <DriverHome onBookNow={() => setActiveTab('map')} />}
                 {activeTab === 'garage' && <MyGarage />}

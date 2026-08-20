@@ -393,15 +393,12 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
   }
 
   return (
-    <section className="space-y-6 relative overflow-hidden pb-12 font-sans text-(--brand-ink)">
-      <div className="absolute -top-20 -right-12 w-72 h-72 rounded-full bg-(--accent-blue)/16 blur-[120px] pointer-events-none" />
-      <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
-
+    <section className="space-y-6 relative pb-12 font-sans text-(--brand-ink)">
       <motion.header
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
+        className="relative rounded-4xl border border-(--brand-border) bg-(--brand-card)/90 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
       >
         <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Profile Settings</p>
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-(--brand-ink) mt-1">
@@ -415,11 +412,8 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-(--brand-card)/84 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_16px_40px_-26px_rgba(9,32,52,0.4)] p-5 sm:p-7 flex items-center gap-4 sm:gap-5 relative overflow-hidden text-left"
+        className="bg-(--brand-card)/90 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_16px_40px_-26px_rgba(9,32,52,0.4)] p-5 sm:p-7 flex items-center gap-4 sm:gap-5 relative text-left"
       >
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-(--accent-blue)/16 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-(--accent-green)/16 rounded-full blur-3xl pointer-events-none" />
-
         <div className="relative shrink-0">
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-linear-to-br from-(--brand-blue) to-(--brand-green) rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-light text-white shadow-lg shadow-(--brand-blue)/20 border-2 border-white/40 z-10 relative">
             {profileData?.name?.charAt(0) || user?.displayName?.charAt(0) || 'D'}
