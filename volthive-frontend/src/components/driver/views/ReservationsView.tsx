@@ -165,11 +165,13 @@ export default function ReservationsView({ onMessageClick }: { onMessageClick?: 
                   >
                     Get GPS Directions
                   </a>
-                  {b.station?._id && (
+                  {b.station && (
                     <button
                       onClick={() => {
-                        setToastMessage({ msg: 'Opening station chat thread...', type: 'info' });
-                        onMessageClick && onMessageClick(b.station!._id!);
+                        const targetId = typeof b.station === 'object' ? b.station?._id : b.station;
+                        if (targetId && onMessageClick) {
+                          onMessageClick(String(targetId));
+                        }
                       }}
                       className="flex-1 py-3 rounded-xl border border-(--brand-blue)/30 bg-(--brand-blue)/10 text-(--brand-blue) text-sm font-bold hover:bg-(--brand-blue)/20 transition-colors cursor-pointer"
                     >

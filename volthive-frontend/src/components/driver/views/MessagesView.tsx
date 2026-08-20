@@ -39,7 +39,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [loadingList, setLoadingList] = useState(true);
-  const [loadingThread, setLoadingThread] = useState(false);
+  const [loadingThread, setLoadingThread] = useState(!!initialStationId);
   const [sending, setSending] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ msg: string; type?: 'error' | 'success' | 'info' } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,7 +66,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
   }, [user, tokenFor]);
 
   const openThread = useCallback(async (stationId: string) => {
-    if (!user) return;
+    if (!user || !stationId) return;
     setOpenStationId(stationId);
     setLoadingThread(true);
     try {
@@ -79,6 +79,8 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
         setStation(json.station || null);
         setMessages(json.messages || []);
         loadConversations();
+      } else {
+        setToastMessage({ msg: 'Could not load station chat.', type: 'error' });
       }
     } catch (e) {
       setToastMessage({ msg: 'Could not open this conversation.', type: 'error' });
@@ -115,7 +117,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
 
   // Refresh just the open thread (used by SSE + fallback poll).
   const refreshThread = useCallback(async (stationId: string) => {
-    if (!user) return;
+    if (!user || !stationId) return;
     try {
       const token = await tokenFor();
       const res = await fetch(apiUrl(`/api/chat/driver/${stationId}`), {
@@ -123,6 +125,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
       });
       if (res.ok) {
         const json = await res.json();
+        setStation(json.station || null);
         setMessages(json.messages || []);
         loadConversations();
       }
@@ -138,10 +141,17 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  // Load list on mount
+  // Load conversation list on mount
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  // Open initial station thread whenever initialStationId is supplied or changes
+  useEffect(() => {
+    if (initialStationId) {
+      openThread(initialStationId);
+    }
+  }, [initialStationId, openThread]);
 
   // Poll while a thread is open — slow fallback; SSE pushes instant updates.
   useEffect(() => {
@@ -172,22 +182,12 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
   };
 
   const handleBack = () => {
-    if (conversations.length > 0 && openStationId) {
+    if (openStationId) {
       backToList();
     } else if (onBack) {
       onBack();
-    } else {
-      backToList();
     }
   };
-
-  // Open a preselected station
-  useEffect(() => {
-    if (initialStationId && initialStationId !== openStationId) {
-      openThread(initialStationId);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialStationId]);
 
   // ── THREAD VIEW ──
   if (openStationId) {
@@ -218,7 +218,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-sm sm:text-lg font-bold text-(--brand-ink) truncate tracking-tight">
-                  {station?.stationName || 'Station Chat'}
+                  {station?.stationName || (loadingThread ? 'Loading station…' : 'Station Chat')}
                 </h2>
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-(--ui-success)/15 text-(--ui-success) text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider border border-(--ui-success)/30 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-(--ui-success) animate-pulse" />
@@ -267,7 +267,7 @@ export default function MessagesView({ initialStationId, onBack }: { initialStat
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.596.596 0 01-.743-.75l1.01-2.525A8.13 8.13 0 013 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-(--brand-ink)">Say hello to the station</h3>
+                <h3 className="text-lg font-bold text-(--brand-ink)">Say hello to {station?.stationName || 'the station'}</h3>
                 <p className="text-xs text-(--brand-muted) mt-1 max-w-xs font-medium leading-relaxed">
                   Inquire about charger availability, connector types, or confirm your upcoming booking slot.
                 </p>
