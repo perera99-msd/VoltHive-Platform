@@ -393,7 +393,7 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
   }
 
   return (
-    <section className="w-full max-w-4xl mx-auto pb-20 relative font-sans">
+    <section className="space-y-6 relative overflow-hidden pb-12 font-sans text-(--brand-ink)">
       <div className="absolute -top-20 -right-12 w-72 h-72 rounded-full bg-(--accent-blue)/16 blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-24 -left-12 w-72 h-72 rounded-full bg-(--accent-green)/14 blur-[120px] pointer-events-none" />
 
@@ -401,35 +401,35 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
-        className="mb-6 rounded-3xl border border-(--brand-card)/70 bg-(--brand-card)/80 backdrop-blur-2xl p-5 sm:p-7 shadow-[0_20px_50px_-30px_rgba(9,32,52,0.45)]"
+        className="relative rounded-4xl border border-(--brand-card)/70 bg-(--brand-card)/78 backdrop-blur-2xl p-6 sm:p-8 shadow-[0_24px_64px_-44px_rgba(9,32,52,0.58)]"
       >
         <p className="text-[11px] uppercase tracking-[0.18em] font-semibold text-(--brand-muted)">Profile Settings</p>
-        <h1 className="text-2xl sm:text-4xl font-semibold text-(--brand-ink) tracking-tight mt-1.5">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-(--brand-ink) mt-1">
           Account
           <span className="text-transparent bg-clip-text bg-linear-to-r from-(--brand-blue) to-(--brand-green)"> Center</span>
         </h1>
-        <p className="text-(--brand-muted) text-xs sm:text-sm mt-1.5 font-medium">Manage identity, billing, security, and support preferences in one premium workspace.</p>
+        <p className="text-(--brand-muted) text-sm mt-1 font-medium">Manage identity, billing, security, and support preferences in one premium workspace.</p>
       </motion.header>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-        className="bg-(--brand-card)/84 backdrop-blur-2xl rounded-3xl border border-(--brand-card)/70 shadow-[0_16px_40px_-26px_rgba(9,32,52,0.4)] p-5 sm:p-7 flex flex-col sm:flex-row items-center gap-5 mb-8 relative overflow-hidden"
+        className="bg-(--brand-card)/84 backdrop-blur-2xl rounded-3xl border border-(--brand-border) shadow-[0_16px_40px_-26px_rgba(9,32,52,0.4)] p-5 sm:p-7 flex items-center gap-4 sm:gap-5 relative overflow-hidden text-left"
       >
         <div className="absolute -top-24 -right-24 w-64 h-64 bg-(--accent-blue)/16 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-(--accent-green)/16 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative shrink-0">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 bg-linear-to-br from-(--brand-blue) to-(--brand-green) rounded-2xl flex items-center justify-center text-3xl sm:text-4xl font-light text-white shadow-lg shadow-(--brand-blue)/20 border-2 border-white/40 z-10 relative">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-linear-to-br from-(--brand-blue) to-(--brand-green) rounded-2xl flex items-center justify-center text-2xl sm:text-3xl font-light text-white shadow-lg shadow-(--brand-blue)/20 border-2 border-white/40 z-10 relative">
             {profileData?.name?.charAt(0) || user?.displayName?.charAt(0) || 'D'}
           </div>
         </div>
 
-        <div className="text-center sm:text-left flex-1 relative z-10 min-w-0">
-          <h2 className="text-xl sm:text-2xl font-semibold text-(--brand-ink) tracking-tight truncate">{profileData?.name || user?.displayName || '—'}</h2>
-          <p className="text-sm sm:text-[15px] font-medium text-(--brand-muted) mt-0.5 truncate">{user?.email || '—'}</p>
-          <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-(--accent-blue)/12 text-(--brand-muted) text-[10px] sm:text-[11px] font-bold uppercase tracking-widest border border-(--brand-border) shadow-xs">
+        <div className="text-left flex-1 relative z-10 min-w-0">
+          <h2 className="text-lg sm:text-2xl font-bold sm:font-semibold text-(--brand-ink) tracking-tight truncate">{profileData?.name || user?.displayName || '—'}</h2>
+          <p className="text-xs sm:text-[15px] font-medium text-(--brand-muted) mt-0.5 truncate">{user?.email || '—'}</p>
+          <div className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-(--accent-blue)/12 text-(--brand-muted) text-[10px] sm:text-[11px] font-bold uppercase tracking-widest border border-(--brand-border) shadow-xs">
             Member since {joinDate}
           </div>
         </div>
@@ -460,19 +460,19 @@ export default function AccountView({ initialChatStationId, onChatConsumed }: {
 
       <SettingsCard title="App Security & Biometrics">
         {(isPWA || process.env.NODE_ENV === 'development') && (
-          <div className="flex items-center justify-between p-4 sm:px-6 transition-colors border-b border-(--brand-border) last:border-0">
-            <div className="flex items-center gap-4">
-              <div className="w-9 h-9 rounded-[10px] flex items-center justify-center border border-(--brand-border) bg-(--accent-blue)/16 text-(--brand-blue)">
+          <div className="flex items-center justify-between p-3.5 sm:p-4 sm:px-6 transition-colors border-b border-(--brand-border) last:border-0">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1 mr-2 sm:mr-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-[10px] flex items-center justify-center border border-(--brand-border) bg-(--accent-blue)/16 text-(--brand-blue) shrink-0">
                 <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 10.5c0 2.92-.556 5.709-1.568 8.268M5.742 6.364A7.465 7.465 0 004.5 10.5a7.464 7.464 0 01-1.15 3.993m1.989 3.559A11.209 11.209 0 008.25 10.5a3.75 3.75 0 117.5 0c0 .527-.021 1.049-.064 1.565M12 10.5a14.94 14.94 0 01-3.6 9.75m6.633-4.596a18.666 18.666 0 01-2.485 5.33" />
                 </svg>
               </div>
-              <div>
-                <p className="text-[15px] font-medium tracking-tight text-(--brand-ink)">Biometric Login (FaceID / TouchID)</p>
-                <p className="text-xs text-(--brand-muted)">Fast native authentication for PWA standalone app</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm sm:text-[15px] font-medium tracking-tight text-(--brand-ink) truncate">Biometric Login (FaceID / TouchID)</p>
+                <p className="text-[11px] sm:text-xs text-(--brand-muted) truncate">Fast native authentication for PWA app</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
                 type="button"
                 onClick={handleToggleBiometrics}

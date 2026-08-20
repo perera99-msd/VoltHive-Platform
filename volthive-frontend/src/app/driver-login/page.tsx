@@ -375,7 +375,7 @@ export default function AuthPage() {
           {/* Mobile Top Brand Header */}
           <div className="flex items-center gap-3 mb-6 lg:hidden">
             <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-(--brand-blue) to-(--brand-green) p-0.5 shadow-md flex items-center justify-center shrink-0">
-              <Image src="/brand/logo-without-slogan.png" alt="VoltHive" width={28} height={28} className="w-6 h-6 object-contain brightness-0 invert" />
+              <Image src="/brand/logo-icon.png" alt="VoltHive" width={28} height={28} className="w-6 h-6 object-contain brightness-0 invert" />
             </div>
             <div>
               <span className="text-lg font-bold tracking-tight text-(--brand-ink)">Volt<span className="text-(--brand-green)">Hive</span></span>
