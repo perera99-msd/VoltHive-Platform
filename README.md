@@ -29,6 +29,7 @@ For exhaustive technical, architectural, machine learning, operational, and API 
 4. 📱 **[User & Operator Manual](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/04_USER_AND_OPERATOR_GUIDE.md)**: Step-by-step guides for EV Drivers (PWA, Map, Bookings, Garage, Biometrics) and Station Hosts (POS Terminal, Hardware, Tariffs, Analytics).
 5. 📋 **[Feature Catalog & REST API Reference](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/05_FEATURE_CATALOG_AND_API_REFERENCE.md)**: Full platform module inventory and exhaustive HTTP endpoint documentation.
 6. 🚀 **[Deployment, DevOps & Production Runbook](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/06_DEPLOYMENT_AND_DEVOPS_GUIDE.md)**: Environment variables, Docker Compose multi-container setup, Nginx SSL reverse proxy, and monitoring.
+7. 🧪 **[Test Cases & QA Results (100% Passed)](file:///d:/DevWorkspace/Academic/VoltHive-Platform/docs/07_COMPREHENSIVE_TEST_CASES_AND_QA_RESULTS.md)**: Exhaustive test case catalog, automated test runner outputs, AI validation, and cross-device matrix.
 
 ## 🎯 Overview
 

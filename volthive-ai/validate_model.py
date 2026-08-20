@@ -4,10 +4,14 @@ Loads model + columns, runs prediction through the SAME preprocessing as app.py,
 and checks health. Used in CI to catch model drift.
 """
 import os
+import sys
 import json
 import joblib
 import pandas as pd
 import numpy as np
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 MODEL_PATH = 'models/surge_model.pkl'
 COLUMNS_PATH = 'models/model_columns.pkl'
@@ -15,13 +19,13 @@ METRICS_PATH = 'models/model_metrics.json'
 
 def validate():
     if not all(os.path.exists(p) for p in [MODEL_PATH, COLUMNS_PATH]):
-        print("❌ Model artifacts missing. Run train_multi_models.py first.")
+        print("[FAIL] Model artifacts missing. Run train_multi_models.py first.")
         return False
 
     model = joblib.load(MODEL_PATH)
     cols = joblib.load(COLUMNS_PATH)
-    print(f"✅ Model loaded: {type(model).__name__}")
-    print(f"✅ Feature columns: {len(cols)}")
+    print(f"[PASS] Model loaded: {type(model).__name__}")
+    print(f"[PASS] Feature columns: {len(cols)}")
 
     # Test inference through the exact same path as app.py
     test_row = {
@@ -36,21 +40,20 @@ def validate():
     df_fin = df_enc.reindex(columns=cols, fill_value=0)
     pred = model.predict(df_fin)[0]
     pred_pct = pred * 100 if pred <= 1.0 else pred
-    print(f"✅ Test prediction: {pred_pct:.2f}% (sanity check)")
+    print(f"[PASS] Test prediction: {pred_pct:.2f}% (sanity check)")
 
     # Report metrics
     if os.path.exists(METRICS_PATH):
-        with open(METRICS_PATH) as f:
+        with open(METRICS_PATH, encoding='utf-8') as f:
             m = json.load(f)
-        print(f"\n📊 Model Report:")
+        print(f"\nModel Report:")
         print(f"   Winner: {m.get('winner')}")
-        print(f"   Within ±5%: {m.get('winning_within_5pct_accuracy', m.get('winning_accuracy_pct', 'N/A'))}%")
-        print(f"   Within ±10%: {m.get('winning_within_10pct_accuracy', 'N/A')}%")
+        print(f"   Within +/-5%: {m.get('winning_within_5pct_accuracy', m.get('winning_accuracy_pct', 'N/A'))}%")
+        print(f"   Within +/-10%: {m.get('winning_within_10pct_accuracy', 'N/A')}%")
         print(f"   Records: {m.get('trained_records', 'N/A')}")
 
-    print("\n✅ Validation PASSED")
+    print("\n[SUCCESS] AI Validation PASSED")
     return True
 
 if __name__ == '__main__':
-    import sys
     sys.exit(0 if validate() else 1)
